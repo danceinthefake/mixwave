@@ -17,12 +17,18 @@
 // Vue, so the inner pad's onUnmounted properly fires on switch and
 // AbortController + stopAllX run as designed.
 
-import { ref } from "vue"
+import { ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
-import { ensureStarted, play, type DrumName, type ChordName } from "@/lib/audio"
+import {
+  ensureStarted,
+  play,
+  setMasterVolume,
+  type DrumName,
+  type ChordName,
+} from "@/lib/audio"
 
 defineProps<{
   current_instrument: "drums" | "keyboard" | "guitar"
@@ -42,6 +48,17 @@ type RemoteNote =
 type RemoteHit = { instrument: string; note: string; t: number }
 const lastRemoteHit = ref<RemoteHit | null>(null)
 
+// Master output volume slider. Persisted per-user in localStorage —
+// each browser remembers where you set it last.
+const VOLUME_KEY = "mixwave:volume"
+const stored = Number.parseInt(localStorage.getItem(VOLUME_KEY) ?? "80", 10)
+const volume = ref(Number.isFinite(stored) ? Math.max(0, Math.min(100, stored)) : 80)
+setMasterVolume(volume.value / 100)
+watch(volume, (v) => {
+  setMasterVolume(v / 100)
+  localStorage.setItem(VOLUME_KEY, String(v))
+})
+
 // Cross-instrument audio: every user hears every other user with the
 // sender's chosen style, no matter which pad *they* have on screen.
 live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
@@ -55,10 +72,30 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
 </script>
 
 <template>
-  <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
-  <KeyboardPad
-    v-else-if="current_instrument === 'keyboard'"
-    :remote-hit="lastRemoteHit"
-  />
-  <GuitarPad v-else-if="current_instrument === 'guitar'" :remote-hit="lastRemoteHit" />
+  <div class="space-y-4">
+    <!-- Master volume — affects every synth in the registry -->
+    <div class="flex items-center justify-end gap-2">
+      <span class="text-xs uppercase tracking-wider text-muted-foreground">Vol</span>
+      <input
+        v-model.number="volume"
+        type="range"
+        min="0"
+        max="100"
+        class="w-32 accent-primary"
+      />
+      <span class="text-xs tabular-nums text-muted-foreground w-10 text-right">
+        {{ volume }}%
+      </span>
+    </div>
+
+    <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
+    <KeyboardPad
+      v-else-if="current_instrument === 'keyboard'"
+      :remote-hit="lastRemoteHit"
+    />
+    <GuitarPad
+      v-else-if="current_instrument === 'guitar'"
+      :remote-hit="lastRemoteHit"
+    />
+  </div>
 </template>
