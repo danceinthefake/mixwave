@@ -8,9 +8,13 @@
 //
 // Local play + push; remote audio goes through JamReceiver.
 
-import { onMounted, onUnmounted, ref } from "vue"
+import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload, type ChordName } from "@/lib/audio"
+
+const props = defineProps<{
+  remoteHit: { instrument: string; note: string; t: number } | null
+}>()
 
 const live = useLiveVue()
 
@@ -39,13 +43,32 @@ const chords: Chord[] = [
 ]
 
 const flashing = ref<ChordName | null>(null)
+const remoteFlashing = ref<ChordName | null>(null)
 let flashTimer: number | null = null
+let remoteFlashTimer: number | null = null
 
 function flash(name: ChordName) {
   flashing.value = name
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   flashTimer = window.setTimeout(() => (flashing.value = null), 250)
 }
+
+const chordNames = new Set<string>(["C", "Am", "Dm", "G", "E", "Em", "F", "B7"])
+
+function flashRemote(name: ChordName) {
+  remoteFlashing.value = name
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
+  // Chords visibly ring longer than drums; mirror that with a longer flash.
+  remoteFlashTimer = window.setTimeout(() => (remoteFlashing.value = null), 350)
+}
+
+watch(
+  () => props.remoteHit,
+  (hit) => {
+    if (!hit || hit.instrument !== "guitar") return
+    if (chordNames.has(hit.note)) flashRemote(hit.note as ChordName)
+  },
+)
 
 async function strum(name: ChordName) {
   await ensureStarted()
@@ -83,6 +106,7 @@ onMounted(() => {
 onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
   // Cut any chord still ringing — BRAINSTORM §9: held notes cut off
   // on instrument switch.
   stopAll("guitar", style.value)
@@ -117,7 +141,8 @@ onUnmounted(() => {
         @pointerdown.prevent="strum(c.name)"
         :class="[
           'rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 select-none transition-all active:scale-95 hover:bg-accent',
-          flashing === c.name && 'ring-2 ring-primary scale-95'
+          flashing === c.name && 'ring-2 ring-primary scale-95',
+          remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
         ]"
       >
         <div class="text-2xl font-bold">{{ c.name }}</div>

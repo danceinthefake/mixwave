@@ -8,9 +8,13 @@
 // PolySynth lets multiple keys ring at once. JamReceiver handles
 // remote players' notes — pads only push.
 
-import { onMounted, onUnmounted, ref } from "vue"
+import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload } from "@/lib/audio"
+
+const props = defineProps<{
+  remoteHit: { instrument: string; note: string; t: number } | null
+}>()
 
 const live = useLiveVue()
 
@@ -51,13 +55,29 @@ const blackKeys: BlackKey[] = [
 ]
 
 const flashingNote = ref<string | null>(null)
+const remoteFlashingNote = ref<string | null>(null)
 let flashTimer: number | null = null
+let remoteFlashTimer: number | null = null
 
 function flash(note: string) {
   flashingNote.value = note
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   flashTimer = window.setTimeout(() => (flashingNote.value = null), 180)
 }
+
+function flashRemote(note: string) {
+  remoteFlashingNote.value = note
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
+  remoteFlashTimer = window.setTimeout(() => (remoteFlashingNote.value = null), 250)
+}
+
+watch(
+  () => props.remoteHit,
+  (hit) => {
+    if (!hit || hit.instrument !== "keyboard") return
+    flashRemote(hit.note)
+  },
+)
 
 async function hit(note: string) {
   await ensureStarted()
@@ -100,6 +120,7 @@ onMounted(() => {
 onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
   // BRAINSTORM §9: held notes cut off on instrument switch.
   stopAll("keyboard", style.value)
 })
@@ -134,10 +155,12 @@ onUnmounted(() => {
         :key="key.note"
         @pointerdown.prevent="hit(key.note)"
         :class="[
-          'flex-1 border border-border rounded-b-md flex flex-col items-center justify-end pb-3 transition-all',
+          'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-3 transition-all',
           flashingNote === key.note
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+            ? 'bg-primary text-primary-foreground border-primary'
+            : remoteFlashingNote === key.note
+              ? 'bg-orange-100 text-orange-900 border-orange-400'
+              : 'bg-white text-slate-700 border-border hover:bg-slate-100 active:bg-slate-200'
         ]"
       >
         <span class="text-sm font-medium">{{ key.label }}</span>
@@ -154,7 +177,9 @@ onUnmounted(() => {
         'absolute top-0 w-7 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all',
         flashingNote === bk.note
           ? 'bg-primary'
-          : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
+          : remoteFlashingNote === bk.note
+            ? 'bg-orange-500'
+            : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
       ]"
     >
       <span class="text-[10px]">{{ bk.label }}</span>

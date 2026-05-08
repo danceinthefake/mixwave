@@ -17,6 +17,7 @@
 // Vue, so the inner pad's onUnmounted properly fires on switch and
 // AbortController + stopAllX run as designed.
 
+import { ref } from "vue"
 import { useLiveVue } from "live_vue"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
@@ -34,19 +35,30 @@ type RemoteNote =
   | { instrument: "keyboard"; style: string; note: string }
   | { instrument: "guitar"; style: string; chord: ChordName }
 
+// Latest remote hit, broadcast down to whichever pad is currently
+// mounted so it can flash the matching button. New object on every
+// hit (timestamped) so Vue's watcher always re-fires, even if two
+// rapid hits target the same note.
+type RemoteHit = { instrument: string; note: string; t: number }
+const lastRemoteHit = ref<RemoteHit | null>(null)
+
 // Cross-instrument audio: every user hears every other user with the
 // sender's chosen style, no matter which pad *they* have on screen.
 live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   await ensureStarted()
   // Drums + keyboard carry `note`; guitar carries `chord`. Normalize
-  // to a single string for the engine.
+  // to a single string for the engine + the remote-flash signal.
   const note = payload.instrument === "guitar" ? payload.chord : payload.note
   play(payload.instrument, payload.style ?? "synth", note)
+  lastRemoteHit.value = { instrument: payload.instrument, note, t: Date.now() }
 })
 </script>
 
 <template>
-  <DrumPad v-if="current_instrument === 'drums'" />
-  <KeyboardPad v-else-if="current_instrument === 'keyboard'" />
-  <GuitarPad v-else-if="current_instrument === 'guitar'" />
+  <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
+  <KeyboardPad
+    v-else-if="current_instrument === 'keyboard'"
+    :remote-hit="lastRemoteHit"
+  />
+  <GuitarPad v-else-if="current_instrument === 'guitar'" :remote-hit="lastRemoteHit" />
 </template>

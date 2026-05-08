@@ -8,9 +8,13 @@
 // hear *the sender's* style — coherent kit sound for everyone in
 // the jam.
 
-import { onMounted, onUnmounted, ref } from "vue"
+import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
+
+const props = defineProps<{
+  remoteHit: { instrument: string; note: string; t: number } | null
+}>()
 
 const live = useLiveVue()
 
@@ -35,13 +39,32 @@ const pads: Pad[] = [
 ]
 
 const flashing = ref<DrumName | null>(null)
+const remoteFlashing = ref<DrumName | null>(null)
 let flashTimer: number | null = null
+let remoteFlashTimer: number | null = null
 
 function flash(name: DrumName) {
   flashing.value = name
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   flashTimer = window.setTimeout(() => (flashing.value = null), 120)
 }
+
+function flashRemote(name: DrumName) {
+  remoteFlashing.value = name
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
+  // Slightly longer than local so it's visible even after a short network hop.
+  remoteFlashTimer = window.setTimeout(() => (remoteFlashing.value = null), 200)
+}
+
+const drumNames = new Set<DrumName>(["kick", "snare", "hihat", "open_hat", "crash"])
+
+watch(
+  () => props.remoteHit,
+  (hit) => {
+    if (!hit || hit.instrument !== "drums") return
+    if (drumNames.has(hit.note as DrumName)) flashRemote(hit.note as DrumName)
+  },
+)
 
 async function hit(name: DrumName) {
   await ensureStarted()
@@ -76,6 +99,7 @@ onMounted(() => {
 onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
+  if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
   stopAll("drums", style.value)
 })
 </script>
@@ -108,7 +132,8 @@ onUnmounted(() => {
         @pointerdown.prevent="hit(p.name)"
         :class="[
           'aspect-square rounded-md border bg-card flex flex-col items-center justify-center gap-2 select-none transition-all active:scale-95 hover:bg-accent',
-          flashing === p.name && 'ring-2 ring-primary scale-95'
+          flashing === p.name && 'ring-2 ring-primary scale-95',
+          remoteFlashing === p.name && flashing !== p.name && 'ring-2 ring-orange-400'
         ]"
       >
         <div class="text-base font-medium">{{ p.label }}</div>
