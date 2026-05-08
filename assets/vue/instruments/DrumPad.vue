@@ -3,18 +3,20 @@
 // perspective, with all the pieces a typical rock kit ships with:
 //
 //   2 crash cymbals (left, right)         ← upper corners
-//   3 toms (small, mid, floor)            ← mounted small/mid above
-//                                            the bass drum, floor
-//                                            tom on the lower right
+//   3 toms (small, mid, floor)            ← mounted small/mid up
+//                                            top, floor tom on the
+//                                            lower right
 //   1 ride cymbal                          ← upper right
-//   1 bass drum + double pedal             ← centre column (drum at
-//                                            top, two pedals below)
 //   1 hi-hat + foot pedal                  ← left side
 //   1 snare                                ← lower centre
+//   1 double bass pedal                    ← bottom centre, two
+//                                            triggers for one kick
 //   1 throne                                ← drummer's seat, decorative
 //
-// 12 playable pads. The throne is visual-only — drum kits don't
-// have a throne sound.
+// 11 playable pads. The bass drum isn't drawn — on a real kit it
+// only sounds when the foot pedal beats it, never when struck by
+// hand or stick, so there's nothing to click. The throne is
+// visual-only — drum kits don't have a throne sound.
 //
 // Keyboard shortcuts cluster on the right of home position so
 // both hands can play the whole kit without leaving the bar:
@@ -107,16 +109,11 @@ const pads: Pad[] = [
     pos: { left: "82%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
-  // Bass drum at top centre. Click-only — both Bass pedals (b, n)
-  // play the same `kick`, so a third key would just shadow them.
-  {
-    id: "kick_drum",
-    drum: "kick",
-    label: "Bass",
-    key: null,
-    pos: { left: "37%", top: "27%", width: "23%", height: "22%" },
-    shape: "round",
-  },
+  // No bass drum at the top centre. On a real kit the bass drum
+  // isn't stick-played — only the foot pedals trigger it. The
+  // pedals at the bottom (Bass L, Bass R) are the only kick
+  // triggers in this UI for that reason.
+
   // Mid row of kit: hi-hat pair on the left, snare + floor tom in
   // the middle, second crash on the right. All four sit on the
   // home row of the keyboard for one-finger-per-pad reach.
