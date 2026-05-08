@@ -535,4 +535,146 @@ function makeGuitarSynth(): InstrumentEngine {
 
 register("guitar", "synth", makeGuitarSynth())
 
+// ── Guitar : Pluck (hand-rolled Karplus-Strong) ────────────────────
+// What Tone.PluckSynth does, but without the AudioWorklet — so it
+// works in non-secure contexts (LAN dev). The Karplus-Strong
+// algorithm models a vibrating string as a delay line + lowpass
+// filter + feedback loop. The "pluck" is a short white-noise burst
+// fed into the delay; the loop sustains and gradually decays as the
+// filter and feedback gain remove energy each round-trip.
+//
+//   noise burst ─→ delay (delayTime = 1/freq) ─→ filter (lowpass)
+//                       ↑                              │
+//                       └──── feedback gain (0.995) ───┘
+//                                              │
+//                                              ↓
+//                                          output
+//
+// One graph per plucked note, disposed after natural decay.
+
+function makeGuitarPluck(): InstrumentEngine {
+  let output: Tone.Gain | null = null
+  let activeStrings: { dispose: () => void }[] = []
+
+  function ensure() {
+    if (output) return
+    output = new Tone.Gain(0.5).toDestination()
+  }
+
+  function pluckNote(note: string, when: number) {
+    ensure()
+    const freq = Tone.Frequency(note).toFrequency()
+    const delayTime = 1 / freq
+
+    const delay = new Tone.Delay(delayTime, 0.05)
+    const filter = new Tone.Filter(4000, "lowpass")
+    const feedback = new Tone.Gain(0.995)
+
+    delay.connect(filter)
+    filter.connect(feedback)
+    feedback.connect(delay)
+    filter.connect(output!)
+
+    // Pluck = 5 ms of white noise into the delay line.
+    const noise = new Tone.Noise("white")
+    const env = new Tone.AmplitudeEnvelope({
+      attack: 0.001,
+      decay: 0.005,
+      sustain: 0,
+      release: 0.001,
+    })
+    noise.connect(env)
+    env.connect(delay)
+    noise.start(when)
+    env.triggerAttackRelease(0.005, when)
+    noise.stop(when + 0.05)
+
+    const nodes = [noise, env, delay, filter, feedback]
+    const string = {
+      dispose() {
+        for (const n of nodes) {
+          try {
+            n.dispose()
+          } catch {
+            // already disposed; ignore
+          }
+        }
+      },
+    }
+    activeStrings.push(string)
+
+    // Auto-dispose after the string has decayed naturally (~6s with
+    // the 0.995 feedback). Otherwise we'd accumulate audio nodes per
+    // strum forever.
+    setTimeout(() => {
+      string.dispose()
+      activeStrings = activeStrings.filter((s) => s !== string)
+    }, 6000)
+  }
+
+  return {
+    play(chord) {
+      const notes = CHORDS[chord as ChordName]
+      if (!notes) return
+      ensure()
+      const now = Tone.now()
+      notes.forEach((note, i) => {
+        pluckNote(note, now + i * 0.012)
+      })
+    },
+    stopAll() {
+      // Cut every currently-ringing string — BRAINSTORM §9.
+      const strings = activeStrings.slice()
+      activeStrings = []
+      for (const s of strings) s.dispose()
+    },
+  }
+}
+
+register("guitar", "pluck", makeGuitarPluck())
+
+// ── Guitar : Acoustic (sampled) ────────────────────────────────────
+// Real acoustic-guitar samples streamed from the tonejs-instruments
+// CDN. Three anchor samples (A2 / A3 / A4) cover our chord range
+// from E2 up through G4; Sampler pitch-shifts between them.
+
+function makeGuitarAcoustic(): InstrumentEngine {
+  let sampler: Tone.Sampler | null = null
+
+  function ensure() {
+    if (sampler) return
+    sampler = new Tone.Sampler({
+      urls: {
+        A2: "A2.mp3",
+        A3: "A3.mp3",
+        A4: "A4.mp3",
+      },
+      release: 0.5,
+      baseUrl:
+        "https://nbrosowsky.github.io/tonejs-instruments/samples/guitar-acoustic/",
+    }).toDestination()
+    sampler.volume.value = -4
+  }
+
+  return {
+    play(chord) {
+      const notes = CHORDS[chord as ChordName]
+      if (!notes) return
+      ensure()
+      const now = Tone.now()
+      notes.forEach((note, i) => {
+        sampler!.triggerAttackRelease(note, "2n", now + i * 0.012)
+      })
+    },
+    stopAll() {
+      sampler?.releaseAll()
+    },
+    preload() {
+      ensure()
+    },
+  }
+}
+
+register("guitar", "acoustic", makeGuitarAcoustic())
+
 export { Tone }

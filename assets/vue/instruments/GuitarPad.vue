@@ -1,18 +1,29 @@
 <script setup lang="ts">
-// Guitar pad — eight common chord buttons (C / Am / Dm / G / E / Em
-// / F / B7). Click a button or press 1–8.
+// Guitar pad — eight common chord buttons + a Style selector with
+// three flavors. Click a chord or press 1–8.
 //
-// Each chord is a stack of notes triggered on a Tone.PluckSynth
-// (Karplus-Strong) wrapped in a PolySynth so the strings ring
-// together. Local play + push; JamReceiver handles remote audio.
+//   - Synth: PolySynth(MonoSynth) with sweeping filter envelope
+//   - Pluck: hand-rolled Karplus-Strong (works in non-secure contexts)
+//   - Acoustic: real guitar samples streamed from a CDN
+//
+// Local play + push; remote audio goes through JamReceiver.
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import { ensureStarted, play, stopAll, type ChordName } from "@/lib/audio"
-
-const style = "synth"
+import { ensureStarted, play, stopAll, preload, type ChordName } from "@/lib/audio"
 
 const live = useLiveVue()
+
+type GuitarStyle = "synth" | "pluck" | "acoustic"
+type StyleOption = { id: GuitarStyle; label: string }
+
+const styles: StyleOption[] = [
+  { id: "synth", label: "Synth" },
+  { id: "pluck", label: "Pluck" },
+  { id: "acoustic", label: "Acoustic" },
+]
+
+const style = ref<GuitarStyle>("synth")
 
 type Chord = { name: ChordName; key: string }
 
@@ -38,9 +49,19 @@ function flash(name: ChordName) {
 
 async function strum(name: ChordName) {
   await ensureStarted()
-  play("guitar", style, name)
+  play("guitar", style.value, name)
   flash(name)
-  live.pushEvent("note", { instrument: "guitar", style, chord: name })
+  live.pushEvent("note", { instrument: "guitar", style: style.value, chord: name })
+}
+
+function selectStyle(id: GuitarStyle) {
+  if (id === style.value) return
+  // Cut any chord still ringing on the previous flavor.
+  stopAll("guitar", style.value)
+  style.value = id
+  // Acoustic flavor preloads its samples from the CDN here so the
+  // first strum isn't silent while samples download.
+  preload("guitar", id)
 }
 
 function onKey(event: KeyboardEvent) {
@@ -64,23 +85,44 @@ onUnmounted(() => {
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   // Cut any chord still ringing — BRAINSTORM §9: held notes cut off
   // on instrument switch.
-  stopAll("guitar", style)
+  stopAll("guitar", style.value)
 })
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    <button
-      v-for="c in chords"
-      :key="c.name"
-      @pointerdown.prevent="strum(c.name)"
-      :class="[
-        'rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 select-none transition-all active:scale-95 hover:bg-accent',
-        flashing === c.name && 'ring-2 ring-primary scale-95'
-      ]"
-    >
-      <div class="text-2xl font-bold">{{ c.name }}</div>
-      <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ c.key }}</kbd>
-    </button>
+  <div class="space-y-4">
+    <!-- Style selector -->
+    <div class="flex items-center gap-1">
+      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
+      <button
+        v-for="s in styles"
+        :key="s.id"
+        @click="selectStyle(s.id)"
+        :class="[
+          'px-3 py-1 text-xs rounded-md border transition-colors',
+          style === s.id
+            ? 'bg-primary text-primary-foreground border-primary'
+            : 'bg-card hover:bg-accent text-muted-foreground border-input'
+        ]"
+      >
+        {{ s.label }}
+      </button>
+    </div>
+
+    <!-- Chord buttons -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <button
+        v-for="c in chords"
+        :key="c.name"
+        @pointerdown.prevent="strum(c.name)"
+        :class="[
+          'rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 select-none transition-all active:scale-95 hover:bg-accent',
+          flashing === c.name && 'ring-2 ring-primary scale-95'
+        ]"
+      >
+        <div class="text-2xl font-bold">{{ c.name }}</div>
+        <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ c.key }}</kbd>
+      </button>
+    </div>
   </div>
 </template>
