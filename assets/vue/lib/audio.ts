@@ -144,6 +144,221 @@ function makeDrumSynth(): InstrumentEngine {
 
 register("drums", "synth", makeDrumSynth())
 
+// ── Drums : 808 ────────────────────────────────────────────────────
+// Classic Roland TR-808 vibe: long sub-y kick, snappy snare with a
+// tonal body, brighter and tighter hats, ringy crash.
+
+function makeDrum808(): InstrumentEngine {
+  let kick: Tone.MembraneSynth | null = null
+  let snareNoise: Tone.NoiseSynth | null = null
+  let snareBody: Tone.Synth | null = null
+  let hihat: Tone.MetalSynth | null = null
+  let openHat: Tone.MetalSynth | null = null
+  let crash: Tone.MetalSynth | null = null
+
+  const lastScheduled: Record<DrumName, number> = {
+    kick: 0,
+    snare: 0,
+    hihat: 0,
+    open_hat: 0,
+    crash: 0,
+  }
+
+  function ensure() {
+    if (kick) return
+    kick = new Tone.MembraneSynth({
+      pitchDecay: 0.08,
+      octaves: 6,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1.2 },
+    }).toDestination()
+
+    snareNoise = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0 },
+    }).toDestination()
+    snareNoise.volume.value = -2
+
+    snareBody = new Tone.Synth({
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.001, decay: 0.08, sustain: 0, release: 0.05 },
+    }).toDestination()
+    snareBody.volume.value = -10
+
+    hihat = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.05, release: 0.01 },
+      harmonicity: 12,
+      modulationIndex: 50,
+      resonance: 8000,
+      octaves: 1.0,
+    }).toDestination()
+    hihat.volume.value = -18
+
+    openHat = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.4, release: 0.3 },
+      harmonicity: 12,
+      modulationIndex: 50,
+      resonance: 8000,
+      octaves: 1.0,
+    }).toDestination()
+    openHat.volume.value = -18
+
+    crash = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 2.5, release: 2.5 },
+      harmonicity: 10,
+      modulationIndex: 60,
+      resonance: 4000,
+      octaves: 0.8,
+    }).toDestination()
+    crash.volume.value = -24
+  }
+
+  function schedule(name: DrumName): number {
+    const candidate = Tone.now()
+    const when = Math.max(candidate, lastScheduled[name] + 0.001)
+    lastScheduled[name] = when
+    return when
+  }
+
+  return {
+    play(note) {
+      const drum = note as DrumName
+      ensure()
+      const when = schedule(drum)
+      switch (drum) {
+        case "kick":
+          kick!.triggerAttackRelease("A0", "2n", when)
+          break
+        case "snare":
+          snareNoise!.triggerAttackRelease("8n", when)
+          snareBody!.triggerAttackRelease("E4", "16n", when)
+          break
+        case "hihat":
+          hihat!.triggerAttackRelease("C7", "32n", when)
+          break
+        case "open_hat":
+          openHat!.triggerAttackRelease("C7", "8n", when)
+          break
+        case "crash":
+          crash!.triggerAttackRelease("C5", "1n", when)
+          break
+      }
+    },
+    stopAll() {},
+  }
+}
+
+register("drums", "808", makeDrum808())
+
+// ── Drums : Acoustic ───────────────────────────────────────────────
+// Warmer kit — pink-noise snare with a tom-like body, less metallic
+// cymbals. Approximates an acoustic kit through synthesis (no
+// samples shipped).
+
+function makeDrumAcoustic(): InstrumentEngine {
+  let kick: Tone.MembraneSynth | null = null
+  let snareNoise: Tone.NoiseSynth | null = null
+  let snareBody: Tone.MembraneSynth | null = null
+  let hihat: Tone.MetalSynth | null = null
+  let openHat: Tone.MetalSynth | null = null
+  let crash: Tone.MetalSynth | null = null
+
+  const lastScheduled: Record<DrumName, number> = {
+    kick: 0,
+    snare: 0,
+    hihat: 0,
+    open_hat: 0,
+    crash: 0,
+  }
+
+  function ensure() {
+    if (kick) return
+    kick = new Tone.MembraneSynth({
+      pitchDecay: 0.03,
+      octaves: 4,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.28, sustain: 0, release: 0.5 },
+    }).toDestination()
+
+    snareNoise = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0 },
+    }).toDestination()
+    snareNoise.volume.value = -4
+
+    snareBody = new Tone.MembraneSynth({
+      pitchDecay: 0.02,
+      octaves: 2,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.2 },
+    }).toDestination()
+    snareBody.volume.value = -10
+
+    hihat = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.08, release: 0.01 },
+      harmonicity: 4.0,
+      modulationIndex: 28,
+      resonance: 5000,
+      octaves: 1.5,
+    }).toDestination()
+    hihat.volume.value = -18
+
+    openHat = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.6, release: 0.5 },
+      harmonicity: 4.0,
+      modulationIndex: 28,
+      resonance: 5000,
+      octaves: 1.5,
+    }).toDestination()
+    openHat.volume.value = -18
+
+    crash = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 1.8, release: 1.5 },
+      harmonicity: 6.0,
+      modulationIndex: 50,
+      resonance: 7000,
+      octaves: 0.5,
+    }).toDestination()
+    crash.volume.value = -24
+  }
+
+  function schedule(name: DrumName): number {
+    const candidate = Tone.now()
+    const when = Math.max(candidate, lastScheduled[name] + 0.001)
+    lastScheduled[name] = when
+    return when
+  }
+
+  return {
+    play(note) {
+      const drum = note as DrumName
+      ensure()
+      const when = schedule(drum)
+      switch (drum) {
+        case "kick":
+          kick!.triggerAttackRelease("C2", "8n", when)
+          break
+        case "snare":
+          snareNoise!.triggerAttackRelease("16n", when)
+          snareBody!.triggerAttackRelease("D3", "16n", when)
+          break
+        case "hihat":
+          hihat!.triggerAttackRelease("C5", "32n", when)
+          break
+        case "open_hat":
+          openHat!.triggerAttackRelease("C5", "8n", when)
+          break
+        case "crash":
+          crash!.triggerAttackRelease("C5", "2n", when)
+          break
+      }
+    },
+    stopAll() {},
+  }
+}
+
+register("drums", "acoustic", makeDrumAcoustic())
+
 // ── Keyboard : Synth ───────────────────────────────────────────────
 // PolySynth over Tone.Synth — multiple notes can ring at once.
 
