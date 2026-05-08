@@ -93,6 +93,7 @@ export type DrumName =
   | "snare"
   | "hihat"
   | "open_hat"
+  | "hihat_pedal"
   | "crash"
   | "ride"
   | "tom_high"
@@ -122,6 +123,7 @@ function makeDrumSynth(): InstrumentEngine {
   let snare: Tone.NoiseSynth | null = null
   let hihat: Tone.MetalSynth | null = null
   let openHat: Tone.MetalSynth | null = null
+  let hihatPedal: Tone.MetalSynth | null = null
   let crash: Tone.MetalSynth | null = null
   let ride: Tone.MetalSynth | null = null
   let tomHigh: Tone.MembraneSynth | null = null
@@ -133,6 +135,7 @@ function makeDrumSynth(): InstrumentEngine {
     snare: 0,
     hihat: 0,
     open_hat: 0,
+    hihat_pedal: 0,
     crash: 0,
     ride: 0,
     tom_high: 0,
@@ -171,6 +174,19 @@ function makeDrumSynth(): InstrumentEngine {
       octaves: 1.5,
     }).toDestination()
     openHat.volume.value = -6
+
+    // Foot-chick: cymbals snapping closed against each other. Even
+    // tighter envelope than the closed-stick hihat, less harmonic
+    // content, and noticeably quieter — the foot-only chick is a
+    // grace note in real drumming, not a primary voice.
+    hihatPedal = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.05, release: 0.01 },
+      harmonicity: 4.0,
+      modulationIndex: 18,
+      resonance: 3000,
+      octaves: 1.0,
+    }).toDestination()
+    hihatPedal.volume.value = -14
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 1.5, release: 1.5 },
@@ -243,6 +259,9 @@ function makeDrumSynth(): InstrumentEngine {
         case "open_hat":
           openHat!.triggerAttackRelease("C5", "16n", when)
           break
+        case "hihat_pedal":
+          hihatPedal!.triggerAttackRelease("C5", "64n", when)
+          break
         case "crash":
           crash!.triggerAttackRelease("C5", "1n", when)
           break
@@ -277,6 +296,7 @@ function makeDrum808(): InstrumentEngine {
   let snareBody: Tone.Synth | null = null
   let hihat: Tone.MetalSynth | null = null
   let openHat: Tone.MetalSynth | null = null
+  let hihatPedal: Tone.MetalSynth | null = null
   let crash: Tone.MetalSynth | null = null
   let ride: Tone.MetalSynth | null = null
   let tomHigh: Tone.MembraneSynth | null = null
@@ -288,6 +308,7 @@ function makeDrum808(): InstrumentEngine {
     snare: 0,
     hihat: 0,
     open_hat: 0,
+    hihat_pedal: 0,
     crash: 0,
     ride: 0,
     tom_high: 0,
@@ -333,6 +354,15 @@ function makeDrum808(): InstrumentEngine {
       octaves: 1.0,
     }).toDestination()
     openHat.volume.value = -8
+
+    hihatPedal = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.04, release: 0.01 },
+      harmonicity: 8,
+      modulationIndex: 30,
+      resonance: 6000,
+      octaves: 0.8,
+    }).toDestination()
+    hihatPedal.volume.value = -16
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 2.5, release: 2.5 },
@@ -403,6 +433,9 @@ function makeDrum808(): InstrumentEngine {
         case "open_hat":
           openHat!.triggerAttackRelease("C7", "8n", when)
           break
+        case "hihat_pedal":
+          hihatPedal!.triggerAttackRelease("C7", "64n", when)
+          break
         case "crash":
           crash!.triggerAttackRelease("C5", "1n", when)
           break
@@ -437,6 +470,7 @@ function makeDrumAcoustic(): InstrumentEngine {
   let snareBody: Tone.MembraneSynth | null = null
   let hihat: Tone.MetalSynth | null = null
   let openHat: Tone.MetalSynth | null = null
+  let hihatPedal: Tone.MetalSynth | null = null
   let crash: Tone.MetalSynth | null = null
   let ride: Tone.MetalSynth | null = null
   let tomHigh: Tone.MembraneSynth | null = null
@@ -448,6 +482,7 @@ function makeDrumAcoustic(): InstrumentEngine {
     snare: 0,
     hihat: 0,
     open_hat: 0,
+    hihat_pedal: 0,
     crash: 0,
     ride: 0,
     tom_high: 0,
@@ -495,6 +530,15 @@ function makeDrumAcoustic(): InstrumentEngine {
       octaves: 1.5,
     }).toDestination()
     openHat.volume.value = -8
+
+    hihatPedal = new Tone.MetalSynth({
+      envelope: { attack: 0.001, decay: 0.06, release: 0.01 },
+      harmonicity: 3.5,
+      modulationIndex: 20,
+      resonance: 4000,
+      octaves: 1.2,
+    }).toDestination()
+    hihatPedal.volume.value = -16
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 1.8, release: 1.5 },
@@ -564,6 +608,9 @@ function makeDrumAcoustic(): InstrumentEngine {
           break
         case "open_hat":
           openHat!.triggerAttackRelease("C5", "8n", when)
+          break
+        case "hihat_pedal":
+          hihatPedal!.triggerAttackRelease("C5", "64n", when)
           break
         case "crash":
           crash!.triggerAttackRelease("C5", "2n", when)

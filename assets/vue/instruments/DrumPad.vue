@@ -21,7 +21,7 @@
 //
 //   q .  . r t y . . o .       ← Crash 1, Sm Tom, Bass, Mid Tom, Ride
 //   a s . . . . . . l .         ← Hi-hat, Open, ...,  Crash 2
-//   . . . v b . m               ← Snare, Bass Pedal, Floor Tom
+//   z . . v b . m               ← HH Pedal, Snare, Bass Pedal, Floor Tom
 //
 // Bass Drum and Bass Pedal both trigger `kick` — two ways to play
 // the same drum, like a double-pedal setup. Both crash pads
@@ -153,14 +153,15 @@ const pads: Pad[] = [
     pos: { left: "55%", top: "65%", width: "21%", height: "23%" },
     shape: "round",
   },
-  // Pedals + throne along the bottom. Hi-hat pedal and throne are
-  // decorative (no drum, no key) — they complete the kit picture
-  // without adding extra triggers.
+  // Pedals + throne along the bottom. Hi-hat pedal triggers the
+  // foot-chick voice — quieter and tighter than the closed-stick
+  // hi-hat. Throne stays decorative (no drum kit has a "throne
+  // sound").
   {
     id: "hihat_pedal",
-    drum: null,
+    drum: "hihat_pedal",
     label: "HH Pedal",
-    key: null,
+    key: "z",
     pos: { left: "5%", top: "88%", width: "11%", height: "8%" },
     shape: "square",
   },
@@ -209,6 +210,7 @@ const drumNames = new Set<DrumName>([
   "snare",
   "hihat",
   "open_hat",
+  "hihat_pedal",
   "crash",
   "ride",
   "tom_high",
