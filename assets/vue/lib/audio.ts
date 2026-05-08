@@ -12,6 +12,17 @@ export async function ensureStarted(): Promise<void> {
   started = true
 }
 
+// Master output volume. Sets `Tone.Destination`'s volume in dB —
+// every synth in the registry routes through it, so this is a
+// single point of control for both local hits and incoming remote
+// notes.
+//
+//   linearGain: 0..1   (0 = silent, 1 = full)
+export function setMasterVolume(linearGain: number) {
+  const clamped = Math.max(0, Math.min(1, linearGain))
+  Tone.getDestination().volume.value = clamped === 0 ? -Infinity : Tone.gainToDb(clamped)
+}
+
 // ── Engine registry ────────────────────────────────────────────────
 // Each (instrument, style) pair gets its own engine. Engines own
 // their Tone synths internally — lazy-init on first play so we
