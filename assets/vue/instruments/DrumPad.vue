@@ -1,23 +1,30 @@
 <script setup lang="ts">
-// Drum pad — five pads (kick / snare / hi-hat / open hat / crash).
-// Tap the buttons or press 1–5 on the keyboard.
+// Drum pad — five pads (kick / snare / hi-hat / open hat / crash) +
+// a Style selector with three flavors. Tap the buttons or press
+// 1–5 on the keyboard.
 //
-// Local audio plays immediately on tap (zero latency); the note is
-// pushed to the LiveView for broadcast. Remote players' notes are
-// handled by JamReceiver — see assets/vue/JamReceiver.vue — which
-// is always mounted regardless of the active instrument.
+// Local audio plays immediately on tap; the note + the player's
+// chosen style are pushed to LiveView for broadcast. Remote players
+// hear *the sender's* style — coherent kit sound for everyone in
+// the jam.
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
 
-// The Style selector UI lands in a follow-up commit; pads default
-// to "synth" for now.
-const style = "synth"
-
 const live = useLiveVue()
 
+type DrumStyle = "synth" | "808" | "acoustic"
 type Pad = { name: DrumName; label: string; key: string }
+type StyleOption = { id: DrumStyle; label: string }
+
+const styles: StyleOption[] = [
+  { id: "synth", label: "Synth" },
+  { id: "808", label: "808" },
+  { id: "acoustic", label: "Acoustic" },
+]
+
+const style = ref<DrumStyle>("synth")
 
 const pads: Pad[] = [
   { name: "kick", label: "Kick", key: "1" },
@@ -38,9 +45,16 @@ function flash(name: DrumName) {
 
 async function hit(name: DrumName) {
   await ensureStarted()
-  play("drums", style, name)
+  play("drums", style.value, name)
   flash(name)
-  live.pushEvent("note", { instrument: "drums", style, note: name })
+  live.pushEvent("note", { instrument: "drums", style: style.value, note: name })
+}
+
+function selectStyle(id: DrumStyle) {
+  if (id === style.value) return
+  // Cut any tail still ringing on the previous flavor before switching.
+  stopAll("drums", style.value)
+  style.value = id
 }
 
 function onKey(event: KeyboardEvent) {
@@ -52,9 +66,6 @@ function onKey(event: KeyboardEvent) {
   }
 }
 
-// AbortController guarantees the listener is torn down even if Vue's
-// onUnmounted somehow runs out of order with the component's setup.
-// One .abort() removes everything attached with this signal.
 let controller: AbortController | null = null
 
 onMounted(() => {
@@ -65,23 +76,44 @@ onMounted(() => {
 onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
-  stopAll("drums", style)
+  stopAll("drums", style.value)
 })
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-    <button
-      v-for="p in pads"
-      :key="p.name"
-      @pointerdown.prevent="hit(p.name)"
-      :class="[
-        'aspect-square rounded-md border bg-card flex flex-col items-center justify-center gap-2 select-none transition-all active:scale-95 hover:bg-accent',
-        flashing === p.name && 'ring-2 ring-primary scale-95'
-      ]"
-    >
-      <div class="text-base font-medium">{{ p.label }}</div>
-      <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ p.key }}</kbd>
-    </button>
+  <div class="space-y-4">
+    <!-- Style selector -->
+    <div class="flex items-center gap-1">
+      <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Style</span>
+      <button
+        v-for="s in styles"
+        :key="s.id"
+        @click="selectStyle(s.id)"
+        :class="[
+          'px-3 py-1 text-xs rounded-md border transition-colors',
+          style === s.id
+            ? 'bg-primary text-primary-foreground border-primary'
+            : 'bg-card hover:bg-accent text-muted-foreground border-input'
+        ]"
+      >
+        {{ s.label }}
+      </button>
+    </div>
+
+    <!-- Pads -->
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <button
+        v-for="p in pads"
+        :key="p.name"
+        @pointerdown.prevent="hit(p.name)"
+        :class="[
+          'aspect-square rounded-md border bg-card flex flex-col items-center justify-center gap-2 select-none transition-all active:scale-95 hover:bg-accent',
+          flashing === p.name && 'ring-2 ring-primary scale-95'
+        ]"
+      >
+        <div class="text-base font-medium">{{ p.label }}</div>
+        <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ p.key }}</kbd>
+      </button>
+    </div>
   </div>
 </template>
