@@ -15,11 +15,13 @@
 // 11 playable pads. Hi-Hat Pedal and Throne are visual-only — they
 // complete the kit picture without adding extra triggers.
 //
-// Keyboard shortcuts mirror the kit shape:
+// Keyboard shortcuts mirror each pad's horizontal position in the
+// kit, so the QWERTY column you press matches where the pad sits
+// from left to right:
 //
-//   q w e   r t              ← Crash 1, Sm Tom, Mid Tom, Ride, Bass
-//   f g       j               ← Hi-hat, Open, Crash 2
-//      v   b n                 ← Bass Pedal, Snare, Floor Tom
+//   q .  . r t y . . o .       ← Crash 1, Sm Tom, Bass, Mid Tom, Ride
+//   a s . . . . . . l .         ← Hi-hat, Open, ...,  Crash 2
+//   . . . v b . m               ← Snare, Bass Pedal, Floor Tom
 //
 // Bass Drum and Bass Pedal both trigger `kick` — two ways to play
 // the same drum, like a double-pedal setup. Both crash pads
@@ -80,7 +82,7 @@ const pads: Pad[] = [
     id: "tom_high",
     drum: "tom_high",
     label: "Sm Tom",
-    key: "w",
+    key: "r",
     pos: { left: "31%", top: "5%", width: "13%", height: "20%" },
     shape: "round",
   },
@@ -88,7 +90,7 @@ const pads: Pad[] = [
     id: "tom_mid",
     drum: "tom_mid",
     label: "Mid Tom",
-    key: "e",
+    key: "y",
     pos: { left: "47%", top: "5%", width: "13%", height: "20%" },
     shape: "round",
   },
@@ -96,7 +98,7 @@ const pads: Pad[] = [
     id: "ride",
     drum: "ride",
     label: "Ride",
-    key: "r",
+    key: "o",
     pos: { left: "82%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
@@ -114,7 +116,7 @@ const pads: Pad[] = [
     id: "hihat",
     drum: "hihat",
     label: "Hi-hat",
-    key: "f",
+    key: "a",
     pos: { left: "2%", top: "50%", width: "13%", height: "17%" },
     shape: "round",
   },
@@ -122,7 +124,7 @@ const pads: Pad[] = [
     id: "open_hat",
     drum: "open_hat",
     label: "Open",
-    key: "g",
+    key: "s",
     pos: { left: "16%", top: "50%", width: "13%", height: "17%" },
     shape: "round",
   },
@@ -130,7 +132,7 @@ const pads: Pad[] = [
     id: "crash_r",
     drum: "crash",
     label: "Crash 2",
-    key: "j",
+    key: "l",
     pos: { left: "82%", top: "48%", width: "16%", height: "20%" },
     shape: "round",
   },
@@ -139,7 +141,7 @@ const pads: Pad[] = [
     id: "snare",
     drum: "snare",
     label: "Snare",
-    key: "b",
+    key: "v",
     pos: { left: "26%", top: "68%", width: "18%", height: "19%" },
     shape: "round",
   },
@@ -147,7 +149,7 @@ const pads: Pad[] = [
     id: "tom_floor",
     drum: "tom_floor",
     label: "Floor Tom",
-    key: "n",
+    key: "m",
     pos: { left: "55%", top: "65%", width: "21%", height: "23%" },
     shape: "round",
   },
@@ -166,7 +168,7 @@ const pads: Pad[] = [
     id: "kick_pedal",
     drum: "kick",
     label: "Bass Pedal",
-    key: "v",
+    key: "b",
     pos: { left: "40%", top: "85%", width: "16%", height: "10%" },
     shape: "square",
   },
