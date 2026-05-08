@@ -14,9 +14,6 @@ defmodule Mixwave.Accounts.AnonymousUser do
     field :display_name, :string
     field :last_active_at, :utc_datetime
 
-    has_many :songs, Mixwave.Library.Song, foreign_key: :user_id
-    has_many :comments, Mixwave.Library.Comment, foreign_key: :user_id
-
     timestamps(type: :utc_datetime, updated_at: false)
   end
 

@@ -27,39 +27,12 @@ import {hooks as colocatedHooks} from "phoenix-colocated/mixwave"
 import topbar from "topbar"
 import {getHooks} from "live_vue"
 import liveVueApp from "../vue"
-import {createApp, h} from "vue"
-import Player from "../vue/Player.vue"
-
-// External uploader: PUT each file directly to the presigned URL the
-// server returned in entry.meta. Reports progress + done events back to
-// the LiveView via the `entry` object. Used by UploadLive.
-const Uploaders = {
-  S3(entries, onViewError) {
-    entries.forEach(entry => {
-      const xhr = new XMLHttpRequest()
-      onViewError(() => xhr.abort())
-      xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? entry.progress(100) : entry.error()
-      xhr.onerror = () => entry.error()
-      xhr.upload.addEventListener("progress", event => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100)
-          if (percent < 100) entry.progress(percent)
-        }
-      })
-      const { url } = entry.meta
-      xhr.open("PUT", url, true)
-      xhr.setRequestHeader("Content-Type", entry.file.type)
-      xhr.send(entry.file)
-    })
-  },
-}
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
   hooks: {...colocatedHooks, ...getHooks(liveVueApp)},
-  uploaders: Uploaders,
 })
 
 // Show progress bar on live navigation and form submits
@@ -69,14 +42,6 @@ window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()
-
-// Mount the persistent Vue Player. Independent Vue app — not a live_vue
-// island — so it survives LiveView navigation. Reads `mixwave:play` /
-// `mixwave:stop` window CustomEvents.
-const playerMount = document.getElementById("mixwave-player")
-if (playerMount) {
-  createApp({render: () => h(Player)}).mount(playerMount)
-}
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

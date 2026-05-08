@@ -38,12 +38,5 @@
   </head>
   <body>
     {@inner_content}
-    <%!--
-      Mount point for the persistent Vue Player. Lives outside any
-      LiveView so it survives navigation across LVs. Bootstrapped in
-      assets/js/app.js; communicates with LVs via window CustomEvents
-      (`mixwave:play`, `mixwave:stop`).
-    --%>
-    <div id="mixwave-player"></div>
   </body>
 </html>

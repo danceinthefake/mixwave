@@ -23,24 +23,6 @@ end
 config :mixwave, MixwaveWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
-# Cloudflare R2 (S3-compatible). Read from env so the same config
-# works in dev (.env.local), prod (Fly secrets), and CI.
-#
-# - R2_ENDPOINT_HOST  e.g. <account_id>.r2.cloudflarestorage.com
-# - R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY  R2 API token credentials
-# - R2_BUCKET         bucket name
-config :ex_aws,
-  access_key_id: System.get_env("R2_ACCESS_KEY_ID"),
-  secret_access_key: System.get_env("R2_SECRET_ACCESS_KEY"),
-  region: "auto"
-
-config :ex_aws, :s3,
-  scheme: "https://",
-  host: System.get_env("R2_ENDPOINT_HOST"),
-  region: "auto"
-
-config :mixwave, :r2_bucket, System.get_env("R2_BUCKET")
-
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

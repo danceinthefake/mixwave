@@ -9,15 +9,6 @@ import Config
 
 config :live_vue, ssr: true, shared_props: []
 
-# Extend MIME's known types so allow_upload(accept: [".m4a", ".flac"])
-# is recognized — Phoenix LiveView validates the extension's MIME type
-# at allow_upload time, and these aren't in the default Mime registry.
-config :mime, :types, %{
-  "audio/mp4" => ["m4a"],
-  "audio/ogg" => ["ogg"],
-  "audio/flac" => ["flac"]
-}
-
 config :phoenix_vite, PhoenixVite.Npm,
   assets: [args: [], cd: __DIR__],
   vite: [

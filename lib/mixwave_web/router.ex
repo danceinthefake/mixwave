@@ -19,10 +19,7 @@ defmodule MixwaveWeb.Router do
     pipe_through :browser
 
     live_session :default, on_mount: {MixwaveWeb.UserAuth, :current_user} do
-      live "/", LibraryLive
-      live "/upload", UploadLive
-      live "/song/:id", SongLive
-      live "/manage", ManageLive
+      live "/", StudioLive
     end
   end
 
@@ -44,7 +41,6 @@ defmodule MixwaveWeb.Router do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: MixwaveWeb.Telemetry
-      live "/vue_demo", MixwaveWeb.VueDemoLive
     end
   end
 end
