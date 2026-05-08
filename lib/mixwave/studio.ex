@@ -47,4 +47,15 @@ defmodule Mixwave.Studio do
   Returns the recent-events buffer (newest last).
   """
   def recent_events, do: Room.recent_events()
+
+  @doc """
+  Returns events from the recent buffer within the last `seconds`
+  seconds, oldest first. Powers the "replay last 30s" button.
+  """
+  def recent_events_within(seconds) when is_integer(seconds) do
+    cutoff = System.monotonic_time(:millisecond) - seconds * 1000
+
+    Room.recent_events()
+    |> Enum.filter(fn e -> e.at >= cutoff end)
+  end
 end

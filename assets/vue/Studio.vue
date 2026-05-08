@@ -17,7 +17,7 @@
 // Vue, so the inner pad's onUnmounted properly fires on switch and
 // AbortController + stopAllX run as designed.
 
-import { ref, watch } from "vue"
+import { onMounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
@@ -50,13 +50,79 @@ const lastRemoteHit = ref<RemoteHit | null>(null)
 
 // Master output volume slider. Persisted per-user in localStorage —
 // each browser remembers where you set it last.
+//
+// localStorage and Tone.js are browser-only; live_vue runs this
+// `<script setup>` on the server too via SSR. Defer to onMounted
+// (client-only) for the initial read + Tone.Destination call.
 const VOLUME_KEY = "mixwave:volume"
-const stored = Number.parseInt(localStorage.getItem(VOLUME_KEY) ?? "80", 10)
-const volume = ref(Number.isFinite(stored) ? Math.max(0, Math.min(100, stored)) : 80)
-setMasterVolume(volume.value / 100)
+const volume = ref(80)
+
 watch(volume, (v) => {
+  // The watch only fires from user interaction with the slider —
+  // never during SSR — so localStorage and Tone are safe here.
   setMasterVolume(v / 100)
   localStorage.setItem(VOLUME_KEY, String(v))
+})
+
+onMounted(() => {
+  const stored = Number.parseInt(localStorage.getItem(VOLUME_KEY) ?? "80", 10)
+  if (Number.isFinite(stored)) {
+    volume.value = Math.max(0, Math.min(100, stored))
+  }
+  setMasterVolume(volume.value / 100)
+})
+
+// Replay-last-30s. Vue requests a burst from LV; LV pushes back the
+// note buffer with offsets; we schedule each via setTimeout from
+// "now". Local-only — others don't hear our replay.
+type ReplayEvent = {
+  instrument: string
+  style: string
+  note?: string
+  chord?: string
+  offset_ms: number
+}
+
+const isReplaying = ref(false)
+let replayTimers: number[] = []
+
+function startReplay() {
+  if (isReplaying.value) return
+  isReplaying.value = true
+  live.pushEvent("request_replay", {})
+}
+
+function stopReplay() {
+  for (const id of replayTimers) window.clearTimeout(id)
+  replayTimers = []
+  isReplaying.value = false
+}
+
+live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
+  // Cancel any in-flight replay before scheduling the new one.
+  for (const id of replayTimers) window.clearTimeout(id)
+  replayTimers = []
+
+  if (!events || events.length === 0) {
+    isReplaying.value = false
+    return
+  }
+
+  for (const e of events) {
+    const id = window.setTimeout(async () => {
+      await ensureStarted()
+      const note = e.instrument === "guitar" ? e.chord : e.note
+      if (note) play(e.instrument, e.style ?? "synth", note)
+    }, e.offset_ms)
+    replayTimers.push(id)
+  }
+
+  // Mark replay finished a bit after the last scheduled event.
+  const tail = events[events.length - 1].offset_ms
+  const doneId = window.setTimeout(() => {
+    isReplaying.value = false
+  }, tail + 200)
+  replayTimers.push(doneId)
 })
 
 // Cross-instrument audio: every user hears every other user with the
@@ -73,8 +139,20 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
 
 <template>
   <div class="space-y-4">
-    <!-- Master volume — affects every synth in the registry -->
-    <div class="flex items-center justify-end gap-2">
+    <!-- Top controls: replay last 30s + master volume -->
+    <div class="flex items-center justify-end gap-3">
+      <button
+        @click="isReplaying ? stopReplay() : startReplay()"
+        :class="[
+          'px-3 py-1 text-xs rounded-md border transition-colors',
+          isReplaying
+            ? 'bg-destructive/10 text-destructive border-destructive/40'
+            : 'bg-card hover:bg-accent text-muted-foreground border-input'
+        ]"
+      >
+        {{ isReplaying ? "Stop replay" : "Replay 30s" }}
+      </button>
+
       <span class="text-xs uppercase tracking-wider text-muted-foreground">Vol</span>
       <input
         v-model.number="volume"

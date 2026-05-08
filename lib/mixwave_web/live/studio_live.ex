@@ -53,6 +53,12 @@ defmodule MixwaveWeb.StudioLive do
   end
 
   @impl true
+  def handle_event("request_replay", _params, socket) do
+    events = Mixwave.Studio.recent_events_within(30)
+    {:noreply, push_event(socket, "replay_burst", events_to_replay_payload(events))}
+  end
+
+  @impl true
   def handle_event("note", payload, socket) do
     user = socket.assigns.current_user
 
@@ -111,6 +117,30 @@ defmodule MixwaveWeb.StudioLive do
   end
 
   defp presence_topic, do: "studio:lobby"
+
+  ## Replay helpers
+
+  # Trim the stored event buffer down to just the fields the Vue side
+  # needs, with offsets relative to the first event so the client can
+  # schedule them via setTimeout from "now."
+  defp events_to_replay_payload([]), do: %{events: []}
+
+  defp events_to_replay_payload([first | _] = events) do
+    start_at = first.at
+
+    events_payload =
+      Enum.map(events, fn e ->
+        %{
+          instrument: e.payload["instrument"],
+          style: e.payload["style"] || "synth",
+          note: e.payload["note"],
+          chord: e.payload["chord"],
+          offset_ms: e.at - start_at
+        }
+      end)
+
+    %{events: events_payload}
+  end
 
   ## Render helpers
 
