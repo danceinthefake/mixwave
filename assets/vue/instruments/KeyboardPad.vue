@@ -35,7 +35,7 @@ type StyleOption = { id: KeyboardStyle; label: string }
 const styles: StyleOption[] = [
   { id: "synth", label: "Synth" },
   { id: "lead", label: "Lead" },
-  { id: "piano", label: "Piano" },
+  { id: "piano", label: "Grand" },
 ]
 
 const style = ref<KeyboardStyle>("synth")

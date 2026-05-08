@@ -464,11 +464,13 @@ function makeKeyboardLead(): InstrumentEngine {
 
 register("keyboard", "lead", makeKeyboardLead())
 
-// ── Keyboard : Piano (Salamander, sampled) ─────────────────────────
-// Real piano samples streamed from the Tone.js community CDN. Three
-// anchor samples (A3 / A4 / A5) are enough for our C4–C5 keyboard
-// range — Sampler pitch-shifts between them. ~150 KB total download,
-// only fetched when the user actually picks Piano (preload() hook).
+// ── Keyboard : Piano (Salamander Grand Piano, sampled) ────────────
+// Real grand-piano samples — Salamander Grand Piano is a free
+// open-source recording of a Yamaha C5 concert grand, streamed from
+// the Tone.js community CDN. Three anchor samples (A3 / A4 / A5)
+// cover the keyboard's full visible range — Sampler pitch-shifts
+// between them. ~150 KB total download, only fetched when the user
+// actually picks Piano (preload() hook).
 
 function makeKeyboardPiano(): InstrumentEngine {
   let sampler: Tone.Sampler | null = null
