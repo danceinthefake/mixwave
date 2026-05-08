@@ -49,6 +49,18 @@ defmodule MixwaveWeb.StudioLive do
   end
 
   @impl true
+  def handle_event("note", payload, socket) do
+    user = socket.assigns.current_user
+
+    payload
+    |> Map.put("user_id", user.id)
+    |> Map.put("display_name", user.display_name)
+    |> Mixwave.Studio.broadcast_note()
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("switch_instrument", %{"to" => to}, socket) do
     instrument = String.to_existing_atom(to)
     now = System.monotonic_time(:millisecond)
@@ -81,10 +93,17 @@ defmodule MixwaveWeb.StudioLive do
   end
 
   @impl true
-  def handle_info({:studio_note, _event}, socket) do
-    # Note-event handling lands with DrumPad in the next commit:
-    # we'll push the event down to the Vue island via push_event.
-    {:noreply, socket}
+  def handle_info({:studio_note, event}, socket) do
+    # Filter self-events: the player's local audio already played
+    # immediately on tap, so we don't need to play it again from
+    # the network roundtrip. Only forward *other* users' hits.
+    user_id = socket.assigns.current_user.id
+
+    if event.payload["user_id"] != user_id do
+      {:noreply, push_event(socket, "play_remote_note", event.payload)}
+    else
+      {:noreply, socket}
+    end
   end
 
   defp presence_topic, do: "studio:lobby"
@@ -149,13 +168,18 @@ defmodule MixwaveWeb.StudioLive do
             </button>
           </div>
 
-          <%!-- Instrument pad slot — Vue islands land in the next commit --%>
-          <div class="rounded-lg border bg-card p-8 min-h-[18rem] flex items-center justify-center">
-            <p class="text-sm text-muted-foreground">
-              {instrument_label(@current_instrument)} pad coming next.
-              The wiring for note events through Studio.PubSub is ready;
-              this is just where the Vue island will mount.
-            </p>
+          <%!-- Instrument pad. Each pad is a Vue island; the active
+               one is mounted, others aren't (live_vue tears down on
+               v-component change). --%>
+          <div class="rounded-lg border bg-card p-6 min-h-[18rem]">
+            <%= case @current_instrument do %>
+              <% :drums -> %>
+                <.DrumPad />
+              <% _ -> %>
+                <p class="text-sm text-muted-foreground text-center pt-12">
+                  {instrument_label(@current_instrument)} pad lands in the next commit.
+                </p>
+            <% end %>
           </div>
         </section>
       </div>
