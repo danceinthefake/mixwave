@@ -1,20 +1,42 @@
 defmodule MixwaveWeb.ManageLive do
   @moduledoc """
-  Manage page — your songs, edit/delete. Placeholder.
+  Manage page. Lists `current_user`'s songs with a delete action.
+  Inline editing is post-v1 — keeping the talk focused on the stack
+  showcase rather than CRUD ergonomics.
   """
   use MixwaveWeb, :live_view
 
-  alias Mixwave.Library
+  alias Mixwave.{Library, Storage}
 
   @impl true
   def mount(_params, _session, socket) do
-    songs =
-      case socket.assigns[:current_user] do
-        nil -> []
-        user -> Library.list_user_songs(user.id)
-      end
+    {:ok, assign(socket, :songs, list_songs(socket))}
+  end
 
-    {:ok, assign(socket, :songs, songs)}
+  @impl true
+  def handle_event("delete", %{"id" => id}, socket) do
+    user = socket.assigns.current_user
+
+    with %Mixwave.Library.Song{user_id: user_id} = song when user_id == user.id <-
+           Library.get_song(id),
+         {:ok, _} <- Library.delete_song(song) do
+      _ = Storage.delete(song.storage_key)
+
+      {:noreply,
+       socket
+       |> assign(:songs, list_songs(socket))
+       |> put_flash(:info, "Deleted “#{song.title}”.")}
+    else
+      _ ->
+        {:noreply, put_flash(socket, :error, "Couldn't delete that song.")}
+    end
+  end
+
+  defp list_songs(socket) do
+    case socket.assigns[:current_user] do
+      nil -> []
+      user -> Library.list_user_songs(user.id)
+    end
   end
 
   @impl true
@@ -26,6 +48,9 @@ defmodule MixwaveWeb.ManageLive do
         <:subtitle>
           {if @current_user, do: "uploaded by #{@current_user.display_name}", else: "no user"}
         </:subtitle>
+        <:actions>
+          <.button navigate={~p"/upload"}>Upload another</.button>
+        </:actions>
       </.header>
 
       <p :if={@songs == []} class="text-muted-foreground">
@@ -34,12 +59,28 @@ defmodule MixwaveWeb.ManageLive do
       </p>
 
       <ul :if={@songs != []} class="divide-y rounded-md border">
-        <li :for={song <- @songs} class="px-4 py-3 flex items-center justify-between">
-          <div>
-            <p class="font-medium">{song.title}</p>
-            <p :if={song.genre} class="text-xs text-muted-foreground">{song.genre}</p>
+        <li
+          :for={song <- @songs}
+          class="px-4 py-3 flex items-center justify-between gap-4"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="font-medium truncate">{song.title}</p>
+            <p class="text-xs text-muted-foreground">
+              {song.genre || "—"} · uploaded {Calendar.strftime(song.inserted_at, "%Y-%m-%d")}
+            </p>
           </div>
-          <.link navigate={~p"/song/#{song.id}"} class="text-sm underline">View</.link>
+          <div class="flex gap-2 shrink-0">
+            <.button variant="outline" navigate={~p"/song/#{song.id}"}>View</.button>
+            <.button
+              variant="outline"
+              phx-click="delete"
+              phx-value-id={song.id}
+              data-confirm="Delete this song? This cannot be undone."
+              class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              Delete
+            </.button>
+          </div>
         </li>
       </ul>
     </Layouts.app>
