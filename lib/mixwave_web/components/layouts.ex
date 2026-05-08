@@ -29,10 +29,7 @@ defmodule MixwaveWeb.Layouts do
           <img src={static_url(MixwaveWeb.Endpoint, ~p"/images/logo.svg")} width="32" />
           <span class="text-base font-bold tracking-tight">mixwave</span>
         </a>
-        <nav class="flex items-center gap-4 text-sm">
-          <a href="/" class="hover:underline">Library</a>
-          <a href="https://hexdocs.pm/phoenix/overview.html" class="hover:underline">Docs</a>
-        </nav>
+        <span class="text-xs text-muted-foreground">a real-time jam room</span>
         <div class="ml-auto flex items-center gap-2">
           <.theme_toggle />
         </div>
