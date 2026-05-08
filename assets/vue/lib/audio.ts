@@ -129,35 +129,42 @@ export function playKey(note: string, duration: string = "8n") {
 }
 
 // ── Guitar ─────────────────────────────────────────────────────────
-// PluckSynth gives a plucky, Karplus-Strong timbre. It's *not*
-// Monophonic-derived, so PolySynth refuses to wrap it. Instead we
-// pool a handful of independent PluckSynths through a shared gain
-// node and round-robin them per chord-note so a chord plays all
-// strings simultaneously.
+// We'd love to use Tone.PluckSynth (real Karplus-Strong), but it's
+// implemented with AudioWorkletNode, which the browser only allows
+// in secure contexts (HTTPS or localhost). LAN dev testing over
+// http://<lan-ip>:4000 is not secure, so PluckSynth refuses to
+// instantiate.
+//
+// Workaround: PolySynth wrapping MonoSynth with a plucky envelope
+// (fast attack, zero sustain, medium release) and a sweeping low-
+// pass filter envelope to mimic a string's brightness fading. Less
+// authentic than Karplus-Strong but works everywhere.
 
-const PLUCK_VOICES = 6
+let pluckPoly: Tone.PolySynth | null = null
 
-let pluckBus: Tone.Gain | null = null
-let pluckVoices: Tone.PluckSynth[] = []
-let nextPluckIdx = 0
-
-function getPluckVoices(): Tone.PluckSynth[] {
-  if (pluckVoices.length === 0) {
-    pluckBus = new Tone.Gain(0.5).toDestination()
-
-    for (let i = 0; i < PLUCK_VOICES; i++) {
-      const voice = new Tone.PluckSynth({
-        // Heavier pluck noise + high resonance gives a more "strummed
-        // acoustic" feel; the string rings naturally for several
-        // seconds before the dampening filter quiets it.
-        attackNoise: 1,
-        dampening: 6000,
-        resonance: 0.97,
-      }).connect(pluckBus)
-      pluckVoices.push(voice)
-    }
+function getPluckPoly(): Tone.PolySynth {
+  if (!pluckPoly) {
+    pluckPoly = new Tone.PolySynth(Tone.MonoSynth, {
+      oscillator: { type: "sawtooth" },
+      envelope: {
+        attack: 0.002,
+        decay: 0.3,
+        sustain: 0,
+        release: 1.8,
+      },
+      filter: { type: "lowpass", frequency: 3000, Q: 2 },
+      filterEnvelope: {
+        attack: 0.001,
+        decay: 0.4,
+        sustain: 0,
+        release: 1.8,
+        baseFrequency: 200,
+        octaves: 3,
+      },
+    }).toDestination()
+    pluckPoly.volume.value = -8
   }
-  return pluckVoices
+  return pluckPoly
 }
 
 // Eight common chord voicings. Notes are listed low-to-high, roughly
@@ -182,33 +189,21 @@ export function stopAllKeyboard() {
   if (polysynth) polysynth.releaseAll()
 }
 
-// Silence all currently-ringing pluck voices. PluckSynth doesn't
-// have a public release API, but calling triggerRelease on each
-// voice damps it. Called from GuitarPad's onUnmounted.
+// Silence all currently-ringing chord voices.
 export function stopAllGuitar() {
-  for (const voice of pluckVoices) {
-    try {
-      voice.triggerRelease(Tone.now())
-    } catch {
-      // PluckSynth release is best-effort; swallow if the synth
-      // hasn't been set up yet or is already released.
-    }
-  }
+  if (pluckPoly) pluckPoly.releaseAll()
 }
 
 export function playChord(name: ChordName) {
   const notes = CHORDS[name]
   if (!notes) return
-  const voices = getPluckVoices()
+  const synth = getPluckPoly()
   const now = Tone.now()
-  // Strum: stagger by ~12 ms per string so it sounds *strummed*
-  // rather than block-chord. We don't call triggerRelease — let
-  // the Karplus-Strong physics + dampening filter ring out
-  // naturally, like a real plucked string.
+  // Strum: stagger ~12 ms per string so it sounds plucked rather
+  // than block-chord. Long release on the envelope (1.8s) gives
+  // each string a natural ring-out.
   notes.forEach((note, i) => {
-    const voice = voices[nextPluckIdx]
-    nextPluckIdx = (nextPluckIdx + 1) % PLUCK_VOICES
-    voice.triggerAttack(note, now + i * 0.012)
+    synth.triggerAttackRelease(note, "2n", now + i * 0.012)
   })
 }
 
