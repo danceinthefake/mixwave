@@ -1,15 +1,11 @@
 <script setup lang="ts">
-// Drum pad — the first instrument. Five pads (kick / snare / hi-hat /
-// open hat / crash). Tap the buttons or press 1–5 on the keyboard.
+// Drum pad — five pads (kick / snare / hi-hat / open hat / crash).
+// Tap the buttons or press 1–5 on the keyboard.
 //
-// Local audio plays immediately on tap (zero latency for the player).
-// The note is also pushed to the LiveView, which broadcasts it via
-// Phoenix.PubSub to every other connected user; their LV pushes
-// "play_remote_note" back down to *this* component, which then plays
-// the same drum locally for them.
-//
-// Self-events are filtered server-side (StudioLive checks user_id),
-// so `play_remote_note` only ever fires for *other* users' hits.
+// Local audio plays immediately on tap (zero latency); the note is
+// pushed to the LiveView for broadcast. Remote players' notes are
+// handled by JamReceiver — see assets/vue/JamReceiver.vue — which
+// is always mounted regardless of the active instrument.
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
@@ -27,7 +23,6 @@ const pads: Pad[] = [
   { name: "crash", label: "Crash", key: "5" },
 ]
 
-// Brief flash on the pad that just played, for visual feedback.
 const flashing = ref<DrumName | null>(null)
 let flashTimer: number | null = null
 
@@ -44,15 +39,6 @@ async function hit(name: DrumName) {
   live.pushEvent("note", { instrument: "drums", note: name })
 }
 
-// Receive remote players' drum hits from the LiveView.
-live.handleEvent("play_remote_note", async (payload: { instrument: string; note: DrumName }) => {
-  if (payload.instrument !== "drums") return
-  await ensureStarted()
-  playDrum(payload.note)
-  flash(payload.note)
-})
-
-// Keyboard shortcuts: 1–5.
 function onKey(event: KeyboardEvent) {
   if (event.repeat) return
   const pad = pads.find((p) => p.key === event.key)

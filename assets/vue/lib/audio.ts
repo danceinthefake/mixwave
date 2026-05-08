@@ -88,4 +88,62 @@ export function playDrum(name: DrumName) {
   }
 }
 
+// ── Keyboard ───────────────────────────────────────────────────────
+// PolySynth over Tone.Synth — multiple notes can ring at once.
+
+let polysynth: Tone.PolySynth | null = null
+
+function getPolysynth(): Tone.PolySynth {
+  if (!polysynth) {
+    polysynth = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "triangle" },
+      envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.8 },
+    }).toDestination()
+    polysynth.volume.value = -10
+  }
+  return polysynth
+}
+
+export function playKey(note: string, duration: string = "8n") {
+  getPolysynth().triggerAttackRelease(note, duration, Tone.now())
+}
+
+// ── Guitar ─────────────────────────────────────────────────────────
+// PluckSynth (Karplus-Strong) — plucky string-flavored timbre. Wrap
+// it in a PolySynth so a chord plays multiple strings at once.
+
+let pluck: Tone.PolySynth | null = null
+
+function getPluck(): Tone.PolySynth {
+  if (!pluck) {
+    pluck = new Tone.PolySynth(Tone.PluckSynth, {
+      attackNoise: 0.5,
+      dampening: 4000,
+      resonance: 0.7,
+    }).toDestination()
+    pluck.volume.value = -8
+  }
+  return pluck
+}
+
+// Eight common chord voicings. Notes are listed low-to-high, roughly
+// matching how each chord sits on a real guitar.
+export const CHORDS = {
+  C: ["C3", "E3", "G3", "C4", "E4"],
+  Am: ["A2", "E3", "A3", "C4", "E4"],
+  Dm: ["D3", "A3", "D4", "F4"],
+  G: ["G2", "B2", "D3", "G3", "B3", "G4"],
+  E: ["E2", "B2", "E3", "G#3", "B3", "E4"],
+  Em: ["E2", "B2", "E3", "G3", "B3", "E4"],
+  F: ["F2", "C3", "F3", "A3", "C4", "F4"],
+  B7: ["B2", "D#3", "A3", "B3", "D#4", "F#4"],
+} as const
+
+export type ChordName = keyof typeof CHORDS
+
+export function playChord(name: ChordName, duration: string = "2n") {
+  const notes = CHORDS[name]
+  if (notes) getPluck().triggerAttackRelease(notes as unknown as string[], duration, Tone.now())
+}
+
 export { Tone }
