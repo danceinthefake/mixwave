@@ -10,7 +10,9 @@
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import { ensureStarted, playKey, stopAllKeyboard } from "@/lib/audio"
+import { ensureStarted, play, stopAll } from "@/lib/audio"
+
+const style = "synth"
 
 const live = useLiveVue()
 
@@ -50,9 +52,9 @@ function flash(note: string) {
 
 async function hit(note: string) {
   await ensureStarted()
-  playKey(note)
+  play("keyboard", style, note)
   flash(note)
-  live.pushEvent("note", { instrument: "keyboard", note })
+  live.pushEvent("note", { instrument: "keyboard", style, note })
 }
 
 const allKeys = [
@@ -80,7 +82,7 @@ onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   // BRAINSTORM §9: held notes cut off on instrument switch.
-  stopAllKeyboard()
+  stopAll("keyboard", style)
 })
 </script>
 

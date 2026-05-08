@@ -8,7 +8,9 @@
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import { ensureStarted, playChord, stopAllGuitar, type ChordName } from "@/lib/audio"
+import { ensureStarted, play, stopAll, type ChordName } from "@/lib/audio"
+
+const style = "synth"
 
 const live = useLiveVue()
 
@@ -36,9 +38,9 @@ function flash(name: ChordName) {
 
 async function strum(name: ChordName) {
   await ensureStarted()
-  playChord(name)
+  play("guitar", style, name)
   flash(name)
-  live.pushEvent("note", { instrument: "guitar", chord: name })
+  live.pushEvent("note", { instrument: "guitar", style, chord: name })
 }
 
 function onKey(event: KeyboardEvent) {
@@ -62,7 +64,7 @@ onUnmounted(() => {
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   // Cut any chord still ringing — BRAINSTORM §9: held notes cut off
   // on instrument switch.
-  stopAllGuitar()
+  stopAll("guitar", style)
 })
 </script>
 

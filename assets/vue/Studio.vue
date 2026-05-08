@@ -21,14 +21,7 @@ import { useLiveVue } from "live_vue"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
-import {
-  ensureStarted,
-  playDrum,
-  playKey,
-  playChord,
-  type DrumName,
-  type ChordName,
-} from "@/lib/audio"
+import { ensureStarted, play, type DrumName, type ChordName } from "@/lib/audio"
 
 defineProps<{
   current_instrument: "drums" | "keyboard" | "guitar"
@@ -37,25 +30,18 @@ defineProps<{
 const live = useLiveVue()
 
 type RemoteNote =
-  | { instrument: "drums"; note: DrumName }
-  | { instrument: "keyboard"; note: string }
-  | { instrument: "guitar"; chord: ChordName }
+  | { instrument: "drums"; style: string; note: DrumName }
+  | { instrument: "keyboard"; style: string; note: string }
+  | { instrument: "guitar"; style: string; chord: ChordName }
 
-// Cross-instrument audio: every user hears every other user, no
-// matter which pad *they* have on screen.
+// Cross-instrument audio: every user hears every other user with the
+// sender's chosen style, no matter which pad *they* have on screen.
 live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   await ensureStarted()
-  switch (payload.instrument) {
-    case "drums":
-      playDrum(payload.note)
-      break
-    case "keyboard":
-      playKey(payload.note)
-      break
-    case "guitar":
-      playChord(payload.chord)
-      break
-  }
+  // Drums + keyboard carry `note`; guitar carries `chord`. Normalize
+  // to a single string for the engine.
+  const note = payload.instrument === "guitar" ? payload.chord : payload.note
+  play(payload.instrument, payload.style ?? "synth", note)
 })
 </script>
 

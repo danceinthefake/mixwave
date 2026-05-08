@@ -9,7 +9,11 @@
 
 import { onMounted, onUnmounted, ref } from "vue"
 import { useLiveVue } from "live_vue"
-import { ensureStarted, playDrum, type DrumName } from "@/lib/audio"
+import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
+
+// The Style selector UI lands in a follow-up commit; pads default
+// to "synth" for now.
+const style = "synth"
 
 const live = useLiveVue()
 
@@ -34,9 +38,9 @@ function flash(name: DrumName) {
 
 async function hit(name: DrumName) {
   await ensureStarted()
-  playDrum(name)
+  play("drums", style, name)
   flash(name)
-  live.pushEvent("note", { instrument: "drums", note: name })
+  live.pushEvent("note", { instrument: "drums", style, note: name })
 }
 
 function onKey(event: KeyboardEvent) {
@@ -61,6 +65,7 @@ onMounted(() => {
 onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
+  stopAll("drums", style)
 })
 </script>
 
