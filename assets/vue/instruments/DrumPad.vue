@@ -7,27 +7,26 @@
 //                                            the bass drum, floor
 //                                            tom on the lower right
 //   1 ride cymbal                          ← upper right
-//   1 bass drum + foot pedal               ← centre column
-//   1 hi-hat (closed + open) + foot pedal  ← left side
+//   1 bass drum + double pedal             ← centre column (drum at
+//                                            top, two pedals below)
+//   1 hi-hat + foot pedal                  ← left side
 //   1 snare                                ← lower centre
 //   1 throne                                ← drummer's seat, decorative
 //
-// 11 playable pads. Hi-Hat Pedal and Throne are visual-only — they
-// complete the kit picture without adding extra triggers.
+// 12 playable pads. The throne is visual-only — drum kits don't
+// have a throne sound.
 //
-// Keyboard shortcuts cluster around v/b/n so both hands can play
-// the whole kit without leaving home position. Horizontal order
-// inside the cluster matches the kit's left-to-right ordering —
-// the column you press goes up as the pad's position goes right:
+// Keyboard shortcuts cluster on the right of home position so
+// both hands can play the whole kit without leaving the bar:
 //
-//        e r t y u         ← Crash 1, Sm Tom, Bass, Mid Tom, Ride
-//        f g     j           ← Hi-hat, Open, Crash 2
-//      c v b n             ← HH Pedal, Snare, Bass Pedal, Floor Tom
+//   r t   u i             ← Crash 1, Sm Tom, Mid Tom, Ride
+//   f g     j k           ← Hi-hat, Snare, Floor Tom, Crash 2
+//      v b n              ← HH Pedal, Bass L, Bass R
 //
-// Bass Drum (`t`) and Bass Pedal (`b`) both trigger `kick` and
-// share column 5 — vertically aligned on the keyboard the way
-// they're vertically aligned on the kit. Either one alone gets
-// you the kick; pressing both is the double-pedal pattern.
+// Bass L (`b`) and Bass R (`n`) both trigger `kick` — the actual
+// double-pedal pattern, one trigger per foot. The Bass Drum
+// visual at top-centre has no key; click it directly if you
+// want to hit the drum from the top.
 //
 // Bass Drum and Bass Pedal both trigger `kick` — two ways to play
 // the same drum, like a double-pedal setup. Both crash pads
@@ -80,7 +79,7 @@ const pads: Pad[] = [
     id: "crash_l",
     drum: "crash",
     label: "Crash 1",
-    key: "e",
+    key: "r",
     pos: { left: "1%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
@@ -88,7 +87,7 @@ const pads: Pad[] = [
     id: "tom_high",
     drum: "tom_high",
     label: "Sm Tom",
-    key: "r",
+    key: "t",
     pos: { left: "31%", top: "5%", width: "13%", height: "20%" },
     shape: "round",
   },
@@ -96,7 +95,7 @@ const pads: Pad[] = [
     id: "tom_mid",
     drum: "tom_mid",
     label: "Mid Tom",
-    key: "y",
+    key: "u",
     pos: { left: "47%", top: "5%", width: "13%", height: "20%" },
     shape: "round",
   },
@@ -104,23 +103,23 @@ const pads: Pad[] = [
     id: "ride",
     drum: "ride",
     label: "Ride",
-    key: "u",
+    key: "i",
     pos: { left: "82%", top: "2%", width: "16%", height: "22%" },
     shape: "round",
   },
-  // Bass drum just below the mounted toms — large round at centre.
-  // Shares col 5 with Bass Pedal (`b`) below: both trigger `kick`,
-  // both vertically aligned on the keyboard the way they are on
-  // the kit.
+  // Bass drum at top centre. Click-only — both Bass pedals (b, n)
+  // play the same `kick`, so a third key would just shadow them.
   {
     id: "kick_drum",
     drum: "kick",
     label: "Bass",
-    key: "t",
+    key: null,
     pos: { left: "37%", top: "27%", width: "23%", height: "22%" },
     shape: "round",
   },
-  // Hi-hat pair on the left, second crash on the right.
+  // Mid row of kit: hi-hat pair on the left, snare + floor tom in
+  // the middle, second crash on the right. All four sit on the
+  // home row of the keyboard for one-finger-per-pad reach.
   {
     id: "hihat",
     drum: "hihat",
@@ -130,27 +129,10 @@ const pads: Pad[] = [
     shape: "round",
   },
   {
-    id: "open_hat",
-    drum: "open_hat",
-    label: "Open",
-    key: "g",
-    pos: { left: "16%", top: "50%", width: "13%", height: "17%" },
-    shape: "round",
-  },
-  {
-    id: "crash_r",
-    drum: "crash",
-    label: "Crash 2",
-    key: "j",
-    pos: { left: "82%", top: "48%", width: "16%", height: "20%" },
-    shape: "round",
-  },
-  // Snare lower-centre, floor tom lower-right.
-  {
     id: "snare",
     drum: "snare",
     label: "Snare",
-    key: "v",
+    key: "g",
     pos: { left: "26%", top: "68%", width: "18%", height: "19%" },
     shape: "round",
   },
@@ -158,28 +140,44 @@ const pads: Pad[] = [
     id: "tom_floor",
     drum: "tom_floor",
     label: "Floor Tom",
-    key: "n",
+    key: "j",
     pos: { left: "55%", top: "65%", width: "21%", height: "23%" },
     shape: "round",
   },
+  {
+    id: "crash_r",
+    drum: "crash",
+    label: "Crash 2",
+    key: "k",
+    pos: { left: "82%", top: "48%", width: "16%", height: "20%" },
+    shape: "round",
+  },
   // Pedals + throne along the bottom. Hi-hat pedal triggers the
-  // foot-chick voice — quieter and tighter than the closed-stick
-  // hi-hat. Throne stays decorative (no drum kit has a "throne
-  // sound").
+  // foot-chick voice. Two bass pedals (Bass L + Bass R) both
+  // trigger `kick` for double-pedal patterns. Throne stays
+  // decorative (no drum kit has a "throne sound").
   {
     id: "hihat_pedal",
     drum: "hihat_pedal",
     label: "HH Pedal",
-    key: "c",
+    key: "v",
     pos: { left: "5%", top: "88%", width: "11%", height: "8%" },
     shape: "square",
   },
   {
-    id: "kick_pedal",
+    id: "kick_pedal_l",
     drum: "kick",
-    label: "Bass Pedal",
+    label: "Bass L",
     key: "b",
-    pos: { left: "40%", top: "85%", width: "16%", height: "10%" },
+    pos: { left: "36%", top: "85%", width: "13%", height: "10%" },
+    shape: "square",
+  },
+  {
+    id: "kick_pedal_r",
+    drum: "kick",
+    label: "Bass R",
+    key: "n",
+    pos: { left: "51%", top: "85%", width: "13%", height: "10%" },
     shape: "square",
   },
   {
