@@ -12,21 +12,26 @@
       to_url={fn p -> static_url(@conn, p) end}
     />
     <script>
+      // shadcn-style theming: toggle the `dark` class on <html>.
+      // "system" = respect prefers-color-scheme; "light"/"dark" = explicit override stored in localStorage.
       (() => {
+        const root = document.documentElement;
+        const apply = (theme) => {
+          const dark =
+            theme === "dark" ||
+            (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          root.classList.toggle("dark", dark);
+        };
         const setTheme = (theme) => {
           if (theme === "system") {
             localStorage.removeItem("phx:theme");
-            document.documentElement.removeAttribute("data-theme");
           } else {
             localStorage.setItem("phx:theme", theme);
-            document.documentElement.setAttribute("data-theme", theme);
           }
+          apply(theme);
         };
-        if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "system");
-        }
+        apply(localStorage.getItem("phx:theme") || "system");
         window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-        
         window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
       })();
     </script>

@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import vue from "@vitejs/plugin-vue";
 import liveVuePlugin from "live_vue/vitePlugin";
 import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   server: {
@@ -31,7 +32,8 @@ export default defineConfig({
   // https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.ColocatedJS.html#module-internals
   resolve: {
     alias: {
-      "@": ".",
+      // shadcn-vue convention: @/components/ui/button → assets/vue/components/ui/button
+      "@": fileURLToPath(new URL("./vue", import.meta.url)),
       "phoenix-colocated": `${process.env.MIX_BUILD_PATH}/phoenix-colocated`,
     },
   },
