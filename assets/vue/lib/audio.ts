@@ -90,6 +90,24 @@ function transposeNotes(notes: readonly string[], octaveOffset: number): string[
 
 export type DrumName = "kick" | "snare" | "hihat" | "open_hat" | "crash"
 
+// Shared "overhead room" reverb for the crash cymbals across all
+// three drum styles. Plain MetalSynth on its own sounds like a tight
+// bell-hit at the centre of the cymbal — the user gets the "ping"
+// but not the spreading wash you hear when a real cymbal is struck
+// on the edge. Adding a parallel reverb send on the crash signal
+// gives that wide bloom without smearing the dry attack. Lazy-init
+// + singleton so we don't allocate a reverb per style.
+let cymbalReverb: Tone.Freeverb | null = null
+function getCymbalReverb(): Tone.Freeverb {
+  if (cymbalReverb) return cymbalReverb
+  cymbalReverb = new Tone.Freeverb({
+    roomSize: 0.85,
+    dampening: 3000,
+  }).toDestination()
+  cymbalReverb.wet.value = 0.5
+  return cymbalReverb
+}
+
 function makeDrumSynth(): InstrumentEngine {
   let kick: Tone.MembraneSynth | null = null
   let snare: Tone.NoiseSynth | null = null
@@ -126,7 +144,7 @@ function makeDrumSynth(): InstrumentEngine {
       resonance: 4000,
       octaves: 1.5,
     }).toDestination()
-    hihat.volume.value = -10
+    hihat.volume.value = -6
 
     openHat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.5, release: 0.4 },
@@ -135,7 +153,7 @@ function makeDrumSynth(): InstrumentEngine {
       resonance: 4000,
       octaves: 1.5,
     }).toDestination()
-    openHat.volume.value = -10
+    openHat.volume.value = -6
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 1.5, release: 1.5 },
@@ -144,7 +162,8 @@ function makeDrumSynth(): InstrumentEngine {
       resonance: 8000,
       octaves: 0.5,
     }).toDestination()
-    crash.volume.value = -16
+    crash.volume.value = -12
+    crash.connect(getCymbalReverb())
   }
 
   function schedule(name: DrumName): number {
@@ -232,7 +251,7 @@ function makeDrum808(): InstrumentEngine {
       resonance: 8000,
       octaves: 1.0,
     }).toDestination()
-    hihat.volume.value = -12
+    hihat.volume.value = -8
 
     openHat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.4, release: 0.3 },
@@ -241,7 +260,7 @@ function makeDrum808(): InstrumentEngine {
       resonance: 8000,
       octaves: 1.0,
     }).toDestination()
-    openHat.volume.value = -12
+    openHat.volume.value = -8
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 2.5, release: 2.5 },
@@ -250,7 +269,8 @@ function makeDrum808(): InstrumentEngine {
       resonance: 4000,
       octaves: 0.8,
     }).toDestination()
-    crash.volume.value = -18
+    crash.volume.value = -14
+    crash.connect(getCymbalReverb())
   }
 
   function schedule(name: DrumName): number {
@@ -341,7 +361,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       resonance: 5000,
       octaves: 1.5,
     }).toDestination()
-    hihat.volume.value = -12
+    hihat.volume.value = -8
 
     openHat = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 0.6, release: 0.5 },
@@ -350,7 +370,7 @@ function makeDrumAcoustic(): InstrumentEngine {
       resonance: 5000,
       octaves: 1.5,
     }).toDestination()
-    openHat.volume.value = -12
+    openHat.volume.value = -8
 
     crash = new Tone.MetalSynth({
       envelope: { attack: 0.001, decay: 1.8, release: 1.5 },
@@ -359,7 +379,8 @@ function makeDrumAcoustic(): InstrumentEngine {
       resonance: 7000,
       octaves: 0.5,
     }).toDestination()
-    crash.volume.value = -18
+    crash.volume.value = -14
+    crash.connect(getCymbalReverb())
   }
 
   function schedule(name: DrumName): number {
