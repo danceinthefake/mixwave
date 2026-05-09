@@ -859,11 +859,12 @@ function makeGuitarPluck(): InstrumentEngine {
     const delayTime = 1 / freq
 
     const delay = new Tone.Delay(delayTime, 0.05)
-    // Lowpass at 2500 Hz darkens the ring — the harsh top-end
-    // partials that Karplus-Strong generates were the main cause
-    // of the "this hurts my ears" perception. Drop the feedback
-    // gain too so the string rings for ~1.5s instead of 6s.
-    const filter = new Tone.Filter(2500, "lowpass")
+    // Lowpass at 1800 Hz is darker than a real acoustic pluck but
+    // necessary to keep the Karplus-Strong ring comfortable on
+    // headphones — the algorithm naturally generates high-frequency
+    // resonances that sit right at the ear and read as fatiguing
+    // even at low volume. 0.97 feedback decays the ring in ~1.5s.
+    const filter = new Tone.Filter(1800, "lowpass")
     const feedback = new Tone.Gain(0.97)
 
     delay.connect(filter)
@@ -871,10 +872,14 @@ function makeGuitarPluck(): InstrumentEngine {
     feedback.connect(delay)
     filter.connect(output!)
 
-    // Pluck = 5 ms of white noise into the delay line.
-    const noise = new Tone.Noise("white")
+    // Pluck = a short noise burst into the delay line. Pink noise
+    // is gentler than white on headphones (high frequencies fall
+    // off at -3 dB/oct), and a 4 ms attack on the envelope softens
+    // the transient just enough that the strike doesn't read as a
+    // hard click against the eardrum.
+    const noise = new Tone.Noise("pink")
     const env = new Tone.AmplitudeEnvelope({
-      attack: 0.001,
+      attack: 0.004,
       decay: 0.005,
       sustain: 0,
       release: 0.001,
