@@ -38,7 +38,7 @@ defineProps<{
 
 const live = useLiveVue()
 
-type StrumDirection = "down" | "up"
+type StrumPhase = "press" | "release"
 type RemoteNote =
   | { instrument: "drums"; style: string; note: DrumName }
   | { instrument: "keyboard"; style: string; note: string }
@@ -47,7 +47,7 @@ type RemoteNote =
       style: string
       chord: ChordName
       octave_offset?: number
-      strum_direction?: StrumDirection
+      phase?: StrumPhase
     }
   | { instrument: "bass"; style: string; note: string }
   | { instrument: "pad"; style: string; chord: ChordName; octave_offset?: number }
@@ -92,7 +92,7 @@ type ReplayEvent = {
   note?: string
   chord?: string
   octave_offset?: number
-  strum_direction?: StrumDirection
+  phase?: StrumPhase
   offset_ms: number
 }
 
@@ -127,7 +127,7 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
       // guitar + pad carry chord; everything else carries note.
       const note = e.chord ?? e.note
       if (!note) return
-      const opts = e.strum_direction === "up" ? { reverse: true } : undefined
+      const opts = e.phase ? { phase: e.phase } : undefined
       play(e.instrument, e.style ?? "synth", note, e.octave_offset ?? 0, opts)
     }, e.offset_ms)
     replayTimers.push(id)
@@ -147,16 +147,18 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   await ensureStarted()
   // Drums + keyboard + bass carry `note`; guitar + pad carry `chord`.
   // Normalize to a single string for the engine + the remote-flash
-  // signal. octave_offset only applies to chord-based instruments;
-  // strum_direction only applies to guitar.
+  // signal. octave_offset applies to chord-based instruments;
+  // phase ("press" / "release") applies to guitar only.
   const note = "chord" in payload ? payload.chord : payload.note
   const octaveOffset = "octave_offset" in payload ? payload.octave_offset ?? 0 : 0
-  const opts =
-    "strum_direction" in payload && payload.strum_direction === "up"
-      ? { reverse: true }
-      : undefined
+  const phase = "phase" in payload ? payload.phase : undefined
+  const opts = phase ? { phase } : undefined
   play(payload.instrument, payload.style ?? "synth", note, octaveOffset, opts)
-  lastRemoteHit.value = { instrument: payload.instrument, note, t: Date.now() }
+  // Only flash on press, not on release — release events would
+  // double-flash the pad otherwise.
+  if (phase !== "release") {
+    lastRemoteHit.value = { instrument: payload.instrument, note, t: Date.now() }
+  }
 })
 </script>
 
