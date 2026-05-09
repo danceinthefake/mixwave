@@ -55,6 +55,7 @@ defmodule MixwaveWeb.Router do
       live "/users", UsersLive, :index
       live "/activity", ActivityLive, :index
       live "/sweepers", SweepersLive, :index
+      live "/cluster", ClusterLive, :index
     end
   end
 

@@ -23,7 +23,9 @@ defmodule MixwaveWeb.Admin.Layouts do
     %{label: "Activity", path: "/admin/activity", view: MixwaveWeb.Admin.ActivityLive,
       icon: "hero-bolt"},
     %{label: "Sweepers", path: "/admin/sweepers", view: MixwaveWeb.Admin.SweepersLive,
-      icon: "hero-trash"}
+      icon: "hero-trash"},
+    %{label: "Cluster", path: "/admin/cluster", view: MixwaveWeb.Admin.ClusterLive,
+      icon: "hero-globe-alt"}
   ]
 
   @doc """
