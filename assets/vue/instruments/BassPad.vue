@@ -224,7 +224,7 @@ onUnmounted(() => {
         >
           −
         </button>
-        <span class="text-sm tabular-nums w-6 text-center">{{ baseOctave }}</span>
+        <span class="text-sm tabular-nums font-mono w-6 text-center">{{ baseOctave }}</span>
         <button
           @click="shiftOctave(1)"
           :disabled="baseOctave >= OCTAVE_MAX"
@@ -274,7 +274,7 @@ onUnmounted(() => {
               <span class="text-sm font-medium text-amber-50">{{ f.label }}</span>
               <kbd
                 v-if="f.key"
-                class="text-[9px] mt-0.5 px-1 rounded bg-amber-950 text-amber-200/80"
+                class="text-[9px] mt-0.5 px-1 rounded bg-amber-950 text-amber-200/80 font-mono"
               >{{ f.key }}</kbd>
             </button>
           </div>

@@ -213,7 +213,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
           class="size-20 motion-safe:animate-pulse"
         />
         <div class="space-y-1">
-          <h2 class="text-2xl font-bold tracking-tight">
+          <h2 class="text-2xl font-bold tracking-tight font-display">
             Tap to start jamming
           </h2>
           <p class="text-sm text-muted-foreground">
@@ -256,7 +256,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
           max="100"
           class="w-28 accent-primary"
         />
-        <span class="text-xs tabular-nums text-muted-foreground w-9 text-right">
+        <span class="text-xs tabular-nums font-mono text-muted-foreground w-9 text-right">
           {{ volume }}%
         </span>
       </div>

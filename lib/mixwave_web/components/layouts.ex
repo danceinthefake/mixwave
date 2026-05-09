@@ -27,7 +27,7 @@ defmodule MixwaveWeb.Layouts do
       <div class="mx-auto max-w-5xl flex items-center gap-6 px-4 sm:px-6 lg:px-8 py-3">
         <a href="/" class="flex items-center gap-2 hover:opacity-80">
           <img src={static_url(MixwaveWeb.Endpoint, ~p"/images/logo.svg")} width="32" />
-          <span class="text-base font-bold tracking-tight">mixwave</span>
+          <span class="text-base font-bold tracking-tight font-display">mixwave</span>
         </a>
         <span class="text-xs text-muted-foreground">a real-time jam room</span>
         <div class="ml-auto flex items-center gap-2">

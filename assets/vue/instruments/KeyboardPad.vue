@@ -234,7 +234,7 @@ onUnmounted(() => {
         >
           −
         </button>
-        <span class="text-sm tabular-nums w-20 text-center">
+        <span class="text-sm tabular-nums font-mono w-20 text-center">
           C{{ baseOctave }}–C{{ baseOctave + VISIBLE_OCTAVES }}
         </span>
         <button
@@ -271,7 +271,7 @@ onUnmounted(() => {
             </span>
             <kbd
               v-if="key.key"
-              class="text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600"
+              class="text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600 font-mono"
             >{{ key.key }}</kbd>
             <span v-else class="text-[10px] h-4">&nbsp;</span>
           </button>
@@ -294,7 +294,7 @@ onUnmounted(() => {
         >
           <kbd
             v-if="bk.key"
-            class="mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300"
+            class="mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300 font-mono"
           >{{ bk.key }}</kbd>
         </button>
       </div>

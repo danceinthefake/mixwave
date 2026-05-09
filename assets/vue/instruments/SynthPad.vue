@@ -157,7 +157,7 @@ onUnmounted(() => {
         >
           −
         </button>
-        <span class="text-sm tabular-nums w-8 text-center">
+        <span class="text-sm tabular-nums font-mono w-8 text-center">
           {{ octaveOffset > 0 ? `+${octaveOffset}` : octaveOffset }}
         </span>
         <button
@@ -183,7 +183,7 @@ onUnmounted(() => {
         ]"
       >
         <div class="text-2xl font-bold">{{ c.name }}</div>
-        <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{{ c.key }}</kbd>
+        <kbd class="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{{ c.key }}</kbd>
       </button>
     </div>
   </div>
