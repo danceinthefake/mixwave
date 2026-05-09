@@ -162,7 +162,7 @@ onUnmounted(() => {
           :class="[
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
-              ? 'bg-primary text-primary-foreground border-primary'
+              ? 'bg-accent-guitar text-background border-accent-guitar'
               : 'bg-card hover:bg-accent text-muted-foreground border-input'
           ]"
         >
@@ -203,7 +203,7 @@ onUnmounted(() => {
         @pointerdown.prevent="strum(c.name)"
         :class="[
           'rounded-md border bg-card flex flex-col items-center gap-2 py-4 px-3 select-none transition-all active:scale-95 hover:bg-accent',
-          flashing === c.name && 'ring-2 ring-primary scale-95',
+          flashing === c.name && 'ring-2 ring-accent-guitar scale-95',
           remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
         ]"
       >
@@ -234,7 +234,7 @@ onUnmounted(() => {
                 >
                   <span
                     v-if="p === fret"
-                    class="absolute inset-1 rounded-full bg-primary/90"
+                    class="absolute inset-1 rounded-full bg-accent-guitar/90"
                   />
                 </div>
               </template>
@@ -242,7 +242,7 @@ onUnmounted(() => {
             <!-- Barre overlay across all strings at the barre fret -->
             <div
               v-if="c.fingering.barre"
-              class="absolute left-1 right-1 h-1 bg-primary/80 rounded-full -translate-y-1/2 pointer-events-none"
+              class="absolute left-1 right-1 h-1 bg-accent-guitar/80 rounded-full -translate-y-1/2 pointer-events-none"
               :style="{ top: `${((c.fingering.barre - 0.5) / FRET_ROWS) * 100}%` }"
             />
           </div>

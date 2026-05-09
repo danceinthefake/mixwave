@@ -292,7 +292,7 @@ onUnmounted(() => {
         :class="[
           'px-3 py-1 text-xs rounded-md border transition-colors',
           style === s.id
-            ? 'bg-primary text-primary-foreground border-primary'
+            ? 'bg-accent-drums text-background border-accent-drums'
             : 'bg-card hover:bg-accent text-muted-foreground border-input',
         ]"
       >
@@ -331,7 +331,7 @@ onUnmounted(() => {
           p.drum
             ? 'bg-card hover:bg-accent active:scale-95 cursor-pointer'
             : 'bg-muted/40 text-muted-foreground/60 cursor-default',
-          flashing === p.id && 'ring-4 ring-primary scale-95',
+          flashing === p.id && 'ring-4 ring-accent-drums scale-95',
           remoteFlashing === p.drum &&
             flashing !== p.id &&
             'ring-4 ring-orange-400',

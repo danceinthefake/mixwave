@@ -206,7 +206,7 @@ onUnmounted(() => {
           :class="[
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
-              ? 'bg-primary text-primary-foreground border-primary'
+              ? 'bg-accent-bass text-background border-accent-bass'
               : 'bg-card hover:bg-accent text-muted-foreground border-input'
           ]"
         >
@@ -267,7 +267,7 @@ onUnmounted(() => {
               :class="[
                 'relative h-12 flex flex-col items-center justify-center select-none transition-all active:scale-95',
                 fi === 0 ? 'bg-amber-950/80' : 'bg-amber-900/30 hover:bg-amber-900/50',
-                flashing === f.note && 'ring-2 ring-primary ring-inset bg-primary/20',
+                flashing === f.note && 'ring-2 ring-accent-bass ring-inset bg-accent-bass/20',
                 remoteFlashing === f.note && flashing !== f.note && 'ring-2 ring-orange-400 ring-inset'
               ]"
             >
