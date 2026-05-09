@@ -14,8 +14,13 @@ defmodule Mixwave.Application do
       {Phoenix.PubSub, name: Mixwave.PubSub},
       # Hourly tick deletes anonymous users idle for more than 24 h.
       Mixwave.Accounts.Sweeper,
-      # Holds recent note events for join-time replay.
-      Mixwave.Studio.Room,
+      # Looks up per-chamber GenServers by slug.
+      {Registry, keys: :unique, name: Mixwave.Studio.ChamberRegistry},
+      # Spawns one Mixwave.Studio.Chamber per active chamber. Each
+      # holds the chamber's recent-events buffer for join-time
+      # replay (replaces the old global Studio.Room singleton).
+      {DynamicSupervisor,
+       name: Mixwave.Studio.ChamberSupervisor, strategy: :one_for_one},
       # Counts how many times each supervised process has restarted.
       Mixwave.Studio.RestartWatcher,
       # Tracks who's in the studio + their selected instrument.

@@ -1,10 +1,15 @@
 defmodule MixwaveWeb.StudioLive do
   @moduledoc """
-  The studio. One global jam room — every visitor lands here.
+  The studio for a single chamber. Until commit 3 wires up the
+  `/chamber/:slug` route the chamber slug is hard-coded to
+  `"lobby"` so the existing `/` route keeps working through this
+  refactor; commit 3 reads the slug from the URL.
 
   Wires:
-    - `Mixwave.Studio.subscribe/0` for note-event broadcasts
-    - `MixwaveWeb.Presence` for "who's here, on what instrument"
+    - `Mixwave.Studio.subscribe/1` for note-event broadcasts on
+      this chamber's PubSub topic
+    - `MixwaveWeb.Presence` for "who's in this chamber, on what
+      instrument"
     - 1-second server-side cooldown on instrument switch
 
   Instrument pads are Vue islands rendered inside a single
@@ -19,16 +24,27 @@ defmodule MixwaveWeb.StudioLive do
   @instruments [:drums, :keyboard, :guitar, :bass, :pad]
   @switch_cooldown_ms 1_000
 
+  # Hardcoded slug for the route at "/" until commit 3 wires up
+  # /chamber/:slug. The chamber GenServer is identified by slug,
+  # so this is also the key it registers under.
+  @default_slug "lobby"
+
   @impl true
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
+    slug = @default_slug
+
+    # Make sure a Chamber GenServer exists for this slug so calls
+    # into Mixwave.Studio.* don't fail with :no_such_process. Safe
+    # to call on every mount — idempotent if one is already up.
+    {:ok, _pid} = Mixwave.Studio.Chamber.ensure_started(slug)
 
     if connected?(socket) do
-      Studio.subscribe()
-      Phoenix.PubSub.subscribe(Mixwave.PubSub, presence_topic())
+      Studio.subscribe(slug)
+      Phoenix.PubSub.subscribe(Mixwave.PubSub, presence_topic(slug))
 
       {:ok, _} =
-        Presence.track(self(), presence_topic(), user.id, %{
+        Presence.track(self(), presence_topic(slug), user.id, %{
           display_name: user.display_name,
           instrument: :drums,
           joined_at: System.system_time(:second)
@@ -37,11 +53,12 @@ defmodule MixwaveWeb.StudioLive do
 
     presences =
       if connected?(socket),
-        do: Presence.list(presence_topic()),
+        do: Presence.list(presence_topic(slug)),
         else: %{}
 
     {:ok,
      socket
+     |> assign(:chamber_slug, slug)
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
      # Initialize so the first switch is never blocked. BEAM's
@@ -54,7 +71,7 @@ defmodule MixwaveWeb.StudioLive do
 
   @impl true
   def handle_event("request_replay", _params, socket) do
-    events = Mixwave.Studio.recent_events_within(30)
+    events = Mixwave.Studio.recent_events_within(socket.assigns.chamber_slug, 30)
     {:noreply, push_event(socket, "replay_burst", events_to_replay_payload(events))}
   end
 
@@ -65,7 +82,7 @@ defmodule MixwaveWeb.StudioLive do
     payload
     |> Map.put("user_id", user.id)
     |> Map.put("display_name", user.display_name)
-    |> Mixwave.Studio.broadcast_note()
+    |> then(&Mixwave.Studio.broadcast_note(socket.assigns.chamber_slug, &1))
 
     {:noreply, socket}
   end
@@ -85,8 +102,9 @@ defmodule MixwaveWeb.StudioLive do
 
       true ->
         user = socket.assigns.current_user
+        slug = socket.assigns.chamber_slug
 
-        Presence.update(self(), presence_topic(), user.id, fn meta ->
+        Presence.update(self(), presence_topic(slug), user.id, fn meta ->
           %{meta | instrument: instrument}
         end)
 
@@ -99,7 +117,12 @@ defmodule MixwaveWeb.StudioLive do
 
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
-    {:noreply, assign(socket, :presences, Presence.list(presence_topic()))}
+    {:noreply,
+     assign(
+       socket,
+       :presences,
+       Presence.list(presence_topic(socket.assigns.chamber_slug))
+     )}
   end
 
   @impl true
@@ -116,7 +139,7 @@ defmodule MixwaveWeb.StudioLive do
     end
   end
 
-  defp presence_topic, do: "studio:lobby"
+  defp presence_topic(slug) when is_binary(slug), do: "chamber:#{slug}:presence"
 
   ## Replay helpers
 
