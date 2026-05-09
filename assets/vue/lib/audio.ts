@@ -1451,6 +1451,68 @@ function makeGuitarAcoustic(): InstrumentEngine {
 
 register("guitar", "acoustic", makeGuitarAcoustic())
 
+// ── Guitar : Mandolin ──────────────────────────────────────────────
+// Bright plucky chord-strummer for the dangdut-flavored chamber.
+// Synthesized rather than sampled: fatsawtooth PolySynth with a
+// sharp short envelope (mandolin staccato), through a faster Chorus
+// to emulate the shimmer of mandolin's paired (course) strings.
+//
+// Real mandolins sit about an octave above a guitar (tuning is
+// GDAE, like a violin). Rather than make players hunt for the
+// right octave_offset on the pad, we bake +1 octave into the
+// engine — so picking a chord here lands in the mandolin range
+// automatically while the user's octave control still adjusts
+// from there.
+
+function makeGuitarMandolin(): InstrumentEngine {
+  let poly: Tone.PolySynth | null = null
+  let chorus: Tone.Chorus | null = null
+  const state = makeStrumState()
+
+  function ensure() {
+    if (poly) return
+    chorus = new Tone.Chorus({
+      frequency: 4.5,
+      delayTime: 1.5,
+      depth: 0.4,
+      wet: 0.4,
+    }).start()
+    poly = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "fatsawtooth" as const, count: 2, spread: 14 },
+      envelope: { attack: 0.002, decay: 0.25, sustain: 0.05, release: 0.6 },
+    })
+    poly.chain(chorus, getChamberBus())
+    registerInternalFx(chorus.wet)
+    poly.volume.value = -12
+  }
+
+  return {
+    play(chord, octaveOffset = 0, opts) {
+      const notes = CHORDS[chord as ChordName]
+      if (!notes) return
+      ensure()
+      applyStrumPhase(
+        poly!,
+        transposeNotes(notes, octaveOffset + 1),
+        `${chord}@${octaveOffset}`,
+        opts?.phase,
+        opts?.reverse ?? false,
+        opts?.upStrum !== false,
+        state,
+        "16n",
+        "2n",
+      )
+    },
+    stopAll() {
+      poly?.releaseAll()
+      state.held.clear()
+      state.sessions.clear()
+    },
+  }
+}
+
+register("guitar", "mandolin", makeGuitarMandolin())
+
 // ── Bass : Synth ───────────────────────────────────────────────────
 // Punchy MonoSynth bass — sawtooth through a moving lowpass filter.
 // Bass is monophonic by tradition (and by physical bass-guitar
