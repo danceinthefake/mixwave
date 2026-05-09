@@ -251,56 +251,71 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Keyboard. Three octaves at desktop width; horizontal scroll
-         on narrow viewports so phones can pan rather than crush. -->
-    <div class="overflow-x-auto -mx-2 px-2">
-      <div class="relative h-44 select-none mx-auto" style="min-width: 720px;">
-        <!-- white keys -->
-        <div class="absolute inset-0 flex">
+    <!-- Keyboard. Three octaves at a generous min-width so each
+         white key clears the WCAG touch target on mobile (~50 px).
+         Horizontal scroll for the part that doesn't fit; soft edge
+         fades hint that there's more to swipe to. -->
+    <div class="relative -mx-2">
+      <!-- Edge fade overlays. pointer-events-none so they never
+           intercept taps on the keys underneath. Hidden on lg+
+           where the whole keyboard usually fits without scroll. -->
+      <div class="pointer-events-none absolute inset-y-0 left-0 w-6 z-10 bg-gradient-to-r from-background to-transparent lg:hidden"></div>
+      <div class="pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-background to-transparent lg:hidden"></div>
+
+      <div class="overflow-x-auto px-2">
+        <!-- min-width sized so each white key is at least ~50 px on
+             mobile (1100 / 22 ≈ 50). Black keys overlay at w-9 = 36 px;
+             both are much friendlier to thumbs than the previous
+             720 / 28 px sizing. -->
+        <div class="relative h-44 select-none mx-auto" style="min-width: 1100px;">
+          <!-- white keys -->
+          <div class="absolute inset-0 flex">
+            <button
+              v-for="key in whiteKeys"
+              :key="key.note"
+              @pointerdown.prevent="hit(key.note)"
+              :class="[
+                'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all touch-none',
+                flashingNote === key.note
+                  ? 'bg-accent-keyboard text-background border-accent-keyboard glow-keyboard'
+                  : remoteFlashingNote === key.note
+                    ? 'bg-orange-100 text-orange-900 border-orange-400'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+              ]"
+            >
+              <span class="text-[11px] text-slate-400 leading-none mb-1">
+                {{ key.label }}{{ key.octave }}
+              </span>
+              <kbd
+                v-if="key.key"
+                class="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600 font-mono"
+              >{{ key.key }}</kbd>
+              <span v-else class="hidden sm:block text-[10px] h-4">&nbsp;</span>
+            </button>
+          </div>
+          <!-- black keys overlay. Width derives from total white-key
+               count so positions stay correct as the layout flexes.
+               1.125rem = half of w-9 = horizontal centring offset. -->
           <button
-            v-for="key in whiteKeys"
-            :key="key.note"
-            @pointerdown.prevent="hit(key.note)"
+            v-for="bk in blackKeys"
+            :key="bk.note"
+            @pointerdown.prevent.stop="hit(bk.note)"
+            :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 1.125rem)` }"
             :class="[
-              'flex-1 border rounded-b-md flex flex-col items-center justify-end pb-2 transition-all',
-              flashingNote === key.note
-                ? 'bg-accent-keyboard text-background border-accent-keyboard glow-keyboard'
-                : remoteFlashingNote === key.note
-                  ? 'bg-orange-100 text-orange-900 border-orange-400'
-                  : 'bg-white text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+              'absolute top-0 w-9 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all touch-none',
+              flashingNote === bk.note
+                ? 'bg-accent-keyboard glow-keyboard'
+                : remoteFlashingNote === bk.note
+                  ? 'bg-orange-500'
+                  : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
             ]"
           >
-            <span class="text-[11px] text-slate-400 leading-none mb-1">
-              {{ key.label }}{{ key.octave }}
-            </span>
             <kbd
-              v-if="key.key"
-              class="text-[10px] px-1 py-0.5 rounded bg-slate-200 text-slate-600 font-mono"
-            >{{ key.key }}</kbd>
-            <span v-else class="text-[10px] h-4">&nbsp;</span>
+              v-if="bk.key"
+              class="hidden sm:inline-block mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300 font-mono"
+            >{{ bk.key }}</kbd>
           </button>
         </div>
-        <!-- black keys overlay. Width derives from total white-key
-             count so positions stay correct as the layout flexes. -->
-        <button
-          v-for="bk in blackKeys"
-          :key="bk.note"
-          @pointerdown.prevent.stop="hit(bk.note)"
-          :style="{ left: `calc(${(bk.afterIdx + 1) * (100 / whiteKeys.length)}% - 0.875rem)` }"
-          :class="[
-            'absolute top-0 w-7 h-28 rounded-b-md border border-black flex flex-col items-center justify-end pb-2 transition-all',
-            flashingNote === bk.note
-              ? 'bg-accent-keyboard glow-keyboard'
-              : remoteFlashingNote === bk.note
-                ? 'bg-orange-500'
-                : 'bg-slate-900 text-slate-200 hover:bg-slate-800 active:bg-slate-700'
-          ]"
-        >
-          <kbd
-            v-if="bk.key"
-            class="mt-1 text-[9px] px-1 rounded bg-slate-700 text-slate-300 font-mono"
-          >{{ bk.key }}</kbd>
-        </button>
       </div>
     </div>
   </div>
