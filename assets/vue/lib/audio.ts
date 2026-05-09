@@ -39,6 +39,14 @@ export interface PlayOptions {
    * downstroke, up = fingernail / upstroke.
    */
   reverse?: boolean
+  /**
+   * Lifecycle phase, used by guitar engines for natural strumming:
+   *   - "press":   downstroke + chord rings until released
+   *   - "release": stops the held ring + up-stroke re-strike
+   *   - undefined: legacy one-shot strum (used by old replay events
+   *                and by non-strumming engines)
+   */
+  phase?: "press" | "release"
 }
 
 export interface InstrumentEngine {
@@ -109,6 +117,67 @@ const GUITAR_STRUM_STAGGER = 0.03
 // to low (fingernail/up-stroke).
 function strumOrder(notes: readonly string[], reverse: boolean): readonly string[] {
   return reverse ? [...notes].reverse() : notes
+}
+
+// Common interface every Tone polyphonic source we use exposes —
+// PolySynth and Sampler both speak this. The helper below uses it
+// to drive any of the five guitar engines through the same press /
+// release / legacy code path.
+type StrumTriggerable = {
+  triggerAttack(note: string, time: number): unknown
+  triggerRelease(note: string, time: number): unknown
+  triggerAttackRelease(note: string, duration: string, time: number): unknown
+}
+
+// Renders a strum at the given lifecycle phase. The phase decides
+// whether we sustain (press), release + up-strum (release), or
+// fall back to a single one-shot strum (legacy).
+//
+// `held` is the engine's per-chord state — we record which notes
+// the press attacked there, so the release can stop ringing exactly
+// those voices instead of every note in the chord (in case the
+// release fires a beat after the press, transposed differently).
+function applyStrumPhase(
+  voice: StrumTriggerable,
+  shifted: readonly string[],
+  chordKey: string,
+  phase: "press" | "release" | undefined,
+  reverse: boolean,
+  held: Map<string, string[]>,
+  upStrumDuration: string,
+  legacyDuration: string,
+  now: number,
+): void {
+  if (phase === "press") {
+    // Down-strum: triggerAttack each string, low → high. Notes
+    // ring until the matching release arrives.
+    const ordered = strumOrder(shifted, false)
+    ordered.forEach((note, i) => {
+      voice.triggerAttack(note, now + i * GUITAR_STRUM_STAGGER)
+    })
+    held.set(chordKey, [...shifted])
+    return
+  }
+  if (phase === "release") {
+    // Stop any voices the press attacked, then re-strike each
+    // string briefly in reverse for the up-stroke.
+    const heldNotes = held.get(chordKey)
+    if (heldNotes) {
+      for (const note of heldNotes) voice.triggerRelease(note, now)
+      held.delete(chordKey)
+    }
+    const upOrder = strumOrder(shifted, true)
+    upOrder.forEach((note, i) => {
+      voice.triggerAttackRelease(note, upStrumDuration, now + i * GUITAR_STRUM_STAGGER)
+    })
+    return
+  }
+  // Legacy: a single one-shot strum, used by older replay events
+  // and by callers that don't track press/release pairs.
+  const ordered = strumOrder(shifted, reverse)
+  ordered.forEach((note, i) => {
+    voice.triggerAttackRelease(note, legacyDuration, now + i * GUITAR_STRUM_STAGGER)
+  })
 }
 
 // ── Drums : Synth ──────────────────────────────────────────────────
@@ -809,18 +878,22 @@ export const CHORDS: Record<ChordName, string[]> = {
 
 function makeGuitarSynth(): InstrumentEngine {
   let poly: Tone.PolySynth | null = null
+  const held = new Map<string, string[]>()
 
   function ensure() {
     if (poly) return
     poly = new Tone.PolySynth(Tone.MonoSynth, {
       oscillator: { type: "sawtooth" },
-      envelope: { attack: 0.002, decay: 0.3, sustain: 0, release: 1.8 },
+      // Sustain != 0 so the chord can ring while the user holds.
+      // Without this, voices fade as soon as the attack-decay finishes
+      // and "hold to sustain" feels broken.
+      envelope: { attack: 0.002, decay: 0.3, sustain: 0.4, release: 1.0 },
       filter: { type: "lowpass", frequency: 3000, Q: 2 },
       filterEnvelope: {
         attack: 0.001,
         decay: 0.4,
-        sustain: 0,
-        release: 1.8,
+        sustain: 0.4,
+        release: 1.0,
         baseFrequency: 200,
         octaves: 3,
       },
@@ -833,15 +906,21 @@ function makeGuitarSynth(): InstrumentEngine {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      const now = Tone.now()
-      const shifted = transposeNotes(notes, octaveOffset)
-      const ordered = strumOrder(shifted, opts?.reverse ?? false)
-      ordered.forEach((note, i) => {
-        poly!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
-      })
+      applyStrumPhase(
+        poly!,
+        transposeNotes(notes, octaveOffset),
+        `${chord}@${octaveOffset}`,
+        opts?.phase,
+        opts?.reverse ?? false,
+        held,
+        "8n",
+        "2n",
+        Tone.now(),
+      )
     },
     stopAll() {
       poly?.releaseAll()
+      held.clear()
     },
   }
 }
@@ -931,6 +1010,7 @@ function makeGuitarElectric(): InstrumentEngine {
   let poly: Tone.PolySynth | null = null
   let chorus: Tone.Chorus | null = null
   let reverb: Tone.Reverb | null = null
+  const held = new Map<string, string[]>()
 
   function ensure() {
     if (poly) return
@@ -943,6 +1023,7 @@ function makeGuitarElectric(): InstrumentEngine {
     reverb = new Tone.Reverb({ decay: 1.2, wet: 0.18 })
     poly = new Tone.PolySynth(Tone.Synth, {
       oscillator: { type: "triangle" },
+      // Already had sustain 0.4; works well with hold-to-ring.
       envelope: { attack: 0.004, decay: 0.5, sustain: 0.4, release: 1.4 },
     })
     poly.chain(chorus, reverb, Tone.getDestination())
@@ -954,15 +1035,21 @@ function makeGuitarElectric(): InstrumentEngine {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      const now = Tone.now()
-      const shifted = transposeNotes(notes, octaveOffset)
-      const ordered = strumOrder(shifted, opts?.reverse ?? false)
-      ordered.forEach((note, i) => {
-        poly!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
-      })
+      applyStrumPhase(
+        poly!,
+        transposeNotes(notes, octaveOffset),
+        `${chord}@${octaveOffset}`,
+        opts?.phase,
+        opts?.reverse ?? false,
+        held,
+        "8n",
+        "2n",
+        Tone.now(),
+      )
     },
     stopAll() {
       poly?.releaseAll()
+      held.clear()
     },
   }
 }
@@ -978,6 +1065,7 @@ register("guitar", "electric", makeGuitarElectric())
 function makeGuitarRock(): InstrumentEngine {
   let poly: Tone.PolySynth | null = null
   let distortion: Tone.Distortion | null = null
+  const held = new Map<string, string[]>()
 
   function ensure() {
     if (poly) return
@@ -1004,15 +1092,21 @@ function makeGuitarRock(): InstrumentEngine {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      const now = Tone.now()
-      const shifted = transposeNotes(notes, octaveOffset)
-      const ordered = strumOrder(shifted, opts?.reverse ?? false)
-      ordered.forEach((note, i) => {
-        poly!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
-      })
+      applyStrumPhase(
+        poly!,
+        transposeNotes(notes, octaveOffset),
+        `${chord}@${octaveOffset}`,
+        opts?.phase,
+        opts?.reverse ?? false,
+        held,
+        "8n",
+        "2n",
+        Tone.now(),
+      )
     },
     stopAll() {
       poly?.releaseAll()
+      held.clear()
     },
   }
 }
@@ -1027,6 +1121,7 @@ register("guitar", "rock", makeGuitarRock())
 
 function makeGuitarNylon(): InstrumentEngine {
   let sampler: Tone.Sampler | null = null
+  const held = new Map<string, string[]>()
 
   function ensure() {
     if (sampler) return
@@ -1048,15 +1143,21 @@ function makeGuitarNylon(): InstrumentEngine {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      const now = Tone.now()
-      const shifted = transposeNotes(notes, octaveOffset)
-      const ordered = strumOrder(shifted, opts?.reverse ?? false)
-      ordered.forEach((note, i) => {
-        sampler!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
-      })
+      applyStrumPhase(
+        sampler!,
+        transposeNotes(notes, octaveOffset),
+        `${chord}@${octaveOffset}`,
+        opts?.phase,
+        opts?.reverse ?? false,
+        held,
+        "4n",
+        "2n",
+        Tone.now(),
+      )
     },
     stopAll() {
       sampler?.releaseAll()
+      held.clear()
     },
     preload() {
       ensure()
@@ -1073,6 +1174,7 @@ register("guitar", "nylon", makeGuitarNylon())
 
 function makeGuitarAcoustic(): InstrumentEngine {
   let sampler: Tone.Sampler | null = null
+  const held = new Map<string, string[]>()
 
   function ensure() {
     if (sampler) return
@@ -1094,15 +1196,21 @@ function makeGuitarAcoustic(): InstrumentEngine {
       const notes = CHORDS[chord as ChordName]
       if (!notes) return
       ensure()
-      const now = Tone.now()
-      const shifted = transposeNotes(notes, octaveOffset)
-      const ordered = strumOrder(shifted, opts?.reverse ?? false)
-      ordered.forEach((note, i) => {
-        sampler!.triggerAttackRelease(note, "2n", now + i * GUITAR_STRUM_STAGGER)
-      })
+      applyStrumPhase(
+        sampler!,
+        transposeNotes(notes, octaveOffset),
+        `${chord}@${octaveOffset}`,
+        opts?.phase,
+        opts?.reverse ?? false,
+        held,
+        "4n",
+        "2n",
+        Tone.now(),
+      )
     },
     stopAll() {
       sampler?.releaseAll()
+      held.clear()
     },
     preload() {
       ensure()

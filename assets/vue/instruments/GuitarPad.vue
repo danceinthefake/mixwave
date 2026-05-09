@@ -50,21 +50,22 @@ const OCTAVE_MAX = 2
 function shiftOctave(delta: number) {
   const next = octaveOffset.value + delta
   if (next < OCTAVE_MIN || next > OCTAVE_MAX) return
+  // Release any chord still being held; the engine tracks held notes
+  // by chord+octave key, so a shift would otherwise leave stale
+  // voices ringing on the old octave.
+  releaseAllHeld()
   stopAll("guitar", style.value)
   octaveOffset.value = next
 }
 
-// Strum direction: down (default, low-to-high) or up (reverse,
-// high-to-low). Persists for the rest of the session unless
-// toggled. Real strumming alternates these on each beat for
-// rhythm patterns; we let the user pick once per session and
-// supply both options so they can swap mid-jam.
-type StrumDirection = "down" | "up"
-const strumDirection = ref<StrumDirection>("down")
-
-function toggleStrumDirection() {
-  strumDirection.value = strumDirection.value === "down" ? "up" : "down"
-}
+// Press/release strumming. Pressing a chord triggers the down-stroke
+// (low → high) and starts the chord ringing; releasing it triggers
+// the up-stroke (high → low) and stops the ring. Holding a chord
+// down sustains naturally because each engine uses triggerAttack /
+// triggerRelease pairs internally. `heldChords` tracks which chords
+// the local player currently has down so a release fires for each
+// matching press regardless of whether it came from key or pointer.
+const heldChords = ref(new Set<ChordName>())
 
 // Chord fingerings in standard guitar tab notation: 6-element array
 // from low E (left) to high E (right). "x" = muted string, 0 = open
@@ -125,36 +126,69 @@ watch(
   },
 )
 
-async function strum(name: ChordName) {
+async function strumDown(name: ChordName) {
+  if (heldChords.value.has(name)) return
   await ensureStarted()
-  const reverse = strumDirection.value === "up"
-  play("guitar", style.value, name, octaveOffset.value, { reverse })
+  heldChords.value.add(name)
+  play("guitar", style.value, name, octaveOffset.value, { phase: "press" })
   flash(name)
   live.pushEvent("note", {
     instrument: "guitar",
     style: style.value,
     chord: name,
     octave_offset: octaveOffset.value,
-    strum_direction: strumDirection.value,
+    phase: "press",
   })
+}
+
+async function strumUp(name: ChordName) {
+  if (!heldChords.value.has(name)) return
+  await ensureStarted()
+  heldChords.value.delete(name)
+  play("guitar", style.value, name, octaveOffset.value, { phase: "release" })
+  flash(name)
+  live.pushEvent("note", {
+    instrument: "guitar",
+    style: style.value,
+    chord: name,
+    octave_offset: octaveOffset.value,
+    phase: "release",
+  })
+}
+
+// Safety net: if we're still holding a chord when something cuts the
+// instrument off (style switch, pad unmount, octave change), fire the
+// release so notes don't ring forever.
+function releaseAllHeld() {
+  for (const name of [...heldChords.value]) {
+    strumUp(name)
+  }
 }
 
 function selectStyle(id: GuitarStyle) {
   if (id === style.value) return
-  // Cut any chord still ringing on the previous flavor.
+  // Release any held chord on the previous flavor before switching;
+  // otherwise its sustained voices keep ringing on the old engine.
+  releaseAllHeld()
   stopAll("guitar", style.value)
   style.value = id
-  // Acoustic flavor preloads its samples from the CDN here so the
-  // first strum isn't silent while samples download.
   preload("guitar", id)
 }
 
-function onKey(event: KeyboardEvent) {
+function onKeyDown(event: KeyboardEvent) {
   if (event.repeat) return
   const c = chords.find((x) => x.key === event.key)
   if (c) {
     event.preventDefault()
-    strum(c.name)
+    strumDown(c.name)
+  }
+}
+
+function onKeyUp(event: KeyboardEvent) {
+  const c = chords.find((x) => x.key === event.key)
+  if (c) {
+    event.preventDefault()
+    strumUp(c.name)
   }
 }
 
@@ -162,14 +196,22 @@ let controller: AbortController | null = null
 
 onMounted(() => {
   controller = new AbortController()
-  window.addEventListener("keydown", onKey, { signal: controller.signal })
+  window.addEventListener("keydown", onKeyDown, { signal: controller.signal })
+  window.addEventListener("keyup", onKeyUp, { signal: controller.signal })
+  // Window-level pointerup catches the case where the pointer is
+  // pressed on a chord button but released somewhere else (drag-off
+  // or off-screen). Without it, those chords would ring forever.
+  window.addEventListener("pointerup", releaseAllHeld, {
+    signal: controller.signal,
+  })
 })
 
 onUnmounted(() => {
   controller?.abort()
   if (flashTimer !== null) window.clearTimeout(flashTimer)
   if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  // Cut any chord still ringing when leaving the instrument.
+  // Release any held chords + cut anything still ringing.
+  releaseAllHeld()
   stopAll("guitar", style.value)
 })
 </script>
@@ -195,23 +237,8 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <!-- Strum direction toggle -->
-      <div class="flex items-center gap-1 ml-auto">
-        <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Strum</span>
-        <button
-          @click="toggleStrumDirection"
-          :class="[
-            'px-2.5 py-1 text-xs rounded-md border transition-colors min-w-[3.5rem]',
-            'bg-card hover:bg-accent text-muted-foreground border-input',
-          ]"
-          :title="strumDirection === 'down' ? 'Down (low → high) — click to flip' : 'Up (high → low) — click to flip'"
-        >
-          {{ strumDirection === "down" ? "↓ Down" : "↑ Up" }}
-        </button>
-      </div>
-
       <!-- Octave offset -->
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1 ml-auto">
         <span class="text-xs uppercase tracking-wider text-muted-foreground mr-2">Oct</span>
         <button
           @click="shiftOctave(-1)"
@@ -240,7 +267,9 @@ onUnmounted(() => {
       <button
         v-for="c in chords"
         :key="c.name"
-        @pointerdown.prevent="strum(c.name)"
+        @pointerdown.prevent="strumDown(c.name)"
+        @pointerup.prevent="strumUp(c.name)"
+        @pointercancel.prevent="strumUp(c.name)"
         :class="[
           'rounded-md border bg-card flex flex-col items-center gap-2 py-4 px-3 select-none transition-all active:scale-95 hover:bg-accent',
           flashing === c.name && 'ring-2 ring-accent-guitar scale-95 glow-guitar',
