@@ -1,19 +1,19 @@
-defmodule Mixwave.Studio.Chamber do
+defmodule Mixwave.Chambers.Server do
   @moduledoc """
   One GenServer per chamber, registered by slug via
-  `Mixwave.Studio.ChamberRegistry` and supervised by
-  `Mixwave.Studio.ChamberSupervisor`.
+  `Mixwave.Chambers.Registry` and supervised by
+  `Mixwave.Chambers.Supervisor`.
 
-  Holds the chamber's last N note events for join-time replay (the
-  same buffer the old singleton `Studio.Room` used to hold for the
-  global jam, just per-chamber now).
+  Holds the chamber's last N note events for join-time replay.
+  Also owns the chamber lifecycle — the 5-minute grace-period
+  self-check and the once-a-minute `last_activity_at` bump.
 
   `chamber_id` is the DB row's id — used by the lifecycle code to
   mark the chamber active or delete it. It's nilable so the
   GenServer can spin up before the persistence layer is wired in.
 
-  The buffer is intentionally not persisted — when the GenServer
-  restarts, the jam resumes empty.
+  The events buffer is intentionally not persisted — when the
+  GenServer restarts, the jam resumes empty.
   """
   use GenServer
 
@@ -34,7 +34,7 @@ defmodule Mixwave.Studio.Chamber do
   Returns the via-tuple for looking up a chamber's pid by slug.
   """
   def via(slug) when is_binary(slug) do
-    {:via, Registry, {Mixwave.Studio.ChamberRegistry, slug}}
+    {:via, Registry, {Mixwave.Chambers.Registry, slug}}
   end
 
   @doc """
@@ -44,7 +44,7 @@ defmodule Mixwave.Studio.Chamber do
   """
   def ensure_started(slug, chamber_id \\ nil) when is_binary(slug) do
     case DynamicSupervisor.start_child(
-           Mixwave.Studio.ChamberSupervisor,
+           Mixwave.Chambers.Supervisor,
            {__MODULE__, {slug, chamber_id}}
          ) do
       {:ok, pid} -> {:ok, pid}
@@ -134,7 +134,7 @@ defmodule Mixwave.Studio.Chamber do
 
         Phoenix.PubSub.broadcast(
           Mixwave.PubSub,
-          Mixwave.Studio.topic(slug),
+          Mixwave.Chambers.topic(slug),
           {:chamber_closed, slug}
         )
 

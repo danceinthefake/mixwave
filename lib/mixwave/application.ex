@@ -17,14 +17,13 @@ defmodule Mixwave.Application do
       # Hourly tick deletes chambers idle for more than 24 h.
       Mixwave.Chambers.Sweeper,
       # Looks up per-chamber GenServers by slug.
-      {Registry, keys: :unique, name: Mixwave.Studio.ChamberRegistry},
-      # Spawns one Mixwave.Studio.Chamber per active chamber. Each
-      # holds the chamber's recent-events buffer for join-time
-      # replay (replaces the old global Studio.Room singleton).
+      {Registry, keys: :unique, name: Mixwave.Chambers.Registry},
+      # Spawns one Mixwave.Chambers.Server per active chamber. Each
+      # holds the chamber's recent-events buffer for join-time replay.
       {DynamicSupervisor,
-       name: Mixwave.Studio.ChamberSupervisor, strategy: :one_for_one},
+       name: Mixwave.Chambers.Supervisor, strategy: :one_for_one},
       # Counts how many times each supervised process has restarted.
-      Mixwave.Studio.RestartWatcher,
+      Mixwave.RestartWatcher,
       # Tracks who's in the studio + their selected instrument.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry

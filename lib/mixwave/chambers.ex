@@ -8,15 +8,22 @@ defmodule Mixwave.Chambers do
   state (`activated_at: nil`); the first time someone other than
   the creator joins, `mark_active/1` flips it to active. If
   nobody else joins within 5 minutes,
-  `Mixwave.Studio.Chamber` deletes the row.
+  `Mixwave.Chambers.Server` deletes the row.
 
-  This module is the persistence layer; the runtime audio + life-
-  cycle live in `Mixwave.Studio.Chamber`.
+  Persistence + runtime audio fan-out both live here:
+
+    - CRUD + lifecycle: `create_chamber/1`, `find_by_slug/1`,
+      `mark_active/1`, `set_title/2`, `set_kind/2`, `delete/1`,
+      `touch_activity/1`, `delete_idle_since/1`.
+    - Realtime audio: `topic/1`, `subscribe/1`, `broadcast_note/2`,
+      `recent_events/1`, `recent_events_within/2`. The actual
+      events buffer lives in `Mixwave.Chambers.Server` (one
+      GenServer per active chamber).
   """
 
   import Ecto.Query
 
-  alias Mixwave.Chambers.Chamber
+  alias Mixwave.Chambers.{Chamber, Server}
   alias Mixwave.Repo
 
   @doc """
@@ -113,6 +120,51 @@ defmodule Mixwave.Chambers do
       |> Repo.delete_all()
 
     count
+  end
+
+  ## Realtime audio fan-out
+
+  @doc """
+  PubSub topic for a chamber's note events.
+  """
+  def topic(slug) when is_binary(slug), do: "chamber:#{slug}"
+
+  @doc """
+  Subscribes the calling process to a chamber's note events.
+  """
+  def subscribe(slug) when is_binary(slug) do
+    Phoenix.PubSub.subscribe(Mixwave.PubSub, topic(slug))
+  end
+
+  @doc """
+  Broadcasts a note event to every subscriber of the chamber and
+  stores it in the chamber's recent-events buffer (held by the
+  per-slug GenServer).
+  """
+  def broadcast_note(slug, payload) when is_binary(slug) do
+    event = %{
+      kind: :note,
+      payload: payload,
+      at: System.monotonic_time(:millisecond)
+    }
+
+    Server.record(slug, event)
+    Phoenix.PubSub.broadcast(Mixwave.PubSub, topic(slug), {:chamber_note, event})
+    :ok
+  end
+
+  @doc """
+  Returns the chamber's recent events (oldest first).
+  """
+  def recent_events(slug) when is_binary(slug), do: Server.recent_events(slug)
+
+  @doc """
+  Returns the chamber's events within the last `seconds` seconds,
+  oldest first. Powers the "replay last 30s" button.
+  """
+  def recent_events_within(slug, seconds)
+      when is_binary(slug) and is_integer(seconds) do
+    Server.recent_events_within(slug, seconds)
   end
 
   # Generates a ~64-bit URL-safe token. 8 random bytes encode to 11

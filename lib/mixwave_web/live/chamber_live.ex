@@ -8,20 +8,20 @@ defmodule MixwaveWeb.ChamberLive do
   subscribes to its PubSub + presence topics.
 
   Wires:
-    - `Mixwave.Studio.subscribe/1` for note-event broadcasts on
+    - `Mixwave.Chambers.subscribe/1` for note-event broadcasts on
       this chamber's topic
     - `MixwaveWeb.Presence` for "who's in this chamber, on what
       instrument"
     - 1-second server-side cooldown on instrument switch
 
   Instrument pads are Vue islands rendered inside a single
-  `assets/vue/Studio.vue` parent island. See that file for why
+  `assets/vue/Chamber.vue` parent island. See that file for why
   pads aren't rendered as separate islands.
   """
   use MixwaveWeb, :live_view
 
   alias MixwaveWeb.Presence
-  alias Mixwave.{Chambers, Studio}
+  alias Mixwave.Chambers
 
   @instruments [:drums, :keyboard, :guitar, :bass, :pad]
   @switch_cooldown_ms 1_000
@@ -45,12 +45,12 @@ defmodule MixwaveWeb.ChamberLive do
     slug = chamber.slug
 
     # Make sure a Chamber GenServer exists for this slug so calls
-    # into Mixwave.Studio.* don't fail with :no_such_process. Safe
+    # into Mixwave.Chambers.* don't fail with :no_such_process. Safe
     # to call on every mount — idempotent if one is already up.
-    {:ok, _pid} = Mixwave.Studio.Chamber.ensure_started(slug, chamber.id)
+    {:ok, _pid} = Mixwave.Chambers.Server.ensure_started(slug, chamber.id)
 
     if connected?(socket) do
-      Studio.subscribe(slug)
+      Chambers.subscribe(slug)
       Phoenix.PubSub.subscribe(Mixwave.PubSub, presence_topic(slug))
 
       {:ok, _} =
@@ -102,7 +102,7 @@ defmodule MixwaveWeb.ChamberLive do
           {:ok, updated} ->
             Phoenix.PubSub.broadcast(
               Mixwave.PubSub,
-              Mixwave.Studio.topic(chamber.slug),
+              Mixwave.Chambers.topic(chamber.slug),
               {:chamber_updated, updated}
             )
 
@@ -131,7 +131,7 @@ defmodule MixwaveWeb.ChamberLive do
           # title without reloading.
           Phoenix.PubSub.broadcast(
             Mixwave.PubSub,
-            Mixwave.Studio.topic(chamber.slug),
+            Mixwave.Chambers.topic(chamber.slug),
             {:chamber_updated, updated}
           )
 
@@ -148,7 +148,7 @@ defmodule MixwaveWeb.ChamberLive do
 
   @impl true
   def handle_event("request_replay", _params, socket) do
-    events = Mixwave.Studio.recent_events_within(socket.assigns.chamber_slug, 30)
+    events = Mixwave.Chambers.recent_events_within(socket.assigns.chamber_slug, 30)
     {:noreply, push_event(socket, "replay_burst", events_to_replay_payload(events))}
   end
 
@@ -159,7 +159,7 @@ defmodule MixwaveWeb.ChamberLive do
     payload
     |> Map.put("user_id", user.id)
     |> Map.put("display_name", user.display_name)
-    |> then(&Mixwave.Studio.broadcast_note(socket.assigns.chamber_slug, &1))
+    |> then(&Mixwave.Chambers.broadcast_note(socket.assigns.chamber_slug, &1))
 
     {:noreply, socket}
   end
@@ -222,7 +222,7 @@ defmodule MixwaveWeb.ChamberLive do
   end
 
   @impl true
-  def handle_info({:studio_note, event}, socket) do
+  def handle_info({:chamber_note, event}, socket) do
     # Filter self-events: the player's local audio already played
     # immediately on tap, so we don't need to play it again from
     # the network roundtrip. Only forward *other* users' hits.

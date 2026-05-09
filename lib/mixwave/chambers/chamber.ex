@@ -7,7 +7,7 @@ defmodule Mixwave.Chambers.Chamber do
   `activated_at` field flips from NULL to a timestamp the first
   time someone other than the creator joins; while it's NULL the
   chamber is in its 5-minute grace window and may be auto-deleted
-  by `Mixwave.Studio.Chamber`.
+  by `Mixwave.Chambers.Server`.
   """
 
   use Ecto.Schema

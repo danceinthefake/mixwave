@@ -13,7 +13,7 @@ defmodule MixwaveWeb.SupervisorLive do
   use MixwaveWeb, :live_view
   require Logger
 
-  alias Mixwave.Studio.RestartWatcher
+  alias Mixwave.RestartWatcher
 
   @impl true
   def mount(_params, _session, socket) do

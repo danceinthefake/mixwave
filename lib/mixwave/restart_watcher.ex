@@ -1,4 +1,4 @@
-defmodule Mixwave.Studio.RestartWatcher do
+defmodule Mixwave.RestartWatcher do
   @moduledoc """
   Tracks restart counts for a fixed set of supervised processes.
 
@@ -11,12 +11,12 @@ defmodule Mixwave.Studio.RestartWatcher do
   use GenServer
   require Logger
 
-  @topic "studio:restarts"
+  @topic "ops:restarts"
 
   # Processes we watch. Adding to this list automatically extends
   # the supervisor LiveView's table.
   @watched [
-    {Mixwave.Studio.ChamberSupervisor, "Studio.ChamberSupervisor",
+    {Mixwave.Chambers.Supervisor, "Chambers.Supervisor",
      "Spawns one GenServer per active chamber; holds each one's recent-events buffer."},
     {Mixwave.Accounts.Sweeper, "Accounts.Sweeper",
      "Deletes anonymous users idle for more than 24 hours."},
