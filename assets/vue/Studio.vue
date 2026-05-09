@@ -19,6 +19,7 @@
 
 import { onMounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
+import * as Tone from "tone"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
@@ -82,7 +83,27 @@ onMounted(() => {
     volume.value = Math.max(0, Math.min(100, stored))
   }
   setMasterVolume(volume.value / 100)
+  // If the AudioContext is already running (e.g., the user
+  // navigated here from another page where they interacted),
+  // skip the gate.
+  if (Tone.context?.state === "running") {
+    audioReady.value = true
+  }
 })
+
+// Tap-to-enter overlay: browsers won't let AudioContext start until
+// the user makes a gesture on the page. Without this gate, an
+// incoming remote note that arrives before the local user has tapped
+// anything tries to start the context from inside an event handler
+// that the browser doesn't count as a gesture, gets blocked, and
+// silently fails. The overlay forces a real click before any audio
+// can be played.
+const audioReady = ref(false)
+
+async function enterStudio() {
+  await ensureStarted()
+  audioReady.value = true
+}
 
 // Replay-last-30s. Vue requests a burst from LV; LV pushes back the
 // note buffer with offsets; we schedule each via setTimeout from
@@ -168,6 +189,46 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
 </script>
 
 <template>
+  <!-- Tap-to-enter overlay. Covers everything until the user makes
+       a real gesture on the page so the browser will let
+       AudioContext start. Without this, the first remote-note event
+       (which arrives in a non-gesture context) can't play and we
+       lose audio for whatever happened before the local user
+       tapped anything themselves. -->
+  <Transition
+    enter-active-class="transition-opacity duration-200"
+    leave-active-class="transition-opacity duration-300"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div
+      v-if="!audioReady"
+      @click="enterStudio"
+      class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/80 cursor-pointer select-none"
+    >
+      <div class="flex flex-col items-center gap-6 text-center px-4">
+        <img
+          src="/images/logo.svg"
+          alt=""
+          class="size-20 motion-safe:animate-pulse"
+        />
+        <div class="space-y-1">
+          <h2 class="text-2xl font-bold tracking-tight">
+            Tap to start jamming
+          </h2>
+          <p class="text-sm text-muted-foreground">
+            Browsers need a gesture before audio can play
+          </p>
+        </div>
+        <button
+          class="rounded-lg border bg-card hover:bg-accent px-6 py-2.5 text-sm font-medium transition-colors"
+        >
+          Enter studio
+        </button>
+      </div>
+    </div>
+  </Transition>
+
   <div class="space-y-4">
     <!-- Top control strip: replay + master volume. Floating-bar
          look matches the bottom dock for visual consistency. -->
