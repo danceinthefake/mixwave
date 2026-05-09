@@ -129,10 +129,13 @@ defmodule MixwaveWeb.Admin.ClusterLive do
     msg =
       case result do
         :ok ->
-          "Drained #{node} — endpoint killed, supervisor will restart it."
+          "Drained #{node} — endpoint cycled; clients will reconnect."
+
+        {:error, reason} ->
+          "Drain failed on #{node}: #{inspect(reason)}"
 
         {:badrpc, reason} ->
-          "Drain failed: #{inspect(reason)}"
+          "RPC failed reaching #{node}: #{inspect(reason)}"
 
         other ->
           "Drain returned: #{inspect(other)}"
@@ -142,17 +145,32 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   end
 
   @doc """
-  Kills the local node's `MixwaveWeb.Endpoint`. Public so it can
-  be invoked via `:rpc.call/4` from another node in the cluster
-  (the Drain button on a remote-node row reaches us here).
+  Cleanly cycles the local node's `MixwaveWeb.Endpoint`: ask the
+  app supervisor to terminate it (releases the OS port), then ask
+  it to restart it. Public so peers can invoke this via
+  `:rpc.call/4` from the Drain button on a remote-node row.
+
+  Earlier this was `Process.exit(pid, :kill)`. That looked dramatic
+  but the brutal kill leaves port 4000/4001 in TIME_WAIT for a
+  beat; the supervisor's automatic restart attempts to re-bind
+  immediately, fails with EADDRINUSE, retries, and after three
+  failures inside five seconds the whole app supervisor gives up
+  and the node goes dark. The supervisor-controlled cycle below
+  gives the listener a chance to drop the port before the new
+  Endpoint takes it.
   """
   def drain_local do
-    case Process.whereis(MixwaveWeb.Endpoint) do
-      nil -> {:error, :not_running}
-      pid -> Process.exit(pid, :kill)
-    end
+    case Supervisor.terminate_child(Mixwave.Supervisor, MixwaveWeb.Endpoint) do
+      :ok ->
+        case Supervisor.restart_child(Mixwave.Supervisor, MixwaveWeb.Endpoint) do
+          {:ok, _pid} -> :ok
+          {:ok, _pid, _info} -> :ok
+          {:error, reason} -> {:error, {:restart_failed, reason}}
+        end
 
-    :ok
+      {:error, reason} ->
+        {:error, {:terminate_failed, reason}}
+    end
   end
 
   ## Internal
