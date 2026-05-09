@@ -1878,11 +1878,6 @@ function makeKendang(opts: {
   pakBand: number
   takVolume: number
   pakVolume: number
-  // Wooden body resonance — peaking filter shared by the four
-  // membrane voices to give them a wooden formant rather than the
-  // pure kick-drum sine of a stock MembraneSynth.
-  bodyFreq: number
-  bodyGain: number
 }): InstrumentEngine {
   let dang: Tone.MembraneSynth | null = null
   let tut: Tone.MembraneSynth | null = null
@@ -1890,10 +1885,6 @@ function makeKendang(opts: {
   let tung: Tone.MembraneSynth | null = null
   let tak: Tone.NoiseSynth | null = null
   let pak: Tone.NoiseSynth | null = null
-  // Shared post-membrane body filter + per-slap bandpass live
-  // here so they're created once on first ensure() and torn down
-  // never (engines are long-lived).
-  let body: Tone.Filter | null = null
   let takFilter: Tone.Filter | null = null
   let pakFilter: Tone.Filter | null = null
 
@@ -1909,51 +1900,39 @@ function makeKendang(opts: {
   function ensure() {
     if (dang) return
 
-    // Wooden body resonance — peaking filter the four membrane
-    // voices share. Adds a mid-low formant so the tones land in
-    // "talking-drum" territory rather than "kick + tom".
-    body = new Tone.Filter({
-      type: "peaking",
-      frequency: opts.bodyFreq,
-      Q: 1.4,
-      gain: opts.bodyGain,
-    }).connect(getChamberBus())
-
-    // Octaves drop from 5/4/3/4 down to 1.5–2 — the high values
-    // were giving us a kick-drum-style pitch swoop on every hit,
-    // which is what made it sound like a kit. Smaller swoop reads
-    // as a tonal hand-drum boom instead.
+    // Membrane voices: original octaves restored — the user
+    // preferred the boomier kick-style swoop over the dampened
+    // "talking-drum" reshape (which felt too polite).
     dang = new Tone.MembraneSynth({
       pitchDecay: opts.dang.pitchDecay,
-      octaves: 1.8,
+      octaves: 5,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.dang.decay, sustain: 0, release: 0.5 },
-    }).connect(body)
+    }).connect(getChamberBus())
 
     tut = new Tone.MembraneSynth({
       pitchDecay: opts.tut.pitchDecay,
-      octaves: 1.5,
+      octaves: 4,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.tut.decay, sustain: 0, release: 0.4 },
-    }).connect(body)
+    }).connect(getChamberBus())
 
     dut = new Tone.MembraneSynth({
-      pitchDecay: 0.015,
-      octaves: 1,
-      oscillator: { type: "triangle" },
+      pitchDecay: 0.02,
+      octaves: 3,
+      oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.dut.decay, sustain: 0, release: 0.2 },
-    }).connect(body)
+    }).connect(getChamberBus())
 
     tung = new Tone.MembraneSynth({
-      pitchDecay: 0.03,
-      octaves: 1.5,
+      pitchDecay: 0.04,
+      octaves: 4,
       oscillator: { type: "sine" },
       envelope: { attack: 0.001, decay: opts.tung.decay, sustain: 0, release: 0.4 },
-    }).connect(body)
+    }).connect(getChamberBus())
 
-    // Bandpass the slap noise — without it pink/white noise reads
-    // as snare-snap or hi-hat. A mid-frequency band leaves only
-    // the "skin slap" energy.
+    // Slap bandpass kept — pink-noise-through-bandpass landed the
+    // palm-on-skin character the user confirmed worked on Wood.
     takFilter = new Tone.Filter({
       type: "bandpass",
       frequency: opts.takBand,
@@ -2024,15 +2003,14 @@ register(
     tung: { pitch: "E2", decay: 0.35 },
     takBand: 1100,
     pakBand: 900,
-    takVolume: 10,
-    pakVolume: 8,
-    bodyFreq: 320,
-    bodyGain: 4,
+    takVolume: 18,
+    pakVolume: 16,
   }),
 )
 
-// "Wood" preset: warmer body resonance + slightly lower slap band
-// so the slaps read as palm-on-skin rather than fingertip-on-rim.
+// "Wood" preset: lower slap band so Tak/Pak read as palm-on-skin
+// rather than fingertip-on-rim. Slap volumes pushed hard since the
+// bandpass strips out a lot of the noise burst's broadband energy.
 register(
   "kendang",
   "wood",
@@ -2043,10 +2021,8 @@ register(
     tung: { pitch: "D2", decay: 0.45 },
     takBand: 850,
     pakBand: 700,
-    takVolume: 8,
-    pakVolume: 6,
-    bodyFreq: 240,
-    bodyGain: 6,
+    takVolume: 22,
+    pakVolume: 20,
   }),
 )
 
