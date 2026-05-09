@@ -15,13 +15,40 @@ defmodule MixwaveWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Admin gate: same browser stack but with HTTP Basic Auth in
+  # front. Username + password come from runtime config (env vars
+  # in prod). The pipeline is only attached to the /admin scope —
+  # the rest of the app stays anonymous.
+  pipeline :admin do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {MixwaveWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+    plug MixwaveWeb.Plugs.EnsureAnonUser
+    plug MixwaveWeb.Plugs.AdminAuth
+  end
+
   scope "/", MixwaveWeb do
     pipe_through :browser
 
     live_session :default, on_mount: {MixwaveWeb.UserAuth, :current_user} do
       live "/", LandingLive
       live "/chamber/:slug", ChamberLive
-      live "/ops/supervisor", SupervisorLive
+    end
+  end
+
+  scope "/admin", MixwaveWeb.Admin, as: :admin do
+    pipe_through :admin
+
+    live_session :admin, on_mount: {MixwaveWeb.UserAuth, :current_user} do
+      live "/", DashboardLive, :index
+      live "/system", SystemLive, :index
+      live "/chambers", ChambersLive, :index
+      live "/users", UsersLive, :index
+      live "/activity", ActivityLive, :index
+      live "/sweepers", SweepersLive, :index
     end
   end
 

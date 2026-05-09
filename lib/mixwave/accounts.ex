@@ -62,4 +62,60 @@ defmodule Mixwave.Accounts do
 
     count
   end
+
+  @doc """
+  Total anonymous users in the table.
+  """
+  def count_users do
+    Repo.aggregate(AnonymousUser, :count, :id)
+  end
+
+  @doc """
+  Anonymous users whose `last_active_at` is within the last
+  `minutes` minutes — a rough "currently around" gauge for the
+  admin dashboard.
+  """
+  def count_active_users(minutes \\ 5) do
+    import Ecto.Query
+
+    cutoff =
+      DateTime.utc_now()
+      |> DateTime.add(-minutes * 60, :second)
+      |> DateTime.truncate(:second)
+
+    Repo.aggregate(
+      from(u in AnonymousUser, where: u.last_active_at >= ^cutoff),
+      :count,
+      :id
+    )
+  end
+
+  @doc """
+  Lists anonymous users newest-first, paginated. Powers the admin
+  Users tab.
+  """
+  def list_users(opts \\ []) do
+    import Ecto.Query
+
+    limit = Keyword.get(opts, :limit, 100)
+
+    from(u in AnonymousUser,
+      order_by: [desc: u.last_active_at],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Force-deletes an anonymous user — admin override of the 24h
+  idle-sweep policy.
+  """
+  def delete_anonymous_user(%AnonymousUser{} = user), do: Repo.delete(user)
+
+  def delete_anonymous_user(id) when is_binary(id) do
+    case get_anonymous_user(id) do
+      nil -> {:error, :not_found}
+      user -> Repo.delete(user)
+    end
+  end
 end

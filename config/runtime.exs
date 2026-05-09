@@ -24,6 +24,21 @@ config :mixwave, MixwaveWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
+  # Admin Basic Auth credentials. ADMIN_PASSWORD is required in
+  # prod — the AdminAuth plug refuses every request when it's
+  # unset, so missing env fails closed rather than exposing /admin.
+  admin_password =
+    System.get_env("ADMIN_PASSWORD") ||
+      raise """
+      environment variable ADMIN_PASSWORD is missing.
+      Without it /admin would be unreachable in prod.
+      Generate one with: mix phx.gen.secret 32
+      """
+
+  config :mixwave,
+    admin_user: System.get_env("ADMIN_USER", "admin"),
+    admin_password: admin_password
+
   database_url =
     System.get_env("DATABASE_URL") ||
       raise """

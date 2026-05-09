@@ -23,6 +23,10 @@ config :mixwave, MixwaveWeb.Endpoint,
 # Print only warnings and errors during test
 config :logger, level: :warning
 
+# Fixed admin creds so the /admin pipeline doesn't 401 the test
+# client; AdminAuth refuses requests when no password is set.
+config :mixwave, admin_user: "admin", admin_password: "test"
+
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
 

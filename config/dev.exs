@@ -9,6 +9,12 @@ dev_host = System.get_env("DEV_LAN_HOST") || "localhost"
 
 config :live_vue, vite_host: "http://#{dev_host}:5173", ssr_module: LiveVue.SSR.ViteJS
 
+# Default admin credentials for /admin in dev. Override via env vars
+# (`ADMIN_USER` / `ADMIN_PASSWORD`) if you want non-defaults locally.
+config :mixwave,
+  admin_user: System.get_env("ADMIN_USER", "admin"),
+  admin_password: System.get_env("ADMIN_PASSWORD", "dev")
+
 # Configure your database
 config :mixwave, Mixwave.Repo,
   username: "postgres",

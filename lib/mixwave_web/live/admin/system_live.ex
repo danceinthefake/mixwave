@@ -1,14 +1,12 @@
-defmodule MixwaveWeb.SupervisorLive do
+defmodule MixwaveWeb.Admin.SystemLive do
   @moduledoc """
-  Process supervisor view. Lists the supervised processes that
-  back the chamber runtime, shows their PID, memory usage, message-queue
-  length, and restart count, and exposes a Kill button per row.
-  Kill sends `:kill` to the process; the supervisor restarts it,
-  the counter ticks up.
+  Admin → System tab. Lists supervised singletons (Chambers
+  supervisor + sweepers) and every running per-chamber GenServer,
+  with kill buttons that send `:kill` to the pid; the dynamic
+  supervisor restarts the chamber and the row briefly flashes red.
 
-  Updates push live via `RestartWatcher`'s PubSub topic; a 1-second
-  polling tick keeps memory and queue numbers fresh between
-  restarts.
+  Ported verbatim from the original /ops/supervisor LV — same data,
+  wrapped in the admin shell instead of the bare app layout.
   """
   use MixwaveWeb, :live_view
   require Logger
@@ -16,18 +14,15 @@ defmodule MixwaveWeb.SupervisorLive do
   alias Mixwave.Chambers
   alias Mixwave.Chambers.Server, as: ChamberServer
   alias Mixwave.RestartWatcher
+  alias MixwaveWeb.Admin.Layouts, as: AdminLayouts
 
-  # How long after a chamber Server (re)starts to flash its row red.
-  # Matches the keyframe duration in app.css. Picked by uptime_ms
-  # rather than tracking flash state in the LV — keeps the rendering
-  # purely a function of what's currently in the supervisor.
+  # Kept in sync with the matching keyframe in app.css.
   @flash_duration_ms 1_500
 
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Mixwave.PubSub, RestartWatcher.topic())
-      # A slow tick keeps memory/queue numbers fresh between restarts.
       :timer.send_interval(1_000, :tick)
     end
 
@@ -63,7 +58,7 @@ defmodule MixwaveWeb.SupervisorLive do
 
       pid ->
         Logger.warning(
-          "[supervisor] kill issued from /ops/supervisor: #{inspect(mod)} (pid #{inspect(pid)})"
+          "[admin/system] kill issued: #{inspect(mod)} (pid #{inspect(pid)})"
         )
 
         Process.exit(pid, :kill)
@@ -75,7 +70,7 @@ defmodule MixwaveWeb.SupervisorLive do
     case Registry.lookup(Mixwave.Chambers.Registry, slug) do
       [{pid, _}] ->
         Logger.warning(
-          "[supervisor] kill issued from /ops/supervisor: chamber=#{slug} pid=#{inspect(pid)}"
+          "[admin/system] kill issued: chamber=#{slug} pid=#{inspect(pid)}"
         )
 
         Process.exit(pid, :kill)
@@ -92,12 +87,6 @@ defmodule MixwaveWeb.SupervisorLive do
     end
   end
 
-  ## Data loading
-
-  # Snapshot of every running chamber GenServer for the second
-  # table. We hit the Registry for the live (slug, pid) pairs and
-  # then ask each Server for its event count + uptime via :info.
-  # ETS provides the per-slug restart count.
   defp chamber_rows do
     Chambers.list_running()
     |> Enum.map(fn {slug, pid} ->
@@ -111,15 +100,11 @@ defmodule MixwaveWeb.SupervisorLive do
         event_count: (info && info.event_count) || 0,
         uptime_ms: uptime_ms,
         restart_count: restart_count,
-        # Flash if this row is a restart (count > 0) that landed
-        # within the animation window. First-time starts don't flash.
         flashing?: restart_count > 0 and uptime_ms < @flash_duration_ms
       }
     end)
     |> Enum.sort_by(& &1.slug)
   end
-
-  ## Render helpers
 
   defp format_memory(nil), do: "—"
   defp format_memory(bytes) when bytes < 1_024, do: "#{bytes} B"
@@ -137,17 +122,14 @@ defmodule MixwaveWeb.SupervisorLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash}>
       <.header>
-        Supervisor
+        System
         <:subtitle>
-          Supervised processes that back the chamber runtime. Kill one and the
-          supervisor restarts it; the chamber in another tab keeps
-          running through the restart.
+          Supervised processes that back the chamber runtime. Kill one
+          and the supervisor restarts it; the chamber in another tab
+          keeps running through the restart.
         </:subtitle>
-        <:actions>
-          <.link navigate={~p"/"} class="text-sm underline">← back to chamber</.link>
-        </:actions>
       </.header>
 
       <div class="rounded-lg border bg-card overflow-hidden">
@@ -168,9 +150,7 @@ defmodule MixwaveWeb.SupervisorLive do
                 <div class="font-medium">{row.label}</div>
                 <div class="text-xs text-muted-foreground">{row.description}</div>
               </td>
-              <td class="px-4 py-3 font-mono text-xs">
-                {format_pid(row.pid)}
-              </td>
+              <td class="px-4 py-3 font-mono text-xs">{format_pid(row.pid)}</td>
               <td class="px-4 py-3 text-right tabular-nums">
                 {format_memory(row.info && row.info.memory)}
               </td>
@@ -201,11 +181,6 @@ defmodule MixwaveWeb.SupervisorLive do
           </tbody>
         </table>
       </div>
-
-      <p class="mt-6 text-xs text-muted-foreground">
-        Restart count is per-process, persisted across kills until the
-        beam restarts. Memory + inbox figures refresh once per second.
-      </p>
 
       <div class="mt-12 mb-4 flex items-end justify-between">
         <div>
@@ -248,12 +223,8 @@ defmodule MixwaveWeb.SupervisorLive do
                   {c.slug}
                 </.link>
               </td>
-              <td class="px-4 py-3 font-mono text-xs">
-                {format_pid(c.pid)}
-              </td>
-              <td class="px-4 py-3 text-right tabular-nums">
-                {c.event_count}
-              </td>
+              <td class="px-4 py-3 font-mono text-xs">{format_pid(c.pid)}</td>
+              <td class="px-4 py-3 text-right tabular-nums">{c.event_count}</td>
               <td class="px-4 py-3 text-right tabular-nums text-muted-foreground">
                 {format_uptime(c.uptime_ms)}
               </td>
@@ -281,7 +252,12 @@ defmodule MixwaveWeb.SupervisorLive do
           </tbody>
         </table>
       </div>
-    </Layouts.app>
+
+      <p class="mt-6 text-xs text-muted-foreground">
+        Restart counts are per-process, persisted across kills until the
+        BEAM restarts. Memory + inbox figures refresh once per second.
+      </p>
+    </AdminLayouts.admin_shell>
     """
   end
 end

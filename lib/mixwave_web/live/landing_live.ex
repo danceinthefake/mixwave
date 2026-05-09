@@ -113,19 +113,6 @@ defmodule MixwaveWeb.LandingLive do
             </button>
           </div>
 
-          <%!-- Subtle ops link. The supervisor LV is a stack-showcase
-               page (kill a chamber, watch the supervisor restart it,
-               jam keeps playing) — discoverable but kept low-key so
-               it doesn't compete with the two main entry cards. --%>
-          <div class="pt-8 text-center">
-            <.link
-              navigate={~p"/ops/supervisor"}
-              class="text-xs text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
-            >
-              <.icon name="hero-bolt-mini" class="size-3.5" />
-              Supervisor — kill a chamber, watch it come back
-            </.link>
-          </div>
         </div>
       </div>
     </Layouts.app>

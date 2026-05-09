@@ -31,6 +31,14 @@ defmodule Mixwave.Chambers.Sweeper do
     GenServer.call(__MODULE__, :sweep_now)
   end
 
+  @doc """
+  Returns last-run + last-deleted + threshold metadata for the
+  admin Sweepers tab.
+  """
+  def info do
+    GenServer.call(__MODULE__, :info)
+  end
+
   @impl true
   def init(_opts) do
     schedule_sweep()
@@ -48,6 +56,16 @@ defmodule Mixwave.Chambers.Sweeper do
   def handle_call(:sweep_now, _from, state) do
     state = do_sweep(state)
     {:reply, {:ok, state.last_deleted}, state}
+  end
+
+  def handle_call(:info, _from, state) do
+    {:reply,
+     %{
+       last_run_at: state.last_run_at,
+       last_deleted: state.last_deleted,
+       threshold_hours: @idle_threshold_hours,
+       interval_ms: @sweep_interval
+     }, state}
   end
 
   defp schedule_sweep do

@@ -186,8 +186,25 @@ defmodule Mixwave.Chambers do
 
     Server.record(slug, event)
     Phoenix.PubSub.broadcast(Mixwave.PubSub, topic(slug), {:chamber_note, event})
+
+    # Echo on a global topic for the admin Activity feed. Tagged
+    # with the slug so subscribers can identify the source without
+    # subscribing to each chamber separately.
+    Phoenix.PubSub.broadcast(
+      Mixwave.PubSub,
+      activity_topic(),
+      {:activity, slug, event}
+    )
+
     :ok
   end
+
+  @doc """
+  Single firehose topic the admin Activity LV subscribes to. Every
+  call to `broadcast_note/2` echoes here in addition to the chamber
+  topic, so admins don't have to subscribe per-chamber.
+  """
+  def activity_topic, do: "admin:activity"
 
   @doc """
   Returns the chamber's recent events (oldest first).
@@ -223,6 +240,32 @@ defmodule Mixwave.Chambers do
       [{^slug, count}] -> max(count, 0)
       _ -> 0
     end
+  end
+
+  @doc """
+  Total chamber rows in the DB.
+  """
+  def count_chambers, do: Repo.aggregate(Chamber, :count, :id)
+
+  @doc """
+  Chambers that have been activated (someone other than the creator
+  joined). Excludes those still in the grace window.
+  """
+  def count_activated_chambers do
+    import Ecto.Query
+    Repo.aggregate(from(c in Chamber, where: not is_nil(c.activated_at)), :count, :id)
+  end
+
+  @doc """
+  Lists every chamber row, newest activity first. The admin
+  Chambers tab uses this; the per-row PID + presence count are
+  added on the LV side from the Registry + Presence.
+  """
+  def list_all do
+    import Ecto.Query
+
+    from(c in Chamber, order_by: [desc: c.last_activity_at, desc: c.inserted_at])
+    |> Repo.all()
   end
 
   # Generates a ~64-bit URL-safe token. 8 random bytes encode to 11
