@@ -82,7 +82,7 @@ const pads: Pad[] = [
     drum: "crash",
     label: "Crash 1",
     key: "r",
-    pos: { left: "1%", top: "2%", width: "16%", height: "22%" },
+    pos: { left: "1%", top: "2%", width: "16%", height: "26%" },
     shape: "round",
   },
   {
@@ -90,7 +90,7 @@ const pads: Pad[] = [
     drum: "tom_high",
     label: "Sm Tom",
     key: "t",
-    pos: { left: "31%", top: "5%", width: "13%", height: "20%" },
+    pos: { left: "30%", top: "5%", width: "14%", height: "23%" },
     shape: "round",
   },
   {
@@ -98,7 +98,7 @@ const pads: Pad[] = [
     drum: "tom_mid",
     label: "Mid Tom",
     key: "u",
-    pos: { left: "47%", top: "5%", width: "13%", height: "20%" },
+    pos: { left: "46%", top: "5%", width: "14%", height: "23%" },
     shape: "round",
   },
   {
@@ -106,7 +106,7 @@ const pads: Pad[] = [
     drum: "ride",
     label: "Ride",
     key: "i",
-    pos: { left: "82%", top: "2%", width: "16%", height: "22%" },
+    pos: { left: "82%", top: "2%", width: "16%", height: "26%" },
     shape: "round",
   },
   // No bass drum at the top centre. On a real kit the bass drum
@@ -122,7 +122,7 @@ const pads: Pad[] = [
     drum: "hihat",
     label: "Hi-hat",
     key: "f",
-    pos: { left: "2%", top: "50%", width: "13%", height: "17%" },
+    pos: { left: "2%", top: "34%", width: "14%", height: "22%" },
     shape: "round",
   },
   {
@@ -130,7 +130,7 @@ const pads: Pad[] = [
     drum: "snare",
     label: "Snare",
     key: "g",
-    pos: { left: "26%", top: "68%", width: "18%", height: "19%" },
+    pos: { left: "25%", top: "48%", width: "20%", height: "26%" },
     shape: "round",
   },
   {
@@ -138,7 +138,7 @@ const pads: Pad[] = [
     drum: "tom_floor",
     label: "Floor Tom",
     key: "j",
-    pos: { left: "55%", top: "65%", width: "21%", height: "23%" },
+    pos: { left: "54%", top: "46%", width: "22%", height: "28%" },
     shape: "round",
   },
   {
@@ -146,7 +146,7 @@ const pads: Pad[] = [
     drum: "crash",
     label: "Crash 2",
     key: "k",
-    pos: { left: "82%", top: "48%", width: "16%", height: "20%" },
+    pos: { left: "82%", top: "32%", width: "16%", height: "26%" },
     shape: "round",
   },
   // Pedals + throne along the bottom. Hi-hat pedal triggers the
@@ -158,7 +158,7 @@ const pads: Pad[] = [
     drum: "hihat_pedal",
     label: "HH Pedal",
     key: "v",
-    pos: { left: "5%", top: "88%", width: "11%", height: "8%" },
+    pos: { left: "5%", top: "80%", width: "12%", height: "12%" },
     shape: "square",
   },
   {
@@ -166,7 +166,7 @@ const pads: Pad[] = [
     drum: "kick",
     label: "Bass L",
     key: "b",
-    pos: { left: "36%", top: "85%", width: "13%", height: "10%" },
+    pos: { left: "35%", top: "78%", width: "14%", height: "14%" },
     shape: "square",
   },
   {
@@ -174,7 +174,7 @@ const pads: Pad[] = [
     drum: "kick",
     label: "Bass R",
     key: "n",
-    pos: { left: "51%", top: "85%", width: "13%", height: "10%" },
+    pos: { left: "51%", top: "78%", width: "14%", height: "14%" },
     shape: "square",
   },
   {
@@ -182,7 +182,7 @@ const pads: Pad[] = [
     drum: null,
     label: "Throne",
     key: null,
-    pos: { left: "44%", top: "96%", width: "10%", height: "4%" },
+    pos: { left: "44%", top: "95%", width: "12%", height: "5%" },
     shape: "oval",
   },
 ]
@@ -292,10 +292,13 @@ onUnmounted(() => {
     </div>
 
     <!-- Kit canvas. Aspect-ratio keeps the layout proportional at any
-         width; on narrow screens it just gets smaller, not crushed. -->
+         width; on narrow screens it just gets smaller, not crushed.
+         5:3 keeps the kit short enough to avoid wasted vertical
+         space now that there's no bass drum sitting between the
+         toms and the rest of the kit. -->
     <div
       class="relative w-full mx-auto"
-      style="max-width: 720px; aspect-ratio: 4 / 3;"
+      style="max-width: 640px; aspect-ratio: 5 / 3;"
     >
       <button
         v-for="p in pads"
