@@ -1187,7 +1187,7 @@ function makeGuitarElectric(): InstrumentEngine {
       // Already had sustain 0.4; works well with hold-to-ring.
       envelope: { attack: 0.004, decay: 0.5, sustain: 0.4, release: 1.4 },
     })
-    poly.chain(chorus, reverb, Tone.getDestination())
+    poly.chain(chorus, reverb, getChamberBus())
     poly.volume.value = -10
   }
 
