@@ -48,6 +48,7 @@ type RemoteNote =
       chord: ChordName
       octave_offset?: number
       phase?: StrumPhase
+      up_strum?: boolean
     }
   | { instrument: "bass"; style: string; note: string }
   | { instrument: "pad"; style: string; chord: ChordName; octave_offset?: number }
@@ -93,6 +94,7 @@ type ReplayEvent = {
   chord?: string
   octave_offset?: number
   phase?: StrumPhase
+  up_strum?: boolean
   offset_ms: number
 }
 
@@ -127,7 +129,9 @@ live.handleEvent("replay_burst", ({ events }: { events: ReplayEvent[] }) => {
       // guitar + pad carry chord; everything else carries note.
       const note = e.chord ?? e.note
       if (!note) return
-      const opts = e.phase ? { phase: e.phase } : undefined
+      const opts = e.phase
+        ? { phase: e.phase, upStrum: e.up_strum }
+        : undefined
       play(e.instrument, e.style ?? "synth", note, e.octave_offset ?? 0, opts)
     }, e.offset_ms)
     replayTimers.push(id)
@@ -152,7 +156,8 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   const note = "chord" in payload ? payload.chord : payload.note
   const octaveOffset = "octave_offset" in payload ? payload.octave_offset ?? 0 : 0
   const phase = "phase" in payload ? payload.phase : undefined
-  const opts = phase ? { phase } : undefined
+  const upStrum = "up_strum" in payload ? payload.up_strum : undefined
+  const opts = phase ? { phase, upStrum } : undefined
   play(payload.instrument, payload.style ?? "synth", note, octaveOffset, opts)
   // Only flash on press, not on release — release events would
   // double-flash the pad otherwise.

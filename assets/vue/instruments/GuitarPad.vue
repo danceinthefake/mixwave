@@ -67,6 +67,14 @@ function shiftOctave(delta: number) {
 // matching press regardless of whether it came from key or pointer.
 const heldChords = ref(new Set<ChordName>())
 
+// Press timestamps per chord, used to decide whether a release
+// should fire the up-stroke. A "tap" (release within this window)
+// only stops the ringing chord — re-striking on a tap would just
+// sound like a doubled chord, which is what users perceive as a
+// glitch. Anything held longer earns the full up-stroke.
+const pressTimes = new Map<ChordName, number>()
+const UP_STRUM_HOLD_THRESHOLD_MS = 150
+
 // Chord fingerings in standard guitar tab notation: 6-element array
 // from low E (left) to high E (right). "x" = muted string, 0 = open
 // string, n = press at fret n. `barre` overlays a bar across all
@@ -130,6 +138,7 @@ async function strumDown(name: ChordName) {
   if (heldChords.value.has(name)) return
   await ensureStarted()
   heldChords.value.add(name)
+  pressTimes.set(name, Date.now())
   play("guitar", style.value, name, octaveOffset.value, { phase: "press" })
   flash(name)
   live.pushEvent("note", {
@@ -143,16 +152,25 @@ async function strumDown(name: ChordName) {
 
 async function strumUp(name: ChordName) {
   if (!heldChords.value.has(name)) return
-  await ensureStarted()
+  const pressedAt = pressTimes.get(name) ?? Date.now()
+  const holdMs = Date.now() - pressedAt
+  pressTimes.delete(name)
   heldChords.value.delete(name)
-  play("guitar", style.value, name, octaveOffset.value, { phase: "release" })
-  flash(name)
+  await ensureStarted()
+  // Quick taps just stop the ringing chord; only a real hold earns
+  // the up-stroke re-strike.
+  const upStrum = holdMs >= UP_STRUM_HOLD_THRESHOLD_MS
+  play("guitar", style.value, name, octaveOffset.value, {
+    phase: "release",
+    upStrum,
+  })
   live.pushEvent("note", {
     instrument: "guitar",
     style: style.value,
     chord: name,
     octave_offset: octaveOffset.value,
     phase: "release",
+    up_strum: upStrum,
   })
 }
 

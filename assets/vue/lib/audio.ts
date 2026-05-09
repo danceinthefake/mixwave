@@ -47,6 +47,13 @@ export interface PlayOptions {
    *                and by non-strumming engines)
    */
   phase?: "press" | "release"
+  /**
+   * Whether the release phase should re-strike the chord in reverse
+   * (the up-stroke). Defaults to true. The caller sets this to false
+   * for short taps where firing an up-stroke would just sound like
+   * a doubled chord — only sustained holds earn the second strum.
+   */
+  upStrum?: boolean
 }
 
 export interface InstrumentEngine {
@@ -129,54 +136,102 @@ type StrumTriggerable = {
   triggerAttackRelease(note: string, duration: string, time: number): unknown
 }
 
-// Renders a strum at the given lifecycle phase. The phase decides
-// whether we sustain (press), release + up-strum (release), or
-// fall back to a single one-shot strum (legacy).
-//
-// `held` is the engine's per-chord state — we record which notes
-// the press attacked there, so the release can stop ringing exactly
-// those voices instead of every note in the chord (in case the
-// release fires a beat after the press, transposed differently).
+// Per-engine strum state. `held` records the notes that have already
+// attacked for each chord; `sessions` holds a session id per chord
+// that the press's deferred attacks check before firing — if the
+// release runs first, the session is gone and the pending attacks
+// no-op. That's how quick taps avoid the "ringing forever" + double-
+// attack bugs the previous Tone-scheduled stagger had.
+type StrumState = {
+  held: Map<string, string[]>
+  sessions: Map<string, number>
+}
+
+function makeStrumState(): StrumState {
+  return { held: new Map(), sessions: new Map() }
+}
+
+let nextStrumSession = 0
+
+// Renders a strum at the given lifecycle phase.
+//   - press: schedules a low→high down-stroke via setTimeout (so we
+//     can cancel via session id), records each attacked note in
+//     `state.held` as it fires.
+//   - release: invalidates the press session (cancels any pending
+//     attacks), releases whatever notes did fire, and optionally
+//     plays the up-stroke re-strike if `upStrum` is true.
+//   - undefined: a legacy one-shot strum, kept so old replay events
+//     keep working.
 function applyStrumPhase(
   voice: StrumTriggerable,
   shifted: readonly string[],
   chordKey: string,
   phase: "press" | "release" | undefined,
   reverse: boolean,
-  held: Map<string, string[]>,
+  upStrum: boolean,
+  state: StrumState,
   upStrumDuration: string,
   legacyDuration: string,
-  now: number,
 ): void {
   if (phase === "press") {
-    // Down-strum: triggerAttack each string, low → high. Notes
-    // ring until the matching release arrives.
+    const id = ++nextStrumSession
+    state.sessions.set(chordKey, id)
+    const attackedNotes: string[] = []
+    state.held.set(chordKey, attackedNotes)
+
     const ordered = strumOrder(shifted, false)
     ordered.forEach((note, i) => {
-      voice.triggerAttack(note, now + i * GUITAR_STRUM_STAGGER)
+      const fire = () => {
+        // If the release ran before this attack got to fire, the
+        // session id is stale — bail without attacking.
+        if (state.sessions.get(chordKey) !== id) return
+        voice.triggerAttack(note, Tone.now())
+        attackedNotes.push(note)
+      }
+      if (i === 0) {
+        fire()
+      } else {
+        window.setTimeout(fire, i * GUITAR_STRUM_STAGGER * 1000)
+      }
     })
-    held.set(chordKey, [...shifted])
     return
   }
   if (phase === "release") {
-    // Stop any voices the press attacked, then re-strike each
-    // string briefly in reverse for the up-stroke.
-    const heldNotes = held.get(chordKey)
-    if (heldNotes) {
-      for (const note of heldNotes) voice.triggerRelease(note, now)
-      held.delete(chordKey)
+    // Invalidate the press session so any pending setTimeouts no-op.
+    state.sessions.delete(chordKey)
+    // Release the notes that actually attacked. Pending notes never
+    // ran, so no voices to release for them.
+    const attackedNotes = state.held.get(chordKey)
+    if (attackedNotes) {
+      const now = Tone.now()
+      for (const note of attackedNotes) voice.triggerRelease(note, now)
+      state.held.delete(chordKey)
     }
-    const upOrder = strumOrder(shifted, true)
-    upOrder.forEach((note, i) => {
-      voice.triggerAttackRelease(note, upStrumDuration, now + i * GUITAR_STRUM_STAGGER)
-    })
+    // Up-stroke re-strike (only if the caller asked for it — quick
+    // taps skip this so we don't get a "double chord" effect).
+    if (upStrum) {
+      const upOrder = strumOrder(shifted, true)
+      const now = Tone.now()
+      upOrder.forEach((note, i) => {
+        voice.triggerAttackRelease(
+          note,
+          upStrumDuration,
+          now + i * GUITAR_STRUM_STAGGER,
+        )
+      })
+    }
     return
   }
   // Legacy: a single one-shot strum, used by older replay events
   // and by callers that don't track press/release pairs.
   const ordered = strumOrder(shifted, reverse)
+  const now = Tone.now()
   ordered.forEach((note, i) => {
-    voice.triggerAttackRelease(note, legacyDuration, now + i * GUITAR_STRUM_STAGGER)
+    voice.triggerAttackRelease(
+      note,
+      legacyDuration,
+      now + i * GUITAR_STRUM_STAGGER,
+    )
   })
 }
 
@@ -878,7 +933,7 @@ export const CHORDS: Record<ChordName, string[]> = {
 
 function makeGuitarSynth(): InstrumentEngine {
   let poly: Tone.PolySynth | null = null
-  const held = new Map<string, string[]>()
+  const state = makeStrumState()
 
   function ensure() {
     if (poly) return
@@ -912,15 +967,16 @@ function makeGuitarSynth(): InstrumentEngine {
         `${chord}@${octaveOffset}`,
         opts?.phase,
         opts?.reverse ?? false,
-        held,
+        opts?.upStrum !== false,
+        state,
         "8n",
         "2n",
-        Tone.now(),
       )
     },
     stopAll() {
       poly?.releaseAll()
-      held.clear()
+      state.held.clear()
+      state.sessions.clear()
     },
   }
 }
@@ -1010,7 +1066,7 @@ function makeGuitarElectric(): InstrumentEngine {
   let poly: Tone.PolySynth | null = null
   let chorus: Tone.Chorus | null = null
   let reverb: Tone.Reverb | null = null
-  const held = new Map<string, string[]>()
+  const state = makeStrumState()
 
   function ensure() {
     if (poly) return
@@ -1041,15 +1097,16 @@ function makeGuitarElectric(): InstrumentEngine {
         `${chord}@${octaveOffset}`,
         opts?.phase,
         opts?.reverse ?? false,
-        held,
+        opts?.upStrum !== false,
+        state,
         "8n",
         "2n",
-        Tone.now(),
       )
     },
     stopAll() {
       poly?.releaseAll()
-      held.clear()
+      state.held.clear()
+      state.sessions.clear()
     },
   }
 }
@@ -1065,7 +1122,7 @@ register("guitar", "electric", makeGuitarElectric())
 function makeGuitarRock(): InstrumentEngine {
   let poly: Tone.PolySynth | null = null
   let distortion: Tone.Distortion | null = null
-  const held = new Map<string, string[]>()
+  const state = makeStrumState()
 
   function ensure() {
     if (poly) return
@@ -1098,15 +1155,16 @@ function makeGuitarRock(): InstrumentEngine {
         `${chord}@${octaveOffset}`,
         opts?.phase,
         opts?.reverse ?? false,
-        held,
+        opts?.upStrum !== false,
+        state,
         "8n",
         "2n",
-        Tone.now(),
       )
     },
     stopAll() {
       poly?.releaseAll()
-      held.clear()
+      state.held.clear()
+      state.sessions.clear()
     },
   }
 }
@@ -1121,7 +1179,7 @@ register("guitar", "rock", makeGuitarRock())
 
 function makeGuitarNylon(): InstrumentEngine {
   let sampler: Tone.Sampler | null = null
-  const held = new Map<string, string[]>()
+  const state = makeStrumState()
 
   function ensure() {
     if (sampler) return
@@ -1149,15 +1207,16 @@ function makeGuitarNylon(): InstrumentEngine {
         `${chord}@${octaveOffset}`,
         opts?.phase,
         opts?.reverse ?? false,
-        held,
+        opts?.upStrum !== false,
+        state,
         "4n",
         "2n",
-        Tone.now(),
       )
     },
     stopAll() {
       sampler?.releaseAll()
-      held.clear()
+      state.held.clear()
+      state.sessions.clear()
     },
     preload() {
       ensure()
@@ -1174,7 +1233,7 @@ register("guitar", "nylon", makeGuitarNylon())
 
 function makeGuitarAcoustic(): InstrumentEngine {
   let sampler: Tone.Sampler | null = null
-  const held = new Map<string, string[]>()
+  const state = makeStrumState()
 
   function ensure() {
     if (sampler) return
@@ -1202,15 +1261,16 @@ function makeGuitarAcoustic(): InstrumentEngine {
         `${chord}@${octaveOffset}`,
         opts?.phase,
         opts?.reverse ?? false,
-        held,
+        opts?.upStrum !== false,
+        state,
         "4n",
         "2n",
-        Tone.now(),
       )
     },
     stopAll() {
       sampler?.releaseAll()
-      held.clear()
+      state.held.clear()
+      state.sessions.clear()
     },
     preload() {
       ensure()

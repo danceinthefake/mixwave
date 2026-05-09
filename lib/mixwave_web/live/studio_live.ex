@@ -137,6 +137,7 @@ defmodule MixwaveWeb.StudioLive do
           chord: e.payload["chord"],
           octave_offset: e.payload["octave_offset"] || 0,
           phase: e.payload["phase"],
+          up_strum: e.payload["up_strum"],
           offset_ms: e.at - start_at
         }
       end)
