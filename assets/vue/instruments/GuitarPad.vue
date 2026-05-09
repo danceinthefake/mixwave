@@ -21,6 +21,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll, preload, type ChordName } from "@/lib/audio"
+import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -114,7 +115,7 @@ let remoteFlashTimer: number | null = null
 function flash(name: ChordName) {
   flashing.value = name
   if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), 250)
+  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.medium)
 }
 
 const chordNames = new Set<string>(chords.map((c) => c.name))
@@ -123,7 +124,10 @@ function flashRemote(name: ChordName) {
   remoteFlashing.value = name
   if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
   // Chords visibly ring longer than drums; mirror that with a longer flash.
-  remoteFlashTimer = window.setTimeout(() => (remoteFlashing.value = null), 350)
+  remoteFlashTimer = window.setTimeout(
+    () => (remoteFlashing.value = null),
+    FLASH_MS.medium + REMOTE_FLASH_DELTA_MS,
+  )
 }
 
 watch(

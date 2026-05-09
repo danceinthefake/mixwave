@@ -43,6 +43,7 @@
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { useLiveVue } from "live_vue";
 import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio";
+import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion";
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null;
@@ -199,7 +200,7 @@ let remoteFlashTimer: number | null = null;
 function flash(padId: string) {
   flashing.value = padId;
   if (flashTimer !== null) window.clearTimeout(flashTimer);
-  flashTimer = window.setTimeout(() => (flashing.value = null), 120);
+  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.tight);
 }
 
 function flashRemote(name: DrumName) {
@@ -208,7 +209,7 @@ function flashRemote(name: DrumName) {
   // Slightly longer than local so it's visible even after a short network hop.
   remoteFlashTimer = window.setTimeout(
     () => (remoteFlashing.value = null),
-    200
+    FLASH_MS.tight + REMOTE_FLASH_DELTA_MS,
   );
 }
 

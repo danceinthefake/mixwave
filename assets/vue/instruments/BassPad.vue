@@ -23,6 +23,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import { ensureStarted, play, stopAll } from "@/lib/audio"
+import { FLASH_MS, REMOTE_FLASH_DELTA_MS } from "@/lib/motion"
 
 const props = defineProps<{
   remoteHit: { instrument: string; note: string; t: number } | null
@@ -136,13 +137,16 @@ let remoteFlashTimer: number | null = null
 function flash(note: string) {
   flashing.value = note
   if (flashTimer !== null) window.clearTimeout(flashTimer)
-  flashTimer = window.setTimeout(() => (flashing.value = null), 150)
+  flashTimer = window.setTimeout(() => (flashing.value = null), FLASH_MS.medium)
 }
 
 function flashRemote(note: string) {
   remoteFlashing.value = note
   if (remoteFlashTimer !== null) window.clearTimeout(remoteFlashTimer)
-  remoteFlashTimer = window.setTimeout(() => (remoteFlashing.value = null), 220)
+  remoteFlashTimer = window.setTimeout(
+    () => (remoteFlashing.value = null),
+    FLASH_MS.medium + REMOTE_FLASH_DELTA_MS,
+  )
 }
 
 watch(
