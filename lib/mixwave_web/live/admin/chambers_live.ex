@@ -8,17 +8,32 @@ defmodule MixwaveWeb.Admin.ChambersLive do
   require Logger
 
   alias Mixwave.Chambers
+  alias Mixwave.Chambers.Server, as: ChamberServer
+  alias Mixwave.RestartWatcher
   alias MixwaveWeb.Admin.Layouts, as: AdminLayouts
   alias MixwaveWeb.Presence
 
+  # Kept in sync with the keyframe in app.css.
+  @flash_duration_ms 1_500
+
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: :timer.send_interval(2_000, :tick)
+    if connected?(socket) do
+      # Subscribe so the kill-row flash appears the instant a
+      # chamber GenServer restarts, not on the next 2 s tick.
+      Phoenix.PubSub.subscribe(Mixwave.PubSub, RestartWatcher.topic())
+      :timer.send_interval(2_000, :tick)
+    end
+
     {:ok, assign(socket, :chambers, load())}
   end
 
   @impl true
   def handle_info(:tick, socket) do
+    {:noreply, assign(socket, :chambers, load())}
+  end
+
+  def handle_info(:restarts_changed, socket) do
     {:noreply, assign(socket, :chambers, load())}
   end
 
@@ -50,6 +65,17 @@ defmodule MixwaveWeb.Admin.ChambersLive do
 
     Chambers.list_all()
     |> Enum.map(fn c ->
+      running? = Map.has_key?(running, c.slug)
+      restart_count = Chambers.restart_count(c.slug)
+
+      uptime_ms =
+        if running? do
+          case ChamberServer.info(c.slug) do
+            %{uptime_ms: ms} -> ms
+            _ -> nil
+          end
+        end
+
       %{
         id: c.id,
         slug: c.slug,
@@ -59,8 +85,14 @@ defmodule MixwaveWeb.Admin.ChambersLive do
         activated_at: c.activated_at,
         last_activity_at: c.last_activity_at,
         inserted_at: c.inserted_at,
-        running?: Map.has_key?(running, c.slug),
-        presence_count: presence_count(c.slug)
+        running?: running?,
+        presence_count: presence_count(c.slug),
+        # Flash if the GenServer behind this row restarted within
+        # the animation window. Same predicate the System tab uses
+        # so a chaos kill flashes both views in lockstep.
+        flashing?:
+          running? and restart_count > 0 and is_integer(uptime_ms) and
+            uptime_ms < @flash_duration_ms
       }
     end)
   end
@@ -118,7 +150,7 @@ defmodule MixwaveWeb.Admin.ChambersLive do
             </tr>
           </thead>
           <tbody class="divide-y">
-            <tr :for={c <- @chambers} class="align-top">
+            <tr :for={c <- @chambers} class={["align-top", c.flashing? && "kill-flash"]}>
               <td class="px-4 py-3">
                 <.link navigate={~p"/chamber/#{c.slug}"} class="font-mono text-xs font-medium hover:underline">
                   {c.slug}
