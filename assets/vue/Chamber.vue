@@ -49,16 +49,20 @@ const props = defineProps<{
   chamber_kind: ChamberKind
 }>()
 
-// Apply the chamber's audio character on mount + whenever the
-// LiveView updates the prop (creator changing the kind, or a
-// remote :chamber_updated broadcast). The setter is idempotent;
+// Apply the chamber's audio character whenever the LiveView
+// updates the prop (creator changing the kind, or a remote
+// :chamber_updated broadcast). The setter is idempotent;
 // calling it with the same value is a cheap no-op.
+//
+// Crucially this is NOT { immediate: true } — that would fire
+// during SSR setup, which calls into Tone.js and tries to build
+// an AudioContext that doesn't exist on Node. The initial apply
+// happens in onMounted below, after we know we're on the client.
 watch(
   () => props.chamber_kind,
   (kind) => {
     if (kind) setChamberKind(kind)
   },
-  { immediate: true },
 )
 
 const live = useLiveVue()
@@ -104,6 +108,12 @@ watch(volume, (v) => {
 })
 
 onMounted(() => {
+  // Initial apply of the chamber's audio character. Has to live
+  // here (not in a watch with immediate: true) because Tone.js
+  // builds an AudioContext on first use and there's no such thing
+  // on the SSR side.
+  if (props.chamber_kind) setChamberKind(props.chamber_kind)
+
   const stored = Number.parseInt(localStorage.getItem(VOLUME_KEY) ?? "80", 10)
   if (Number.isFinite(stored)) {
     volume.value = Math.max(0, Math.min(100, stored))
