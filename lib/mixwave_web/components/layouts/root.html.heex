@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
     <link rel="icon" type="image/svg+xml" href={~p"/images/logo.svg"} />
+    <%!-- Brand fonts. Space Grotesk = display (wordmark, headings),
+         JetBrains Mono = numerics + kbd hints. System sans for
+         everything else. --%>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+    />
     <.live_title default="Mixwave" suffix=" · Phoenix Framework" phx-no-format>{assigns[:page_title]}</.live_title>
     <PhoenixVite.Components.assets
       names={["js/app.js", "css/app.css"]}
