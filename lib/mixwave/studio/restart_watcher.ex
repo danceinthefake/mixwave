@@ -19,7 +19,9 @@ defmodule Mixwave.Studio.RestartWatcher do
     {Mixwave.Studio.ChamberSupervisor, "Studio.ChamberSupervisor",
      "Spawns one GenServer per active chamber; holds each one's recent-events buffer."},
     {Mixwave.Accounts.Sweeper, "Accounts.Sweeper",
-     "Deletes anonymous users idle for more than 24 hours."}
+     "Deletes anonymous users idle for more than 24 hours."},
+    {Mixwave.Chambers.Sweeper, "Chambers.Sweeper",
+     "Deletes chambers idle for more than 24 hours."}
   ]
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, :ok, name: __MODULE__)

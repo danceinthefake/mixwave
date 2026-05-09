@@ -14,6 +14,8 @@ defmodule Mixwave.Chambers do
   cycle live in `Mixwave.Studio.Chamber`.
   """
 
+  import Ecto.Query
+
   alias Mixwave.Chambers.Chamber
   alias Mixwave.Repo
 
@@ -71,6 +73,37 @@ defmodule Mixwave.Chambers do
   GenServer terminates because nobody but the creator showed up.
   """
   def delete(%Chamber{} = chamber), do: Repo.delete(chamber)
+
+  @doc """
+  Bumps `last_activity_at` to now. Called from the chamber's
+  GenServer about once a minute when notes have been played, so
+  the sweeper can tell active chambers apart from abandoned ones.
+  """
+  def touch_activity(%Chamber{} = chamber) do
+    chamber
+    |> Ecto.Changeset.change(
+      last_activity_at: DateTime.utc_now() |> DateTime.truncate(:second)
+    )
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes every chamber whose `last_activity_at` is older than the
+  given cutoff. Returns the count of deleted rows. The sweeper
+  passes `cutoff = now - 24h`.
+
+  Only sweeps chambers that have been activated — non-activated
+  chambers are owned by their GenServer's grace-period timer.
+  """
+  def delete_idle_since(%DateTime{} = cutoff) do
+    {count, _} =
+      from(c in Chamber,
+        where: not is_nil(c.activated_at) and c.last_activity_at < ^cutoff
+      )
+      |> Repo.delete_all()
+
+    count
+  end
 
   # Generates a ~64-bit URL-safe token. 8 random bytes encode to 11
   # url-base64 chars. Collision probability stays negligible at any
