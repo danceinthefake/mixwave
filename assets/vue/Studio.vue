@@ -147,31 +147,36 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
 
 <template>
   <div class="space-y-4">
-    <!-- Top controls: replay last 30s + master volume -->
-    <div class="flex items-center justify-end gap-3">
-      <button
-        @click="isReplaying ? stopReplay() : startReplay()"
-        :class="[
-          'px-3 py-1 text-xs rounded-md border transition-colors',
-          isReplaying
-            ? 'bg-destructive/10 text-destructive border-destructive/40'
-            : 'bg-card hover:bg-accent text-muted-foreground border-input'
-        ]"
-      >
-        {{ isReplaying ? "Stop replay" : "Replay 30s" }}
-      </button>
+    <!-- Top control strip: replay + master volume. Floating-bar
+         look matches the bottom dock for visual consistency. -->
+    <div class="flex justify-end">
+      <div class="flex items-center gap-3 rounded-xl border bg-card/60 backdrop-blur-sm px-3 py-1.5 shadow-sm">
+        <button
+          @click="isReplaying ? stopReplay() : startReplay()"
+          :class="[
+            'px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer',
+            isReplaying
+              ? 'bg-destructive/10 text-destructive'
+              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+          ]"
+        >
+          {{ isReplaying ? "Stop replay" : "↩ Replay 30s" }}
+        </button>
 
-      <span class="text-xs uppercase tracking-wider text-muted-foreground">Vol</span>
-      <input
-        v-model.number="volume"
-        type="range"
-        min="0"
-        max="100"
-        class="w-32 accent-primary"
-      />
-      <span class="text-xs tabular-nums text-muted-foreground w-10 text-right">
-        {{ volume }}%
-      </span>
+        <div class="w-px h-5 bg-border"></div>
+
+        <span class="text-xs uppercase tracking-wider text-muted-foreground">Vol</span>
+        <input
+          v-model.number="volume"
+          type="range"
+          min="0"
+          max="100"
+          class="w-28 accent-primary"
+        />
+        <span class="text-xs tabular-nums text-muted-foreground w-9 text-right">
+          {{ volume }}%
+        </span>
+      </div>
     </div>
 
     <DrumPad v-if="current_instrument === 'drums'" :remote-hit="lastRemoteHit" />
