@@ -535,23 +535,41 @@ defmodule MixwaveWeb.ChamberLive do
             <%!-- Divider --%>
             <div class="w-px h-6 bg-border shrink-0"></div>
 
-            <%!-- Presence summary: avatar stack + count --%>
+            <%!-- Presence summary: each jammer rendered as an
+                 avatar circle with their display_name beneath it,
+                 so usernames are visible immediately without
+                 hovering or clicking. Names truncate to keep the
+                 dock width bounded; full name + instrument still
+                 in the title attribute for the truncated case. --%>
             <div class="flex items-center gap-2 pr-2 pl-1 shrink-0">
-              <div class="flex -space-x-1.5">
-                <span
+              <div class="flex items-end gap-1.5">
+                <div
                   :for={{user_id, %{metas: [meta | _]}} <- Enum.take(@presences, 4)}
-                  class={[
+                  class="flex flex-col items-center gap-0.5 max-w-[68px]"
+                  title={"#{meta.display_name} · #{instrument_label(meta.instrument)}"}
+                >
+                  <span class={[
                     "size-7 rounded-full flex items-center justify-center text-[10px] font-semibold border-2 border-card",
                     user_id == @current_user.id && "bg-primary text-primary-foreground",
                     user_id != @current_user.id && "bg-muted text-muted-foreground"
-                  ]}
-                  title={"#{meta.display_name} · #{instrument_label(meta.instrument)}"}
-                >
-                  {meta.display_name |> String.first() |> String.upcase()}
-                </span>
+                  ]}>
+                    {meta.display_name |> String.first() |> String.upcase()}
+                  </span>
+                  <span class={[
+                    "text-[10px] leading-none truncate max-w-full",
+                    user_id == @current_user.id && "text-foreground font-medium",
+                    user_id != @current_user.id && "text-muted-foreground"
+                  ]}>
+                    {meta.display_name}
+                  </span>
+                </div>
               </div>
-              <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                {map_size(@presences)} jamming
+              <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap self-center">
+                <%= if map_size(@presences) > 4 do %>
+                  +{map_size(@presences) - 4} more
+                <% else %>
+                  {map_size(@presences)} jamming
+                <% end %>
               </span>
             </div>
           </div>
