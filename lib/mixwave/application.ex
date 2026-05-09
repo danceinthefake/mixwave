@@ -14,6 +14,8 @@ defmodule Mixwave.Application do
       {Phoenix.PubSub, name: Mixwave.PubSub},
       # Hourly tick deletes anonymous users idle for more than 24 h.
       Mixwave.Accounts.Sweeper,
+      # Hourly tick deletes chambers idle for more than 24 h.
+      Mixwave.Chambers.Sweeper,
       # Looks up per-chamber GenServers by slug.
       {Registry, keys: :unique, name: Mixwave.Studio.ChamberRegistry},
       # Spawns one Mixwave.Studio.Chamber per active chamber. Each

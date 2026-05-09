@@ -22,6 +22,11 @@ defmodule Mixwave.Studio.Chamber do
   # join. If `activated_at` is still NULL when this elapses, the
   # GenServer deletes the chamber row and shuts itself down.
   @grace_period_ms 5 * 60 * 1000
+  # How often the GenServer flushes the dirty flag to the DB by
+  # bumping `last_activity_at`. Chosen for "rough enough that the
+  # sweeper sees recent activity, cheap enough that it's not a
+  # write per note even in busy chambers".
+  @activity_bump_ms 60 * 1000
 
   ## Public API
 
@@ -87,15 +92,16 @@ defmodule Mixwave.Studio.Chamber do
     # delete if it's still NULL.
     if state.chamber_id do
       Process.send_after(self(), :check_grace, @grace_period_ms)
+      Process.send_after(self(), :bump_activity, @activity_bump_ms)
     end
 
-    {:ok, Map.merge(state, %{events: [], count: 0})}
+    {:ok, Map.merge(state, %{events: [], count: 0, dirty?: false})}
   end
 
   @impl true
   def handle_cast({:record, event}, state) do
     events = [event | state.events] |> Enum.take(@max_recent)
-    {:noreply, %{state | events: events, count: state.count + 1}}
+    {:noreply, %{state | events: events, count: state.count + 1, dirty?: true}}
   end
 
   @impl true
@@ -138,6 +144,29 @@ defmodule Mixwave.Studio.Chamber do
         # A non-creator joined within the grace window — chamber
         # stays alive. Nothing more to schedule.
         {:noreply, state}
+    end
+  end
+
+  def handle_info(:bump_activity, %{chamber_id: chamber_id, dirty?: dirty?} = state) do
+    # If notes came in this minute, flush a single DB write to
+    # update last_activity_at. If nothing happened, skip the write
+    # — the sweeper will eventually decide this chamber is idle.
+    if dirty? do
+      case Mixwave.Chambers.find_by_id(chamber_id) do
+        nil ->
+          # Row deleted out-of-band (sweeper ran, or grace-period
+          # delete fired). Stop the GenServer so we don't keep
+          # trying to bump a non-existent row.
+          {:stop, :normal, state}
+
+        chamber ->
+          Mixwave.Chambers.touch_activity(chamber)
+          Process.send_after(self(), :bump_activity, @activity_bump_ms)
+          {:noreply, %{state | dirty?: false}}
+      end
+    else
+      Process.send_after(self(), :bump_activity, @activity_bump_ms)
+      {:noreply, state}
     end
   end
 end

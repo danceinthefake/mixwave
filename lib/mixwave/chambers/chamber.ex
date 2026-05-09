@@ -20,6 +20,7 @@ defmodule Mixwave.Chambers.Chamber do
     field :slug, :string
     field :activated_at, :utc_datetime
     field :title, :string
+    field :last_activity_at, :utc_datetime
 
     belongs_to :creator, Mixwave.Accounts.AnonymousUser, foreign_key: :creator_user_id
 
