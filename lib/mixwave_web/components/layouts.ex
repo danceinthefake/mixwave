@@ -12,12 +12,19 @@ defmodule MixwaveWeb.Layouts do
 
   @doc """
   Renders the app layout: top header + page outlet.
+
+  `width` controls the inner container's max width:
+    * `:default` — `max-w-3xl` (chamber + landing pages, narrow & focused)
+    * `:wide`    — `max-w-[1536px]` (admin tables; comfortable on
+                    laptops, no longer crushed at 3xl)
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
   attr :current_scope, :map,
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
+
+  attr :width, :atom, default: :default, values: [:default, :wide]
 
   slot :inner_block, required: true
 
@@ -37,7 +44,11 @@ defmodule MixwaveWeb.Layouts do
     </header>
 
     <main class="px-4 py-10 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-3xl space-y-4">
+      <div class={[
+        "mx-auto space-y-4",
+        @width == :default && "max-w-3xl",
+        @width == :wide && "max-w-[1536px]"
+      ]}>
         {render_slot(@inner_block)}
       </div>
     </main>

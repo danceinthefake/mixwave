@@ -39,7 +39,7 @@ defmodule MixwaveWeb.Admin.Layouts do
     assigns = assign(assigns, :tabs, @tabs)
 
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} width={:wide}>
       <div class="grid grid-cols-1 lg:grid-cols-[14rem_1fr] gap-6">
         <aside class="lg:sticky lg:top-4 lg:self-start">
           <div class="rounded-xl border bg-card p-2">
