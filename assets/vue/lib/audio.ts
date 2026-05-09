@@ -1979,8 +1979,8 @@ register(
     tut: { pitch: "A2", pitchDecay: 0.04, decay: 0.4 },
     dut: { pitch: "E4", decay: 0.15 },
     tung: { pitch: "E2", decay: 0.35 },
-    takVolume: 4,
-    pakVolume: 2,
+    takVolume: 10,
+    pakVolume: 8,
   }),
 )
 
@@ -1994,8 +1994,8 @@ register(
     tut: { pitch: "G2", pitchDecay: 0.06, decay: 0.55 },
     dut: { pitch: "D4", decay: 0.2 },
     tung: { pitch: "D2", decay: 0.45 },
-    takVolume: 2,
-    pakVolume: 0,
+    takVolume: 8,
+    pakVolume: 6,
   }),
 )
 
