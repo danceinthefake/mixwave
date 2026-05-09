@@ -1790,4 +1790,151 @@ function makeSulingSweet(): InstrumentEngine {
 
 register("suling", "sweet", makeSulingSweet())
 
+// ── Kendang (Indonesian two-headed hand drum) ──────────────────────
+// Six distinct tones — the percussive backbone of dangdut. The two
+// most iconic are Dang (low boom from the larger head) and Dut (high
+// sharp from the smaller head); together with the slap variants
+// they cover the rhythmic vocabulary.
+//
+//   dang  open hit on the larger head     low boom, A1
+//   tut   open hit on smaller head        mid-low, A2
+//   dut   sharp hit on smaller head       high, E4
+//   tak   slap (open palm, both heads)    bright noise burst
+//   tung  open hit, big head, looser      mid-high, E2
+//   pak   closed slap                     dampened high noise
+
+export type KendangName = "dang" | "tut" | "dut" | "tak" | "tung" | "pak"
+
+function makeKendang(opts: {
+  dang: { pitch: string; pitchDecay: number; decay: number }
+  tut: { pitch: string; pitchDecay: number; decay: number }
+  dut: { pitch: string; decay: number }
+  tung: { pitch: string; decay: number }
+  takVolume: number
+  pakVolume: number
+}): InstrumentEngine {
+  let dang: Tone.MembraneSynth | null = null
+  let tut: Tone.MembraneSynth | null = null
+  let dut: Tone.MembraneSynth | null = null
+  let tung: Tone.MembraneSynth | null = null
+  let tak: Tone.NoiseSynth | null = null
+  let pak: Tone.NoiseSynth | null = null
+
+  const lastScheduled: Record<KendangName, number> = {
+    dang: 0,
+    tut: 0,
+    dut: 0,
+    tak: 0,
+    tung: 0,
+    pak: 0,
+  }
+
+  function ensure() {
+    if (dang) return
+    dang = new Tone.MembraneSynth({
+      pitchDecay: opts.dang.pitchDecay,
+      octaves: 5,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: opts.dang.decay, sustain: 0, release: 0.5 },
+    }).connect(getChamberBus())
+
+    tut = new Tone.MembraneSynth({
+      pitchDecay: opts.tut.pitchDecay,
+      octaves: 4,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: opts.tut.decay, sustain: 0, release: 0.4 },
+    }).connect(getChamberBus())
+
+    dut = new Tone.MembraneSynth({
+      pitchDecay: 0.02,
+      octaves: 3,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: opts.dut.decay, sustain: 0, release: 0.2 },
+    }).connect(getChamberBus())
+
+    tung = new Tone.MembraneSynth({
+      pitchDecay: 0.04,
+      octaves: 4,
+      oscillator: { type: "sine" },
+      envelope: { attack: 0.001, decay: opts.tung.decay, sustain: 0, release: 0.4 },
+    }).connect(getChamberBus())
+
+    tak = new Tone.NoiseSynth({
+      noise: { type: "pink" },
+      envelope: { attack: 0.001, decay: 0.08, sustain: 0 },
+    }).connect(getChamberBus())
+    tak.volume.value = opts.takVolume
+
+    pak = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+    }).connect(getChamberBus())
+    pak.volume.value = opts.pakVolume
+  }
+
+  function schedule(name: KendangName): number {
+    const candidate = Tone.now()
+    const when = Math.max(candidate, lastScheduled[name] + 0.001)
+    lastScheduled[name] = when
+    return when
+  }
+
+  return {
+    play(note) {
+      const name = note as KendangName
+      ensure()
+      const when = schedule(name)
+      switch (name) {
+        case "dang":
+          dang!.triggerAttackRelease(opts.dang.pitch, "8n", when)
+          break
+        case "tut":
+          tut!.triggerAttackRelease(opts.tut.pitch, "8n", when)
+          break
+        case "dut":
+          dut!.triggerAttackRelease(opts.dut.pitch, "16n", when)
+          break
+        case "tung":
+          tung!.triggerAttackRelease(opts.tung.pitch, "8n", when)
+          break
+        case "tak":
+          tak!.triggerAttackRelease("16n", when)
+          break
+        case "pak":
+          pak!.triggerAttackRelease("32n", when)
+          break
+      }
+    },
+    stopAll() {},
+  }
+}
+
+register(
+  "kendang",
+  "synth",
+  makeKendang({
+    dang: { pitch: "A1", pitchDecay: 0.05, decay: 0.5 },
+    tut: { pitch: "A2", pitchDecay: 0.04, decay: 0.4 },
+    dut: { pitch: "E4", decay: 0.15 },
+    tung: { pitch: "E2", decay: 0.35 },
+    takVolume: -8,
+    pakVolume: -10,
+  }),
+)
+
+// "Wood" preset: warmer envelopes, slightly darker hit pitches.
+// Closer in feel to a real wooden gendang than the cleaner Synth.
+register(
+  "kendang",
+  "wood",
+  makeKendang({
+    dang: { pitch: "G1", pitchDecay: 0.07, decay: 0.65 },
+    tut: { pitch: "G2", pitchDecay: 0.06, decay: 0.55 },
+    dut: { pitch: "D4", decay: 0.2 },
+    tung: { pitch: "D2", decay: 0.45 },
+    takVolume: -10,
+    pakVolume: -12,
+  }),
+)
+
 export { Tone }

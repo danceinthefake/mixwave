@@ -23,7 +23,7 @@ defmodule MixwaveWeb.ChamberLive do
   alias MixwaveWeb.Presence
   alias Mixwave.Chambers
 
-  @instruments [:drums, :keyboard, :guitar, :bass, :pad, :suling]
+  @instruments [:drums, :keyboard, :guitar, :bass, :pad, :suling, :kendang]
   @switch_cooldown_ms 1_000
 
   @impl true
@@ -299,6 +299,7 @@ defmodule MixwaveWeb.ChamberLive do
   defp instrument_label(:bass), do: "Bass"
   defp instrument_label(:pad), do: "Pad"
   defp instrument_label(:suling), do: "Suling"
+  defp instrument_label(:kendang), do: "Kendang"
 
   # Static class strings per instrument so Tailwind picks them up at
   # build time. Uses the per-instrument neon variables defined in
@@ -309,6 +310,7 @@ defmodule MixwaveWeb.ChamberLive do
   defp active_tab_class(:bass), do: "bg-accent-bass/15 text-accent-bass"
   defp active_tab_class(:pad), do: "bg-accent-pad/15 text-accent-pad"
   defp active_tab_class(:suling), do: "bg-accent-suling/15 text-accent-suling"
+  defp active_tab_class(:kendang), do: "bg-accent-kendang/15 text-accent-kendang"
 
   defp accent_var(:drums), do: "var(--accent-drums)"
   defp accent_var(:keyboard), do: "var(--accent-keyboard)"
@@ -316,6 +318,7 @@ defmodule MixwaveWeb.ChamberLive do
   defp accent_var(:bass), do: "var(--accent-bass)"
   defp accent_var(:pad), do: "var(--accent-pad)"
   defp accent_var(:suling), do: "var(--accent-suling)"
+  defp accent_var(:kendang), do: "var(--accent-kendang)"
 
   # Full URL the creator can copy + paste anywhere. Built from the
   # endpoint's configured host so the link works regardless of
