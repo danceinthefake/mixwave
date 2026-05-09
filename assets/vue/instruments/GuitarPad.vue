@@ -29,7 +29,13 @@ const props = defineProps<{
 
 const live = useLiveVue()
 
-type GuitarStyle = "synth" | "electric" | "rock" | "nylon" | "acoustic"
+type GuitarStyle =
+  | "synth"
+  | "electric"
+  | "rock"
+  | "nylon"
+  | "acoustic"
+  | "mandolin"
 type StyleOption = { id: GuitarStyle; label: string }
 
 const styles: StyleOption[] = [
@@ -38,6 +44,7 @@ const styles: StyleOption[] = [
   { id: "rock", label: "Rock" },
   { id: "nylon", label: "Nylon" },
   { id: "acoustic", label: "Acoustic" },
+  { id: "mandolin", label: "Mandolin" },
 ]
 
 const style = ref<GuitarStyle>("synth")
