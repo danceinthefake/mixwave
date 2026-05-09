@@ -5,7 +5,7 @@ defmodule MixwaveWeb.Plugs.EnsureAnonUser do
   - First visit: creates a new `Mixwave.Accounts.AnonymousUser` and
     stores its id in the session. The user gets a funny Javanese-
     style display name from `Mixwave.Accounts.NameGenerator` —
-    something like `gendheng-tempe-42` or `mendhem-bakso-17`.
+    something like `tempe-gendheng-42` or `bakso-mendhem-17`.
   - Subsequent visits: loads the user from the session id. If the
     sweeper has reaped that user (24h idle), starts fresh.
   - Bumps `last_active_at` only when more than 60 seconds have passed

@@ -1,15 +1,16 @@
 defmodule Mixwave.Accounts.NameGenerator do
   @moduledoc """
   Generates anonymous-user display names in the form
-  `<funny-javanese-adjective>-<funny-javanese-noun>-<NN>`, e.g.
-  `gendheng-tempe-42`, `mendhem-bakso-17`, `ngantuk-monyet-08`.
+  `<funny-javanese-noun>-<funny-javanese-adjective>-<NN>`, e.g.
+  `tempe-gendheng-42`, `bakso-mendhem-17`, `monyet-ngantuk-08`.
 
-  Adjectives lean playful / mildly absurd Javanese descriptors —
+  Nouns come first because the noun-then-adjective order reads
+  naturally in Javanese / Indonesian — like a vendor's stall name
+  ("Tempe gendheng!") rather than the English adj-then-noun word
+  order. Adjectives are playful / mildly absurd descriptors:
   drunk, dazed, slovenly, dorky, sleepy, naughty. Nouns are
   Javanese food, animals, and body parts that read as funny
-  whether you speak Javanese or not. Net effect: every login gets
-  a name that sounds like a comedy-skit character who showed up
-  to jam.
+  whether you speak Javanese or not.
 
   30 adjectives × 30 nouns × 100 numbers = 90 000 unique names.
   Two-digit suffix lets the same adjective+noun pair map to many
@@ -33,13 +34,13 @@ defmodule Mixwave.Accounts.NameGenerator do
   )
 
   @doc """
-  Returns a random `<adj>-<noun>-<NN>` name. NN is zero-padded to 2
+  Returns a random `<noun>-<adj>-<NN>` name. NN is zero-padded to 2
   digits so all names sort to the same width.
   """
   def generate do
-    adj = Enum.random(@adjectives)
     noun = Enum.random(@nouns)
+    adj = Enum.random(@adjectives)
     num = :rand.uniform(100) - 1
-    "#{adj}-#{noun}-#{num |> Integer.to_string() |> String.pad_leading(2, "0")}"
+    "#{noun}-#{adj}-#{num |> Integer.to_string() |> String.pad_leading(2, "0")}"
   end
 end
