@@ -40,7 +40,7 @@
           }
           apply(theme);
         };
-        // Default to dark — the studio is meant to feel like a music
+        // Default to dark — the chambers are meant to feel like a music
         // app, not a light-mode admin tool. Users can still flip it.
         apply(localStorage.getItem("phx:theme") || "dark");
         window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));

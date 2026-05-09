@@ -1,4 +1,4 @@
-// Motion tokens for the studio. Use these instead of magic numbers
+// Motion tokens for the chamber. Use these instead of magic numbers
 // in flash timers so the visual feedback stays consistent across
 // instruments. The values are tuned to the physical character of
 // the sound each pad makes:

@@ -18,7 +18,7 @@
 //     - Slap: bandpass-filtered square for funky slap-bass feel
 //
 // Bass is monophonic; one note at a time. Local play + push;
-// remote audio goes through Studio.vue's receiver.
+// remote audio goes through Chamber.vue's receiver.
 
 import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"

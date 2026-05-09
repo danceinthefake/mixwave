@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The single Vue island for the studio. Owns:
+// The single Vue island for the chamber. Owns:
 //   - cross-instrument audio receiver (remote players' notes)
 //   - the active instrument pad (rendered via v-if from a prop)
 //
@@ -115,7 +115,7 @@ onMounted(() => {
 // can be played.
 const audioReady = ref(false)
 
-async function enterStudio() {
+async function enterChamber() {
   await ensureStarted()
   audioReady.value = true
 }
@@ -218,7 +218,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
   >
     <div
       v-if="!audioReady"
-      @click="enterStudio"
+      @click="enterChamber"
       class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/80 cursor-pointer select-none"
     >
       <div class="flex flex-col items-center gap-6 text-center px-4">
@@ -238,7 +238,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         <button
           class="rounded-lg border bg-card hover:bg-accent px-6 py-2.5 text-sm font-medium transition-colors"
         >
-          Enter studio
+          Enter chamber
         </button>
       </div>
     </div>

@@ -15,7 +15,7 @@
 // (upstroke). Both directions broadcast in the payload so remote
 // players hear the same direction the sender played.
 //
-// Local play + push; remote audio goes through Studio.vue's
+// Local play + push; remote audio goes through Chamber.vue's
 // receiver.
 
 import { onMounted, onUnmounted, ref, watch } from "vue"

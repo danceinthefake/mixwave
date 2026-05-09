@@ -24,7 +24,7 @@ defmodule Mixwave.Application do
        name: Mixwave.Chambers.Supervisor, strategy: :one_for_one},
       # Counts how many times each supervised process has restarted.
       Mixwave.RestartWatcher,
-      # Tracks who's in the studio + their selected instrument.
+      # Tracks who's in the chamber + their selected instrument.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry
       MixwaveWeb.Endpoint

@@ -1,6 +1,6 @@
 defmodule MixwaveWeb.ChamberLive do
   @moduledoc """
-  The studio for a single chamber. Mounted at `/chamber/:slug`.
+  The chamber view for a single chamber. Mounted at `/chamber/:slug`.
 
   On mount, looks up the chamber by slug. A missing or invalid
   slug pushes the user back to the landing page with a flash.
@@ -366,7 +366,7 @@ defmodule MixwaveWeb.ChamberLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
-      <%!-- Break out of Layouts.app's max-w-3xl + py-10. The studio
+      <%!-- Break out of Layouts.app's max-w-3xl + py-10. The chamber
            uses the full available width as a stage; the dock floats
            at the bottom of the viewport. --%>
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 pt-4 pb-28">
@@ -486,10 +486,10 @@ defmodule MixwaveWeb.ChamberLive do
             </div>
           </div>
 
-          <%!-- One live_vue island for the whole studio. Vue handles
-               the v-if swap between pads internally — see Studio.vue
+          <%!-- One live_vue island for the whole chamber. Vue handles
+               the v-if swap between pads internally — see Chamber.vue
                for why we don't use three separate islands. --%>
-          <.Studio
+          <.Chamber
             current_instrument={Atom.to_string(@current_instrument)}
             chamber_kind={@chamber.kind}
           />

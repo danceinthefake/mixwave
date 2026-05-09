@@ -1,7 +1,7 @@
 defmodule MixwaveWeb.SupervisorLive do
   @moduledoc """
   Process supervisor view. Lists the supervised processes that
-  back the studio, shows their PID, memory usage, message-queue
+  back the chamber runtime, shows their PID, memory usage, message-queue
   length, and restart count, and exposes a Kill button per row.
   Kill sends `:kill` to the process; the supervisor restarts it,
   the counter ticks up.
@@ -71,12 +71,12 @@ defmodule MixwaveWeb.SupervisorLive do
       <.header>
         Supervisor
         <:subtitle>
-          Supervised processes that back the studio. Kill one and the
-          supervisor restarts it; the studio in another tab keeps
+          Supervised processes that back the chamber runtime. Kill one and the
+          supervisor restarts it; the chamber in another tab keeps
           running through the restart.
         </:subtitle>
         <:actions>
-          <.link navigate={~p"/"} class="text-sm underline">← back to studio</.link>
+          <.link navigate={~p"/"} class="text-sm underline">← back to chamber</.link>
         </:actions>
       </.header>
 
