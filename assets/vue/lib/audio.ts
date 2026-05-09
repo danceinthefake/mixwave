@@ -843,10 +843,14 @@ function makeGuitarPluck(): InstrumentEngine {
 
   function ensure() {
     if (output) return
-    // Karplus-Strong is intrinsically louder than the other guitar
-    // flavors because the noise burst hits the delay line at full
-    // amplitude. 0.3 brings it roughly in line with synth + acoustic.
-    output = new Tone.Gain(0.3).toDestination()
+    // Karplus-Strong is intrinsically much louder than the other
+    // guitar flavors because the noise burst hits the delay line
+    // at full amplitude *and* the high-feedback resonance keeps
+    // the signal energy circulating for seconds. 0.12 (-18 dB
+    // gain) brings it roughly in line with Synth + Acoustic at
+    // matched master-volume settings; even quiet, the pluck still
+    // cuts through the mix because of its sharp transient attack.
+    output = new Tone.Gain(0.12).toDestination()
   }
 
   function pluckNote(note: string, when: number) {
