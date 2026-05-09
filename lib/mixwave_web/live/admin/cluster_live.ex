@@ -325,7 +325,12 @@ defmodule MixwaveWeb.Admin.ClusterLive do
           launches a non-distributed BEAM. To exercise this page,
           start two named nodes against the same DB:
         </p>
-        <pre class="whitespace-pre font-mono text-[11px] bg-muted/40 rounded p-3 mt-1 overflow-x-auto"><%= "Terminal 1: PORT=4000 iex --sname mixwave1 --cookie shared -S mix phx.server\nTerminal 2: PORT=4001 iex --sname mixwave2 --cookie shared -S mix phx.server" %></pre>
+        <pre class="whitespace-pre font-mono text-[11px] bg-muted/40 rounded p-3 mt-1 overflow-x-auto"><%= "Terminal 1: PORT=4000 iex --sname mixwave1 --cookie shared -S mix phx.server\nTerminal 2: PORT=4001 SKIP_VITE=1 iex --sname mixwave2 --cookie shared -S mix phx.server" %></pre>
+        <p class="text-[11px]">
+          The second node sets <code class="px-1 rounded bg-muted">SKIP_VITE=1</code>
+          because Vite only fits on port 5173 once; the second
+          BEAM still gets HMR from the first node's Vite.
+        </p>
         <p>
           Then visit /admin/cluster on either, type the peer node
           name in <strong>Connect</strong>, and watch this table
