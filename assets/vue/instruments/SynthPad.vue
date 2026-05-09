@@ -139,7 +139,7 @@ onUnmounted(() => {
           :class="[
             'px-3 py-1 text-xs rounded-md border transition-colors',
             style === s.id
-              ? 'bg-primary text-primary-foreground border-primary'
+              ? 'bg-accent-pad text-background border-accent-pad'
               : 'bg-card hover:bg-accent text-muted-foreground border-input'
           ]"
         >
@@ -178,7 +178,7 @@ onUnmounted(() => {
         @pointerdown.prevent="trigger(c.name)"
         :class="[
           'rounded-md border bg-card flex flex-col items-center justify-center gap-2 py-6 select-none transition-all active:scale-95 hover:bg-accent',
-          flashing === c.name && 'ring-2 ring-primary scale-95',
+          flashing === c.name && 'ring-2 ring-accent-pad scale-95',
           remoteFlashing === c.name && flashing !== c.name && 'ring-2 ring-orange-400'
         ]"
       >
