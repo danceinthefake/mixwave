@@ -41,7 +41,14 @@ config :mixwave, MixwaveWeb.Endpoint,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "HjTTfSpdfgWOj15/3CxN54DfYqiyBJWvcMrzcqOq4wpfSjpGgRqo5buJXsVWwU1M",
-  watchers: [vite: {PhoenixVite.Npm, :run, [:vite, ~w(dev)]}],
+  # Set SKIP_VITE=1 when starting a second BEAM node locally (port
+  # 5173 only fits one Vite); the second node still gets HMR via
+  # the Vite that's running on the first.
+  watchers:
+    if(System.get_env("SKIP_VITE") == "1",
+      do: [],
+      else: [vite: {PhoenixVite.Npm, :run, [:vite, ~w(dev)]}]
+    ),
   static_url: [host: dev_host, port: 5173]
 
 # ## SSL Support
