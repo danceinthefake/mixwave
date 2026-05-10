@@ -18,12 +18,17 @@ defmodule MixwaveWeb.AdminSessionHTML do
             Admin login
           </h1>
           <p class="text-sm text-muted-foreground">
-            Credentials live in the <code class="text-xs px-1 py-0.5 rounded bg-muted">ADMIN_USER</code> /
-            <code class="text-xs px-1 py-0.5 rounded bg-muted">ADMIN_PASSWORD</code> env vars.
+            Credentials live in the
+            <code class="text-xs px-1 py-0.5 rounded bg-muted">ADMIN_USER</code>
+            / <code class="text-xs px-1 py-0.5 rounded bg-muted">ADMIN_PASSWORD</code>
+            env vars.
           </p>
         </div>
 
-        <div :if={@error} class="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <div
+          :if={@error}
+          class="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+        >
           {@error}
         </div>
 
@@ -35,7 +40,10 @@ defmodule MixwaveWeb.AdminSessionHTML do
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
           <div class="space-y-1.5">
-            <label for="session_username" class="text-xs uppercase tracking-wider text-muted-foreground">
+            <label
+              for="session_username"
+              class="text-xs uppercase tracking-wider text-muted-foreground"
+            >
               Username
             </label>
             <input
@@ -51,7 +59,10 @@ defmodule MixwaveWeb.AdminSessionHTML do
           </div>
 
           <div class="space-y-1.5">
-            <label for="session_password" class="text-xs uppercase tracking-wider text-muted-foreground">
+            <label
+              for="session_password"
+              class="text-xs uppercase tracking-wider text-muted-foreground"
+            >
               Password
             </label>
             <input

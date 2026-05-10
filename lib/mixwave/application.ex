@@ -26,8 +26,7 @@ defmodule Mixwave.Application do
       {Registry, keys: :unique, name: Mixwave.Chambers.Registry},
       # Spawns one Mixwave.Chambers.Server per active chamber. Each
       # holds the chamber's recent-events buffer for join-time replay.
-      {DynamicSupervisor,
-       name: Mixwave.Chambers.Supervisor, strategy: :one_for_one},
+      {DynamicSupervisor, name: Mixwave.Chambers.Supervisor, strategy: :one_for_one},
       # Counts how many times each supervised process has restarted.
       Mixwave.RestartWatcher,
       # Subscribes to custom mixwave telemetry events and rolls up
@@ -43,6 +42,7 @@ defmodule Mixwave.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Mixwave.Supervisor]
+
     children =
       children ++
         if(Application.get_env(:live_vue, :ssr_module) == LiveVue.SSR.QuickBEAM,

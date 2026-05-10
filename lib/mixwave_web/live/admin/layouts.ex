@@ -12,20 +12,43 @@ defmodule MixwaveWeb.Admin.Layouts do
   use MixwaveWeb, :html
 
   @tabs [
-    %{label: "Dashboard", path: "/admin", view: MixwaveWeb.Admin.DashboardLive,
-      icon: "hero-squares-2x2"},
-    %{label: "System", path: "/admin/system", view: MixwaveWeb.Admin.SystemLive,
-      icon: "hero-cpu-chip"},
-    %{label: "Chambers", path: "/admin/chambers", view: MixwaveWeb.Admin.ChambersLive,
-      icon: "hero-cube"},
-    %{label: "Users", path: "/admin/users", view: MixwaveWeb.Admin.UsersLive,
-      icon: "hero-users"},
-    %{label: "Activity", path: "/admin/activity", view: MixwaveWeb.Admin.ActivityLive,
-      icon: "hero-bolt"},
-    %{label: "Sweepers", path: "/admin/sweepers", view: MixwaveWeb.Admin.SweepersLive,
-      icon: "hero-trash"},
-    %{label: "Cluster", path: "/admin/cluster", view: MixwaveWeb.Admin.ClusterLive,
-      icon: "hero-globe-alt"}
+    %{
+      label: "Dashboard",
+      path: "/admin",
+      view: MixwaveWeb.Admin.DashboardLive,
+      icon: "hero-squares-2x2"
+    },
+    %{
+      label: "System",
+      path: "/admin/system",
+      view: MixwaveWeb.Admin.SystemLive,
+      icon: "hero-cpu-chip"
+    },
+    %{
+      label: "Chambers",
+      path: "/admin/chambers",
+      view: MixwaveWeb.Admin.ChambersLive,
+      icon: "hero-cube"
+    },
+    %{label: "Users", path: "/admin/users", view: MixwaveWeb.Admin.UsersLive, icon: "hero-users"},
+    %{
+      label: "Activity",
+      path: "/admin/activity",
+      view: MixwaveWeb.Admin.ActivityLive,
+      icon: "hero-bolt"
+    },
+    %{
+      label: "Sweepers",
+      path: "/admin/sweepers",
+      view: MixwaveWeb.Admin.SweepersLive,
+      icon: "hero-trash"
+    },
+    %{
+      label: "Cluster",
+      path: "/admin/cluster",
+      view: MixwaveWeb.Admin.ClusterLive,
+      icon: "hero-globe-alt"
+    }
   ]
 
   @doc """
@@ -74,8 +97,7 @@ defmodule MixwaveWeb.Admin.Layouts do
               method="delete"
               class="inline-flex items-center gap-1 underline hover:text-foreground"
             >
-              <.icon name="hero-arrow-right-on-rectangle-mini" class="size-3.5" />
-              Log out
+              <.icon name="hero-arrow-right-on-rectangle-mini" class="size-3.5" /> Log out
             </.link>
           </div>
         </aside>

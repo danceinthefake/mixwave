@@ -352,8 +352,9 @@ defmodule MixwaveWeb.Admin.ClusterLive do
         <p>
           Then visit /admin/cluster on either, type the peer node
           name in <strong>Connect</strong>, and watch this table
-          grow. <strong>Drain</strong> on the remote row kills its
-          <code class="px-1 rounded bg-muted">MixwaveWeb.Endpoint</code> via :rpc;
+          grow. <strong>Drain</strong>
+          on the remote row kills its <code class="px-1 rounded bg-muted">MixwaveWeb.Endpoint</code>
+          via :rpc;
           the supervisor brings it back within milliseconds.
         </p>
       </div>

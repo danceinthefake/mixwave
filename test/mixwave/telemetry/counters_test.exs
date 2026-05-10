@@ -42,6 +42,7 @@ defmodule Mixwave.Telemetry.CountersTest do
       after_snap = Counters.snapshot()
 
       assert after_snap.total_notes == before.total_notes + 2
+
       assert Map.get(after_snap.notes_by_instrument, "drums", 0) >=
                Map.get(before.notes_by_instrument, "drums", 0) + 1
 

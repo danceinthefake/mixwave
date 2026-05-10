@@ -112,7 +112,6 @@ defmodule MixwaveWeb.LandingLive do
               </div>
             </button>
           </div>
-
         </div>
       </div>
     </Layouts.app>

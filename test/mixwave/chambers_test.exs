@@ -70,6 +70,7 @@ defmodule Mixwave.ChambersTest do
   describe "set_title/2 + set_kind/2" do
     test "set_title updates the title", %{user: user} do
       {:ok, chamber} = Chambers.create_chamber(user.id)
+
       assert {:ok, %Chamber{title: "Wani's room"}} =
                Chambers.set_title(chamber, "Wani's room")
     end

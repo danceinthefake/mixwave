@@ -476,9 +476,7 @@ defmodule MixwaveWeb.ChamberLive do
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <code
-                class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground"
-              >
+              <code class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground">
                 {chamber_url(@chamber)}
               </code>
               <button
