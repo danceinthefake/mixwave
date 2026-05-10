@@ -415,6 +415,73 @@ resolve to light/dark values via a `dark` class on `<html>`.
 
 ---
 
+## Credits
+
+mixwave is built on the work of a lot of people. Thanks to all of
+the projects and communities below — none of this would exist
+without them.
+
+### Backend / runtime
+
+- [**Elixir**](https://elixir-lang.org/) and [**Erlang/OTP**](https://www.erlang.org/) — the language and the BEAM runtime that makes "kill a process, supervisor brings it back, jam keeps playing" possible.
+- [**Phoenix Framework**](https://phoenixframework.org/) — the web framework, including `phoenix_html`, `phoenix_ecto`, and `phoenix_live_dashboard`.
+- [**Phoenix LiveView**](https://hexdocs.pm/phoenix_live_view) — server-rendered reactive UI; the `kill-flash` row animations and admin tabs run through it.
+- [**Phoenix PubSub**](https://hexdocs.pm/phoenix_pubsub) and [**Phoenix Presence**](https://hexdocs.pm/phoenix/Phoenix.Presence.html) — the realtime backbone. Cross-node native, no Redis required.
+- [**Ecto**](https://hexdocs.pm/ecto) + [**Postgrex**](https://hexdocs.pm/postgrex) — schemas + queries against Postgres.
+- [**Bandit**](https://github.com/mtrudel/bandit) — the HTTP server.
+- [**`dns_cluster`**](https://hexdocs.pm/dns_cluster) — DNS-driven Erlang cluster discovery; powers the multi-machine deploy on Fly.
+- [**Telemetry**](https://hexdocs.pm/telemetry) + [**`telemetry_metrics`**](https://hexdocs.pm/telemetry_metrics) + [**`telemetry_poller`**](https://hexdocs.pm/telemetry_poller) — the observability bus the admin Dashboard reads from.
+- [**ExCoveralls**](https://github.com/parroty/excoveralls) — Elixir test-coverage reporter feeding the README badge.
+- [**Gettext**](https://hexdocs.pm/gettext) — i18n scaffolding (mostly latent today).
+
+### LiveView ↔ Vue bridge
+
+- [**`live_vue`**](https://hexdocs.pm/live_vue) — Vue islands inside LiveView, with SSR via QuickBEAM in prod and Vite in dev.
+- [**`phoenix_vite`**](https://hexdocs.pm/phoenix_vite) — Phoenix integration for Vite's dev server + manifest.
+
+### Vue / TypeScript
+
+- [**Vue 3.5**](https://vuejs.org/) — Composition API, `<script setup>`, the SFC compiler.
+- [**Vite**](https://vite.dev/) (with the [**Rolldown**](https://rolldown.rs/) bundler) — dev server + production build.
+- [**TypeScript**](https://www.typescriptlang.org/) — strict mode, `verbatimModuleSyntax`.
+- [**`@vueuse/core`**](https://vueuse.org/) — composables.
+- [**vue-tsc**](https://github.com/vuejs/language-tools) — type-checking for `.vue` files.
+
+### UI
+
+- [**Tailwind CSS v4**](https://tailwindcss.com/) — utility-first CSS, with the new `@tailwindcss/vite` integration.
+- [**shadcn-vue**](https://www.shadcn-vue.com/) — accessible component starter library.
+- [**Reka UI**](https://reka-ui.com/) — headless primitives behind shadcn-vue.
+- [**Lucide**](https://lucide.dev/) (via `lucide-vue-next`) and [**Heroicons**](https://heroicons.com/) — icon sets.
+- [**`tw-animate-css`**](https://github.com/Wombosvideo/tw-animate-css) — animation utilities for Tailwind.
+- [**`class-variance-authority`**](https://cva.style/), [**`clsx`**](https://github.com/lukeed/clsx), [**`tailwind-merge`**](https://github.com/dcastil/tailwind-merge) — class-name plumbing.
+
+### Audio
+
+- [**Tone.js**](https://tonejs.github.io/) — every synth voice, sampler, reverb, chorus, distortion, and the master FX bus.
+- [**Salamander Grand Piano**](https://github.com/sfzinstruments/SalamanderGrandPiano) samples (MIT-licensed), streamed via `tonejs.github.io/audio`.
+- [**`tonejs-instruments`**](https://github.com/nbrosowsky/tonejs-instruments) by Nick Brosowsky — the acoustic-guitar, nylon-guitar, and flute sample banks for the sampled flavors.
+
+### Tooling
+
+- [**Oxlint**](https://oxc.rs/docs/guide/usage/linter) and [**Oxfmt**](https://oxc.rs/docs/guide/usage/formatter) — Rust-based, very fast.
+- [**Vitest**](https://vitest.dev/) + [**`@vue/test-utils`**](https://test-utils.vuejs.org/) + [**Happy DOM**](https://github.com/capricorn86/happy-dom) — unit testing for the Vue/TS side.
+- [**Igniter**](https://hexdocs.pm/igniter) — codegen helpers used during scaffolding.
+
+### Hosting
+
+- [**Fly.io**](https://fly.io/) — multi-machine deployment with internal DNS for cluster discovery.
+
+### Cultural inspiration
+
+- The Javanese-flavored display names (`tempe-gendheng-42`, `bakso-mendhem-17`, etc.) draw from playful Javanese words for foods, animals, and absurd descriptors. Thanks to that vocabulary tradition for making anonymous identity feel friendly.
+- The Suling and Kendang instruments — and the optional dangdut chamber feel — are a tip of the hat to Indonesian musical heritage. The synthesis is original; the inspiration is not.
+
+---
+
 ## License
 
-Personal / learning project.
+Personal / learning project. Code under this repository is the
+author's own; the third-party packages above retain their own
+licenses (Apache-2.0, MIT, BSD-3-Clause, etc.) — see the
+`mix.lock` and `pnpm-lock.yaml` files for canonical resolutions.
