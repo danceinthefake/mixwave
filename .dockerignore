@@ -1,0 +1,37 @@
+# Keep the build context lean — these directories are either
+# environment-specific, generated, or huge.
+
+# Build artifacts
+_build/
+deps/
+node_modules/
+
+# Compiled / generated assets — the Dockerfile rebuilds them.
+priv/static/assets/
+priv/static/.vite/
+priv/static/server.mjs
+
+# Local dev databases / volumes
+priv/sqlite*
+
+# OS / IDE noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Tests aren't needed in the production image.
+test/
+
+# Git metadata — speeds up the COPY step.
+.git/
+.gitignore
+
+# Local secrets (never copy into the image).
+.env
+.env.*
+!.env.example
+
+# Existing prod artifacts that shouldn't be sent up.
+*.tar
+*.tar.gz

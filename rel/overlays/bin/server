@@ -1,0 +1,6 @@
+#!/bin/sh
+# Boots mixwave with the Phoenix endpoint actually serving (the
+# release sets server: false by default, opted in via env). Used as
+# the Fly machine entrypoint.
+cd -P -- "$(dirname -- "$0")"
+PHX_SERVER=true exec ./mixwave start

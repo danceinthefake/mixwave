@@ -11,7 +11,20 @@ defmodule Mixwave.MixProject do
       aliases: aliases(),
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      listeners: [Phoenix.CodeReloader]
+      listeners: [Phoenix.CodeReloader],
+      releases: releases()
+    ]
+  end
+
+  # Release config: copy the rel/overlays/* scripts into the
+  # built release so `bin/server` and `bin/migrate` are runnable
+  # straight out of the image.
+  defp releases do
+    [
+      mixwave: [
+        include_executables_for: [:unix],
+        applications: [runtime_tools: :permanent]
+      ]
     ]
   end
 

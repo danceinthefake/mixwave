@@ -1,0 +1,6 @@
+#!/bin/sh
+# Runs pending Ecto migrations against the release's configured
+# Repo. Invoked from fly.toml's release_command so every deploy
+# migrates before any new machine starts serving.
+cd -P -- "$(dirname -- "$0")"
+exec ./mixwave eval Mixwave.Release.migrate

@@ -246,6 +246,92 @@ In prod the `AdminAuth` plug fails closed — a missing
 
 ---
 
+## Deploy to Fly.io
+
+The repo ships with everything Fly needs: multi-stage `Dockerfile`,
+`fly.toml`, release scripts under `rel/`, and a release-env hook
+that names each BEAM node after its Fly private IPv6 address so
+the cluster auto-discovers via Fly's internal DNS.
+
+### One-time setup
+
+```sh
+# 1. Install + log in to flyctl.
+brew install flyctl                    # or: curl -L https://fly.io/install.sh | sh
+fly auth login
+
+# 2. Create the app (matches the name in fly.toml).
+fly apps create mixwave
+
+# 3. Provision Postgres + attach it. Fly creates DATABASE_URL
+#    automatically and injects it as a secret on the app.
+fly mpg create --name mixwave-db --org personal --plan basic
+fly mpg attach <db-name> --app mixwave
+
+# 4. Set the rest of the secrets.
+fly secrets set --app mixwave \
+  SECRET_KEY_BASE=$(mix phx.gen.secret) \
+  ADMIN_USER=admin \
+  ADMIN_PASSWORD=$(mix phx.gen.secret 32) \
+  RELEASE_COOKIE=$(mix phx.gen.secret 32)
+```
+
+`RELEASE_COOKIE` matters for clustering — every machine must
+share the same cookie or `Node.connect/1` is refused.
+
+### First deploy
+
+```sh
+fly deploy
+```
+
+The build runs the multi-stage Dockerfile, the `release_command`
+in `fly.toml` runs migrations, and one machine boots in
+`primary_region`. Visit `https://mixwave.fly.dev`.
+
+### Scale to two machines (the BEAM showcase)
+
+```sh
+fly scale count 2
+```
+
+Two machines come up, each with its own private IPv6. The
+release-env hook (`rel/env.sh.eex`) names the BEAM nodes
+`mixwave@<ipv6>`. `dns_cluster` polls `mixwave.internal` (Fly's
+private DNS), discovers the peer, and `Node.connect/1`'s it
+automatically — no Redis, no Kafka, no message broker.
+
+Verify on `/admin/cluster`:
+
+```
+node                                      uptime  procs   memory
+mixwave@fdaa:0:abcd::1                    self    132    24.3 MB
+mixwave@fdaa:0:abcd::2                    14s     128    23.7 MB
+```
+
+Both rows visible = cluster is wired. Open a chamber in two
+private windows, see PubSub fan out across machines.
+
+### Drain demo on production
+
+In `/admin/cluster`, hit **Drain** on a peer row. Fly's load
+balancer round-robins the disconnected clients to the surviving
+machine, the supervisor brings the drained Endpoint back within
+seconds, and traffic re-balances.
+
+### Subsequent deploys
+
+```sh
+fly deploy
+```
+
+Fly does a rolling restart, one machine at a time, so the cluster
+stays at >=1 healthy node throughout. Each machine that boots
+runs migrations via the `release_command` (idempotent — only new
+migrations apply).
+
+---
+
 ## Code layout
 
 ```

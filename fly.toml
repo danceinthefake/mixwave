@@ -1,0 +1,60 @@
+# fly.toml — mixwave deployment config.
+#
+# Replace `mixwave` with whatever app name you registered with
+# `fly apps create` if it differs. The primary_region picks where
+# new machines spawn by default; mixwave benefits from running
+# multi-machine for the cross-node BEAM showcase, so plan to
+# `fly scale count 2` after the first deploy.
+
+app = "mixwave"
+primary_region = "sin"   # Singapore. Change to whatever's nearest.
+kill_signal = "SIGTERM"
+kill_timeout = "10s"
+
+[experimental]
+  auto_rollback = true
+
+[build]
+  # Multi-stage Dockerfile in the repo root.
+
+[deploy]
+  # Run pending migrations once per deploy, before any new
+  # machine starts answering. Idempotent; safe to re-run.
+  release_command = "/app/bin/migrate"
+
+[env]
+  # `fly_app_name`.internal resolves to every running machine in
+  # the app via Fly's private DNS. dns_cluster polls it on a
+  # schedule and Node.connect/1's any peer it finds. Two machines
+  # → automatic Erlang cluster, no extra wiring.
+  DNS_CLUSTER_QUERY = "mixwave.internal"
+  PHX_HOST = "mixwave.fly.dev"
+  PORT = "8080"
+  ECTO_IPV6 = "true"
+
+  # Erlang distribution + clustering settings. Fly's private
+  # network is IPv6-only, so the BEAM has to bind ::0 / use IPv6
+  # node names. Both nodes share an env-injected RELEASE_COOKIE.
+  ERL_AFLAGS = "-proto_dist inet6_tcp"
+  RELEASE_DISTRIBUTION = "name"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"   # always-on so chaos chamber stays jamming
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/"
+    protocol = "http"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
