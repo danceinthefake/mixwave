@@ -134,8 +134,7 @@ defmodule Mixwave.Chambers.Server do
 
     started_at = System.monotonic_time(:millisecond)
 
-    {:ok,
-     Map.merge(state, %{events: [], count: 0, dirty?: false, started_at: started_at})}
+    {:ok, Map.merge(state, %{events: [], count: 0, dirty?: false, started_at: started_at})}
   end
 
   @impl true

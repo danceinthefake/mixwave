@@ -137,7 +137,10 @@ defmodule MixwaveWeb.Admin.DashboardLive do
       <h2 class="mt-8 mb-2 text-xs uppercase tracking-wider text-muted-foreground font-display">
         Notes by instrument
       </h2>
-      <div :if={@telemetry.notes_by_instrument == %{}} class="rounded-lg border border-dashed bg-card/50 p-6 text-center text-sm text-muted-foreground">
+      <div
+        :if={@telemetry.notes_by_instrument == %{}}
+        class="rounded-lg border border-dashed bg-card/50 p-6 text-center text-sm text-muted-foreground"
+      >
         No notes played yet. Open a chamber and hit a pad.
       </div>
       <div

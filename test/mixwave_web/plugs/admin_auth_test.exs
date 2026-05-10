@@ -48,5 +48,4 @@ defmodule MixwaveWeb.Plugs.AdminAuthTest do
       assert conn.status == 503
     end
   end
-
 end

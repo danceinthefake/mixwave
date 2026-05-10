@@ -53,7 +53,11 @@ defmodule MixwaveWeb.CoreComponents do
           <p :if={@title} class="font-semibold">{@title}</p>
           <p>{msg}</p>
         </div>
-        <button type="button" class="opacity-50 hover:opacity-100 cursor-pointer" aria-label={gettext("close")}>
+        <button
+          type="button"
+          class="opacity-50 hover:opacity-100 cursor-pointer"
+          aria-label={gettext("close")}
+        >
           <.icon name="hero-x-mark" class="size-4" />
         </button>
       </div>
@@ -172,7 +176,10 @@ defmodule MixwaveWeb.CoreComponents do
           name={@name}
           value="true"
           checked={@checked}
-          class={@class || "size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"}
+          class={
+            @class ||
+              "size-4 rounded border-input text-primary focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+          }
           {@rest}
         />{@label}
       </label>
@@ -330,7 +337,11 @@ defmodule MixwaveWeb.CoreComponents do
           </tr>
         </thead>
         <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="border-b last:border-0 even:bg-muted/30">
+          <tr
+            :for={row <- @rows}
+            id={@row_id && @row_id.(row)}
+            class="border-b last:border-0 even:bg-muted/30"
+          >
             <td
               :for={col <- @col}
               phx-click={@row_click && @row_click.(row)}

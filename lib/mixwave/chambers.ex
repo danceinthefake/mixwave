@@ -156,9 +156,7 @@ defmodule Mixwave.Chambers do
   """
   def touch_activity(%Chamber{} = chamber) do
     chamber
-    |> Ecto.Changeset.change(
-      last_activity_at: DateTime.utc_now() |> DateTime.truncate(:second)
-    )
+    |> Ecto.Changeset.change(last_activity_at: DateTime.utc_now() |> DateTime.truncate(:second))
     |> Repo.update()
   end
 

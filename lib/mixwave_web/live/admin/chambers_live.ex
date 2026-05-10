@@ -132,7 +132,10 @@ defmodule MixwaveWeb.Admin.ChambersLive do
         </:subtitle>
       </.header>
 
-      <div :if={@chambers == []} class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground">
+      <div
+        :if={@chambers == []}
+        class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground"
+      >
         No chambers in the database yet.
       </div>
 
@@ -152,7 +155,10 @@ defmodule MixwaveWeb.Admin.ChambersLive do
           <tbody class="divide-y">
             <tr :for={c <- @chambers} class={["align-top", c.flashing? && "kill-flash"]}>
               <td class="px-4 py-3">
-                <.link navigate={~p"/chamber/#{c.slug}"} class="font-mono text-xs font-medium hover:underline">
+                <.link
+                  navigate={~p"/chamber/#{c.slug}"}
+                  class="font-mono text-xs font-medium hover:underline"
+                >
                   {c.slug}
                 </.link>
                 <div class="text-xs text-muted-foreground truncate max-w-[18rem]">
@@ -168,13 +174,22 @@ defmodule MixwaveWeb.Admin.ChambersLive do
                 <span :if={c.creator_user_id == nil} class="text-amber-600 dark:text-amber-400">
                   system
                 </span>
-                <span :if={c.creator_user_id != nil and c.activated_at} class="text-emerald-600 dark:text-emerald-400">
+                <span
+                  :if={c.creator_user_id != nil and c.activated_at}
+                  class="text-emerald-600 dark:text-emerald-400"
+                >
                   active
                 </span>
-                <span :if={c.creator_user_id != nil and is_nil(c.activated_at)} class="text-muted-foreground">
+                <span
+                  :if={c.creator_user_id != nil and is_nil(c.activated_at)}
+                  class="text-muted-foreground"
+                >
                   grace
                 </span>
-                <span :if={not c.running?} class="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <span
+                  :if={not c.running?}
+                  class="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground"
+                >
                   no GenServer
                 </span>
               </td>

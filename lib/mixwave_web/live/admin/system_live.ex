@@ -57,9 +57,7 @@ defmodule MixwaveWeb.Admin.SystemLive do
         {:noreply, put_flash(socket, :error, "#{inspect(mod)} is not running.")}
 
       pid ->
-        Logger.warning(
-          "[admin/system] kill issued: #{inspect(mod)} (pid #{inspect(pid)})"
-        )
+        Logger.warning("[admin/system] kill issued: #{inspect(mod)} (pid #{inspect(pid)})")
 
         Process.exit(pid, :kill)
         {:noreply, put_flash(socket, :info, "Killed #{inspect(mod)} — supervisor will restart.")}
@@ -69,9 +67,7 @@ defmodule MixwaveWeb.Admin.SystemLive do
   def handle_event("kill_chamber", %{"slug" => slug}, socket) do
     case Registry.lookup(Mixwave.Chambers.Registry, slug) do
       [{pid, _}] ->
-        Logger.warning(
-          "[admin/system] kill issued: chamber=#{slug} pid=#{inspect(pid)}"
-        )
+        Logger.warning("[admin/system] kill issued: chamber=#{slug} pid=#{inspect(pid)}")
 
         Process.exit(pid, :kill)
 
@@ -199,7 +195,10 @@ defmodule MixwaveWeb.Admin.SystemLive do
         </div>
       </div>
 
-      <div :if={@chambers == []} class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground">
+      <div
+        :if={@chambers == []}
+        class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground"
+      >
         No chambers running. Open one from the landing page to see it
         appear here in real time.
       </div>
@@ -219,7 +218,10 @@ defmodule MixwaveWeb.Admin.SystemLive do
           <tbody class="divide-y">
             <tr :for={c <- @chambers} class={["align-top", c.flashing? && "kill-flash"]}>
               <td class="px-4 py-3">
-                <.link navigate={~p"/chamber/#{c.slug}"} class="font-mono text-xs font-medium hover:underline">
+                <.link
+                  navigate={~p"/chamber/#{c.slug}"}
+                  class="font-mono text-xs font-medium hover:underline"
+                >
                   {c.slug}
                 </.link>
               </td>

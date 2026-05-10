@@ -130,8 +130,7 @@ defmodule MixwaveWeb.Admin.ActivityLive do
       </div>
 
       <p class="mt-4 text-xs text-muted-foreground">
-        Paused stops accepting new events; the stream keeps the last
-        {@max_events} you've seen. Clear empties the visible buffer.
+        Paused stops accepting new events; the stream keeps the last {@max_events} you've seen. Clear empties the visible buffer.
       </p>
     </AdminLayouts.admin_shell>
     """

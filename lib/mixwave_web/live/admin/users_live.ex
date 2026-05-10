@@ -67,7 +67,10 @@ defmodule MixwaveWeb.Admin.UsersLive do
         </:subtitle>
       </.header>
 
-      <div :if={@users == []} class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground">
+      <div
+        :if={@users == []}
+        class="rounded-lg border border-dashed bg-card/50 p-8 text-center text-sm text-muted-foreground"
+      >
         No users in the database.
       </div>
 
