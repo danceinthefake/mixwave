@@ -83,6 +83,10 @@ defmodule MixwaveWeb.ChamberLive do
      |> assign(:instruments, @instruments)
      |> assign(:current_instrument, :drums)
      |> assign(:recorded_count, Chambers.recorded_event_count(chamber.id))
+     # True between Stop Recording and either Download or Reset.
+     # Drives a confirm dialog on Start Recording so the user
+     # doesn't lose a recording they haven't saved yet.
+     |> assign(:has_pending_audio, false)
      # Initialize so the first switch is never blocked. BEAM's
      # monotonic time can be a large negative integer at startup, so
      # `0` here would make the cooldown check (`now - last_switch_at`)
@@ -191,7 +195,14 @@ defmodule MixwaveWeb.ChamberLive do
           event_name =
             if updated.is_recording, do: "start_audio_capture", else: "stop_audio_capture"
 
-          socket = push_event(socket, event_name, %{})
+          socket =
+            socket
+            |> push_event(event_name, %{})
+            # Set the pending-audio flag based on the new state:
+            # turning REC off means a blob is about to land (pending),
+            # turning REC on means we just confirmed-and-replaced any
+            # previous blob (no longer pending).
+            |> assign(:has_pending_audio, not updated.is_recording)
 
           {:noreply, assign(socket, :chamber, updated)}
 
@@ -222,8 +233,17 @@ defmodule MixwaveWeb.ChamberLive do
         {:noreply,
          socket
          |> assign(:recorded_count, 0)
+         |> assign(:has_pending_audio, false)
          |> push_event("clear_audio_capture", %{})}
     end
+  end
+
+  @impl true
+  def handle_event("audio_downloaded", _params, socket) do
+    # Vue's downloadLastRecording sends this so the LV can clear
+    # the pending-audio flag — the user has saved the file, so
+    # the overwrite-confirm on Start Recording shouldn't fire.
+    {:noreply, assign(socket, :has_pending_audio, false)}
   end
 
   @impl true
@@ -625,6 +645,11 @@ defmodule MixwaveWeb.ChamberLive do
             <button
               :if={creator?(@chamber, @current_user)}
               phx-click="toggle_recording"
+              data-confirm={
+                if not @chamber.is_recording and @has_pending_audio,
+                  do:
+                    "Starting a new recording will replace the current audio file (it hasn't been downloaded). Continue?"
+              }
               type="button"
               class={[
                 "inline-flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
@@ -737,6 +762,8 @@ defmodule MixwaveWeb.ChamberLive do
           <.Chamber
             current_instrument={Atom.to_string(@current_instrument)}
             chamber_kind={@chamber.kind}
+            chamber_title={@chamber.title}
+            chamber_slug={@chamber.slug}
           />
         </div>
       </div>

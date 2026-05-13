@@ -43,6 +43,12 @@ import {
 const props = defineProps<{
   current_instrument: "drums" | "keyboard" | "guitar" | "bass" | "pad" | "suling" | "kendang"
   chamber_kind: ChamberKind
+  // Used to name the audio file the user downloads from the
+  // "Download audio" button — title is preferred, slug is the
+  // always-present fallback. Server already truncates title to
+  // 80 chars and trims whitespace.
+  chamber_title?: string | null
+  chamber_slug: string
 }>()
 
 // Apply the chamber's audio character whenever the LiveView
@@ -153,7 +159,12 @@ type ReplayEvent = {
 
 const isReplaying = ref(false)
 const isCapturing = ref(false)
-const lastRecording = ref<{ blob: Blob; createdAt: Date } | null>(null)
+const lastRecording = ref<{
+  blob: Blob
+  createdAt: Date
+  durationMs: number
+} | null>(null)
+let captureStartedAt: number | null = null
 let replayTimers: number[] = []
 
 function startReplay() {
@@ -231,6 +242,7 @@ live.handleEvent("start_audio_capture", async () => {
   try {
     await startRecording()
     isCapturing.value = true
+    captureStartedAt = Date.now()
   } catch (err) {
     console.warn("startRecording failed:", err)
   }
@@ -239,9 +251,19 @@ live.handleEvent("start_audio_capture", async () => {
 live.handleEvent("stop_audio_capture", async () => {
   if (!isCapturing.value) return
   isCapturing.value = false
+  const startedAt = captureStartedAt
+  captureStartedAt = null
   const blob = await stopRecording()
   if (blob && blob.size > 0) {
-    lastRecording.value = { blob, createdAt: new Date() }
+    lastRecording.value = {
+      blob,
+      createdAt: new Date(),
+      // Wall-clock between start and stop. Tone.Recorder doesn't
+      // expose the recording's actual duration, and decoding the
+      // blob to count samples is expensive; this is close enough
+      // for a label.
+      durationMs: startedAt ? Date.now() - startedAt : 0,
+    }
   }
 })
 
@@ -254,23 +276,60 @@ function downloadLastRecording() {
   if (!rec) return
 
   const url = URL.createObjectURL(rec.blob)
-  // `audio/webm` on Chrome/Firefox, `audio/mp4` on Safari. The
-  // browser chooses; we just map MIME to extension.
-  const ext = rec.blob.type.includes("mp4") ? "mp4" : "webm"
-  const stamp = rec.createdAt
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\..+$/, "")
-    .replace("T", "-")
   const a = document.createElement("a")
   a.href = url
-  a.download = `mixwave-jam-${stamp}.${ext}`
+  a.download = recordingFilename(rec.blob, rec.createdAt)
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   // Hold the URL until next tick so the download has a chance to
   // start before we revoke; firefox is picky about this.
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+  // Let the LV clear its has_pending_audio flag so a subsequent
+  // Start Recording doesn't trip the overwrite confirm.
+  live.pushEvent("audio_downloaded", {})
+}
+
+// Maps the MIME type Tone.Recorder produced to a sensible
+// filename extension. MediaRecorder commonly emits audio/ogg
+// on Firefox, audio/webm on Chrome, audio/mp4 on Safari.
+function extensionFor(mime: string): string {
+  if (mime.includes("mp4")) return "mp4"
+  if (mime.includes("ogg")) return "ogg"
+  return "webm"
+}
+
+// Build the download filename. Prefer the chamber title (if set
+// and non-empty) over the slug. Strip everything except alnum,
+// dash, and underscore so the name is filesystem-safe across
+// platforms.
+function recordingFilename(blob: Blob, createdAt: Date): string {
+  const stem = (props.chamber_title?.trim() || props.chamber_slug)
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "")
+    .slice(0, 60) || "jam"
+
+  const stamp = createdAt
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\..+$/, "")
+    .replace("T", "-")
+
+  return `mixwave-${stem}-${stamp}.${extensionFor(blob.type)}`
+}
+
+function formatDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.round(ms / 1000))
+  const min = Math.floor(totalSec / 60)
+  const sec = totalSec % 60
+  return `${min}:${sec.toString().padStart(2, "0")}`
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
 }
 
 // Cross-instrument audio: every user hears every other user with the
@@ -347,15 +406,20 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
           {{ isReplaying ? "Stop replay" : "↩ Replay 30s" }}
         </button>
 
-        <!-- Download audio. Visible only after a recordable replay
-             has produced a Blob; clears on a new replay. -->
+        <!-- Download audio. Visible after Stop recording; stays
+             visible until the user clicks Reset Recording or
+             starts a new recording (and lets it finish). -->
         <button
           v-if="lastRecording"
           @click="downloadLastRecording"
-          class="px-2.5 py-1 text-xs rounded-md text-foreground bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer"
-          :title="`Download the recording as an audio file (${lastRecording.blob.type})`"
+          class="px-2.5 py-1 text-xs rounded-md text-foreground bg-primary/10 hover:bg-primary/20 transition-colors cursor-pointer flex items-center gap-1.5"
+          :title="`${lastRecording.blob.type} • ${recordingFilename(lastRecording.blob, lastRecording.createdAt)}`"
         >
-          ⬇ Download audio
+          <span>⬇ Download audio</span>
+          <span class="text-muted-foreground tabular-nums">
+            · {{ formatDuration(lastRecording.durationMs) }} ·
+            {{ formatBytes(lastRecording.blob.size) }}
+          </span>
         </button>
 
         <!-- Pulsing red dot while a recordable replay is captured.
