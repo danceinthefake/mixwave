@@ -43,6 +43,9 @@ defmodule Mixwave.Application do
       # per-process counters for the admin Dashboard. Started early
       # so it never misses an event from a chamber or sweeper.
       Mixwave.Telemetry.Counters,
+      # Subscribes to note_dropped events and rolls up per-user /
+      # per-chamber drop counts for the admin Rate limits tab.
+      Mixwave.Telemetry.RateLimitDrops,
       # Tracks who's in the chamber + their selected instrument.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry

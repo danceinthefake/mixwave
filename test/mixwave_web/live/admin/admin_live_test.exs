@@ -101,6 +101,17 @@ defmodule MixwaveWeb.Admin.AdminLiveTest do
     end
   end
 
+  describe "Rate limits" do
+    test "renders the empty state when nothing is saturated", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/admin/rate-limits")
+      assert html =~ "Rate limits"
+      # Either nothing saturated or nothing dropped — both empty
+      # states are in the page on a freshly-booted test.
+      assert html =~ "Saturated right now"
+      assert html =~ "Lifetime drops"
+    end
+  end
+
   describe "Chamber detail" do
     test "renders the chamber's facts + recent-notes panel", %{conn: conn} do
       {:ok, user} = Accounts.create_anonymous_user()

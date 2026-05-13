@@ -225,6 +225,14 @@ will add a `jams` table at that point, not before.
   presence list, recording status, GenServer uptime + restart
   count, and Kill / Delete actions (both audited). The Chambers
   sidebar tab stays highlighted via `current_view` override.
+- **Rate limits dashboard**: ✅ shipped — `/admin/rate-limits` is
+  fed by a new `Mixwave.Telemetry.RateLimitDrops` GenServer that
+  subscribes to `[:mixwave, :chamber, :note_dropped]`. Two
+  sections: "Saturated right now" (ETS bucket walk for users at
+  ≥80% of the 20/sec cap in the current window) and "Lifetime
+  drops" (per-(user × chamber) counters since BEAM start).
+  Resolves user_ids → display_name + alias via a new
+  `Accounts.list_users_by_ids/1` bulk fetch.
 - **`anonymous_users` retention**: keep the 24-hour idle threshold
   unchanged for v1.
 - **Recording**: not in v1; planned for v2.
