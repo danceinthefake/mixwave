@@ -32,20 +32,58 @@ import liveVueApp from "../vue"
 // swaps the button label to "Copied!". Lives in a Phoenix Hook
 // instead of an inline `onclick=` so the strict prod CSP can drop
 // `'unsafe-inline'` from `script-src`.
+//
+// `navigator.clipboard` only resolves in secure contexts (HTTPS,
+// localhost, 127.0.0.1). When mixwave is opened over plain HTTP
+// on a LAN IP — the common dev/cross-device-test scenario — that
+// API silently rejects, so the fallback uses a hidden textarea +
+// `document.execCommand("copy")`, which still works there.
 const CopyToClipboard = {
   mounted() {
-    this.el.addEventListener("click", () => {
+    this.el.addEventListener("click", async () => {
       const url = this.el.dataset.copyUrl
       if (!url) return
-      navigator.clipboard.writeText(url).then(() => {
-        const original = this.el.textContent
-        this.el.textContent = "Copied!"
-        setTimeout(() => {
-          this.el.textContent = original
-        }, 1500)
-      })
+
+      const ok = await copyText(url)
+      const original = this.el.textContent
+      this.el.textContent = ok ? "Copied!" : "Copy failed"
+      setTimeout(() => {
+        this.el.textContent = original
+      }, 1500)
     })
   },
+}
+
+async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch (err) {
+      console.warn("clipboard.writeText failed, falling back:", err)
+    }
+  }
+
+  // Legacy path. execCommand is deprecated but is the only thing
+  // that copies from non-secure contexts, and every current browser
+  // still implements it.
+  const ta = document.createElement("textarea")
+  ta.value = text
+  ta.setAttribute("readonly", "")
+  ta.style.position = "fixed"
+  ta.style.top = "-1000px"
+  ta.style.opacity = "0"
+  document.body.appendChild(ta)
+  ta.select()
+  ta.setSelectionRange(0, text.length)
+  let ok = false
+  try {
+    ok = document.execCommand("copy")
+  } catch (err) {
+    console.warn("execCommand('copy') threw:", err)
+  }
+  document.body.removeChild(ta)
+  return ok
 }
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
