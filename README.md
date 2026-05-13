@@ -15,19 +15,11 @@
 ![Vue coverage](https://raw.githubusercontent.com/OWNER/REPO/badges/badges/vue-coverage.svg)
 
 Real-time collaborative music chambers — pick a chamber, pick an
-instrument, jam alongside everyone else who has the link. Built as
-a deliberate showcase for the **Vue + Elixir + Phoenix + LiveView**
-stack: every layer's flagship capability is wired to a concrete,
-demoable feature on the page.
+instrument, jam alongside everyone else who has the link. Built on
+**Vue + Elixir + Phoenix + LiveView**.
 
-> One project, every layer pulls its weight.
-> WebSocket fan-out, hot-restartable rooms, cross-node clustering,
-> client-side audio synthesis, fault-tolerant chaos demos — none of
-> it bolted on, all native.
-
-See [BRAINSTORM.md](./BRAINSTORM.md) for the talk-shape framing
-and the original v1/v2/v3 cuts; this README is the as-shipped
-snapshot.
+> WebSocket fan-out, hot-restartable chambers, cross-node
+> clustering, client-side audio synthesis — all native, no broker.
 
 ---
 
@@ -111,7 +103,7 @@ Each row's "Where to look" is a feature you can poke at running locally.
 | **Phoenix LiveView** | Chamber LV + 7-tab admin shell; HEEX components + streams; `kill-flash` keyframes triggered by data alone | `lib/mixwave_web/live/` |
 | **Phoenix.PubSub** | Chamber audio fan-out, global activity firehose, restart-watcher topic — all cross-node native | `Mixwave.Chambers.broadcast_note/2` |
 | **Phoenix.Presence** | "Who's jamming" panel + dock avatars; CRDT means cross-node converge with no extra wiring | `MixwaveWeb.Presence` |
-| **OTP / GenServer / DynamicSupervisor + Registry** | One Server per chamber, supervised; transient restart strategy; chaos kill demo with red-flash recovery | `Mixwave.Chambers.Server` |
+| **OTP / GenServer / DynamicSupervisor + Registry** | One Server per chamber, supervised; transient restart strategy; a killed chamber is brought back automatically with a red-flash row in the admin LV | `Mixwave.Chambers.Server` |
 | **ETS** | Per-slug restart counter survives the very process it's counting | `:chamber_restart_counts` table, init in `Mixwave.Application` |
 | **`:telemetry`** | Custom events `[:mixwave, :chamber, :note / :created / :deleted / :restarted]` feeding `Mixwave.Telemetry.Counters` for live dashboard cards + `Telemetry.Metrics` for LiveDashboard | `lib/mixwave/telemetry/counters.ex` + `lib/mixwave_web/telemetry.ex` |
 | **BEAM distribution** | Cluster LV, manual `Node.connect/1` form, drain cycles a peer's Endpoint via `:rpc.call/4`; `dns_cluster` ready for prod auto-discovery | `MixwaveWeb.Admin.ClusterLive` |
@@ -200,7 +192,7 @@ For testing with another device on your LAN:
 
 ---
 
-## Multi-node cluster (the BEAM showcase)
+## Multi-node cluster
 
 Two BEAM nodes on the same machine, sharing one Postgres + one
 Vite, connected via Erlang distribution. PubSub + Presence
@@ -235,20 +227,20 @@ In the **Cluster** tab on either node, type the peer's full node
 name (e.g. `mixwave2@your-hostname`) into the **Connect** form.
 The table grows; PubSub + Presence converge automatically.
 
-### What to demo
+### Cross-node smoke checks
 
 1. Open a chamber in two private windows — one on `:4000`, one on
    `:4001`. Each lands on a different BEAM.
-2. Tap a drum on `:4000` → it plays on `:4001`. Cross-node fan-out
-   working.
+2. Tap a drum on `:4000` — it plays on `:4001`. Cross-node
+   fan-out is working.
 3. Hit **Drain** on the `:4001` row in the Cluster tab on `:4000`.
    `:rpc.call/4` reaches across, `Supervisor.terminate_child` +
    `restart_child` cycle node 2's Endpoint. The browser tab on
-   `:4001` drops + reconnects within ~100 ms; the jam in
+   `:4001` drops + reconnects within ~100 ms; the jam on
    `:4000` keeps going.
-4. Hit **Kill** on a chamber row in the **System** tab. Watch the
-   row flash red, restart count tick up, and the chamber's events
-   buffer reset. The connected players keep playing through it
+4. Hit **Kill** on a chamber row in the **System** tab. The row
+   flashes red, restart count ticks up, and the chamber's events
+   buffer resets. Connected players keep playing through it
    because PubSub + Presence are independent of the per-chamber
    GenServer.
 
@@ -314,7 +306,7 @@ The build runs the multi-stage Dockerfile, the `release_command`
 in `fly.toml` runs migrations, and one machine boots in
 `primary_region`. Visit `https://mixwave.fly.dev`.
 
-### Scale to two machines (the BEAM showcase)
+### Scale to two machines
 
 ```sh
 fly scale count 2
@@ -337,7 +329,7 @@ mixwave@fdaa:0:abcd::2                    14s     128    23.7 MB
 Both rows visible = cluster is wired. Open a chamber in two
 private windows, see PubSub fan out across machines.
 
-### Drain demo on production
+### Drain a peer on production
 
 In `/admin/cluster`, hit **Drain** on a peer row. Fly's load
 balancer round-robins the disconnected clients to the surviving
@@ -361,7 +353,7 @@ migrations apply).
 
 ```
 mixwave/
-├── BRAINSTORM.md                 talk shape + locked decisions (older)
+├── BRAINSTORM.md                 design decisions + project history
 ├── README.md                     this file
 ├── lib/
 │   ├── mixwave/
@@ -407,7 +399,7 @@ mixwave/
 | Tooling (JS) | **Oxlint** + **Oxfmt** — Rust-based replacements for ESLint + Prettier, ~100× faster on this size of tree |
 | LV ↔ Vue bridge | **`live_vue` 1.2** — Vue islands rendered inside LiveView |
 | Audio | **Tone.js** — PolySynth, MembraneSynth, MonoSynth, NoiseSynth, Sampler streaming from `tonejs-instruments` CDN, master FX bus |
-| Hosting (planned) | Fly.io with `dns_cluster` auto-clustering |
+| Hosting | Fly.io with `dns_cluster` auto-clustering |
 
 The HEEX side and the Vue island side share one design language —
 shadcn-vue's CSS variables are wired in `assets/css/app.css` and
@@ -481,7 +473,7 @@ without them.
 
 ## License
 
-Personal / learning project. Code under this repository is the
-author's own; the third-party packages above retain their own
-licenses (Apache-2.0, MIT, BSD-3-Clause, etc.) — see the
-`mix.lock` and `pnpm-lock.yaml` files for canonical resolutions.
+Code under this repository is the author's own; the third-party
+packages above retain their own licenses (Apache-2.0, MIT,
+BSD-3-Clause, etc.) — see the `mix.lock` and `pnpm-lock.yaml`
+files for canonical resolutions.

@@ -1,32 +1,17 @@
 # mixwave — real-time collaborative studio
 
-A Vue + Elixir/Phoenix/LiveView showcase. **One global studio**:
-anyone who hits the URL joins a single shared jam. Pick up an
+A real-time collaborative music studio. One global studio,
+anyone with the URL joins a single shared jam; pick up an
 instrument — guitar, keyboard, or drums — and play alongside
-everyone else online in real time. No accounts. No separate rooms
-(in v1). The point is to make the case for **Vue + Elixir** by
-building the kind of app this stack was made for: live, multi-user,
-fault-tolerant, distributable.
+everyone else online. Built on **Vue + Elixir/Phoenix/LiveView**.
 
-## 1. Audience & Goal
+**Non-goal**: studio-quality timing sync. Real musical performance
+needs <30 ms end-to-end; WebSocket round-trips can't hit that
+without WebRTC. mixwave is a best-effort jam-along — visual
+presence + fast-but-not-instant audio fanout — and the UI
+acknowledges it openly.
 
-- **v1–v2 audience**: my team during sharing sessions. The talk is
-  my tech-learning journey — Vue and Elixir/Phoenix/LiveView, the
-  two stacks I picked up over the last year, finally meeting in one
-  app.
-- **v3 audience**: the wider dev community. Public deploy on a real
-  domain, GitHub repo, writeup. The pitch: *"show the world what
-  this stack can do that other stacks make hard."*
-- **Primary goal**: a single project where each stack layer (Vue,
-  Tone.js, LiveView, Phoenix Channels/PubSub, OTP fault-tolerance,
-  BEAM distribution) has a concrete, demoable feature.
-- **Non-goal**: studio-quality timing sync. Real musical
-  performance needs <30 ms end-to-end; WebSocket round-trips can't
-  hit that without WebRTC. We sell a **best-effort jam-along** —
-  visual presence + fast-but-not-instant audio fanout — and
-  acknowledge it openly in the UI.
-
-## 2. The Stack and What Each Layer Brings (revised)
+## 1. The Stack and What Each Layer Brings (revised)
 
 | Layer | Flagship feature |
 | --- | --- |
@@ -38,33 +23,10 @@ fault-tolerant, distributable.
 | **OTP fault tolerance** | A `Mixwave.Studio.Room` GenServer holds room state (recent events for join-time replay). On the v2 supervisor LiveView, the chaos button kills it → supervisor restarts in <100 ms → users see a brief "reconnecting" → the jam resumes |
 | **BEAM distribution (v3)** | Multi-node Fly deploy. Players on node 1 + node 2 jam together; PubSub + Presence cross-node fanout is native — no Redis, no Kafka, no message broker |
 
-This is honestly a **better** stack-showcase than the original
-upload-app product. Real-time many-user collaboration is the
-canonical "what BEAM was built for" story.
+Real-time many-user collaboration is the canonical "what BEAM
+was built for" story.
 
-## 3. Demo Flow on Stage (5 minutes)
-
-1. **Open the studio.** Page renders: instrument tabs (Drums /
-   Keyboard / Guitar), presence sidebar showing only `ayu-merak-42`,
-   a small footer line: *"best-effort sync — distant users may
-   sound a beat off."*
-2. **Tap to begin.** A "tap to enter the studio" overlay starts the
-   Tone.js audio context (required by browser autoplay policy).
-3. **Hit the drums.** Kick + snare + hi-hat. Sound plays locally
-   with ~zero latency.
-4. **Open a second tab** as `wani-macan-17`. They appear in the
-   sidebar. Switch to keyboard, hold a chord.
-5. **Both tabs hear both sounds.** Tab 1 plays its own drums
-   instantly; receives + plays tab 2's keyboard via PubSub.
-6. **(v2) Chaos button.** On the supervisor LiveView, kill the
-   `Studio.Room` GenServer. Both tabs see "reconnecting" — the
-   supervisor restarts the room within 100 ms — Presence
-   re-converges — the jam resumes.
-7. **(v3) Cross-node demo.** Open a third tab against a *second*
-   Fly machine. Plays guitar. Tabs 1 + 2 — on the *first* machine —
-   hear it. No code that says "talk to other nodes."
-
-## 4. Tech Choices
+## 2. Tech Choices
 
 ### Frontend
 - **Vue 3.5** + TypeScript (strict, `verbatimModuleSyntax`) + Vite 8
@@ -91,7 +53,7 @@ canonical "what BEAM was built for" story.
 - Postgres: Fly Postgres (low LV latency)
 - Domain: Fly default subdomain through v3
 
-## 5. Layout (revised)
+## 3. Layout (revised)
 
 ```
 mixwave/
@@ -141,13 +103,13 @@ mixwave/
 └── test/
 ```
 
-## 6. Database Schema
+## 4. Database Schema
 
 Just `anonymous_users`. The jam is ephemeral — no songs, no
 comments, no R2 storage. v2's "save the last 30 seconds" feature
 will add a `jams` table at that point, not before.
 
-## 7. Versions
+## 5. Versions
 
 ### v1 — the studio works
 
@@ -196,10 +158,10 @@ will add a `jams` table at that point, not before.
 18. Cluster LiveView (nodes / process counts / cross-node latency).
 19. "Drain node N" button — Presence rebalances; users on the
     drained node reconnect to the survivor.
-20. README + writeup + GIF + open-source.
+20. README + GIF + open-source.
 21. Public URL (Fly default subdomain).
 
-## 8. Build Order (high-level)
+## 6. Build Order (high-level)
 
 1. Rewrite BRAINSTORM (this commit).
 2. Roll back songs + comments migrations; delete the migration files.
@@ -222,7 +184,7 @@ will add a `jams` table at that point, not before.
 13. Smoke test with multiple browsers.
 14. **Ship v1.**
 
-## 9. Decisions (locked)
+## 7. Decisions (locked)
 
 - **Audio**: Tone.js synthesis (synth, polysynth, membrane, pluck).
 - **Instruments v1**: guitar + keyboard + drums — all three.
