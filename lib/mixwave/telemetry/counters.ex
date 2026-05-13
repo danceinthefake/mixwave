@@ -25,6 +25,7 @@ defmodule Mixwave.Telemetry.Counters do
 
   @events [
     [:mixwave, :chamber, :note],
+    [:mixwave, :chamber, :note_dropped],
     [:mixwave, :chamber, :created],
     [:mixwave, :chamber, :deleted],
     [:mixwave, :chamber, :restarted]
@@ -50,6 +51,10 @@ defmodule Mixwave.Telemetry.Counters do
 
   def handle_event([:mixwave, :chamber, :note], _measurements, metadata, _config) do
     GenServer.cast(__MODULE__, {:note, metadata})
+  end
+
+  def handle_event([:mixwave, :chamber, :note_dropped], _, _, _) do
+    GenServer.cast(__MODULE__, :note_dropped)
   end
 
   def handle_event([:mixwave, :chamber, :created], _, _, _) do
@@ -78,7 +83,7 @@ defmodule Mixwave.Telemetry.Counters do
     end)
 
     state = %{
-      counters: %{notes: 0, created: 0, deleted: 0, restarted: 0},
+      counters: %{notes: 0, notes_dropped: 0, created: 0, deleted: 0, restarted: 0},
       notes_by_instrument: %{},
       notes_history: :queue.new(),
       started_at: System.monotonic_time(:millisecond)
@@ -99,6 +104,10 @@ defmodule Mixwave.Telemetry.Counters do
       |> Map.update!(:notes_history, &:queue.in(now, &1))
 
     {:noreply, state}
+  end
+
+  def handle_cast(:note_dropped, state) do
+    {:noreply, update_in(state, [:counters, :notes_dropped], &(&1 + 1))}
   end
 
   def handle_cast(:created, state) do
@@ -126,6 +135,7 @@ defmodule Mixwave.Telemetry.Counters do
 
     snapshot = %{
       total_notes: state.counters.notes,
+      total_notes_dropped: state.counters.notes_dropped,
       total_created: state.counters.created,
       total_deleted: state.counters.deleted,
       total_restarted: state.counters.restarted,

@@ -226,9 +226,10 @@ will add a `jams` table at that point, not before.
   instrument. Cleaner than letting them ring through the change.
 - **Mobile keyboard pad**: horizontal scroll for the full octave.
   Acceptable in v1.
-- **Anti-spam**: defer — BEAM handles 2500 events/sec from 50
-  spammers without breaking. Add throttling if it becomes an actual
-  problem.
+- **Anti-spam**: ✅ shipped — `Mixwave.RateLimiter` caps each user
+  at 20 note events/sec/chamber via an ETS fixed-window bucket;
+  drops past budget emit `[:mixwave, :chamber, :note_dropped]`
+  which the admin Dashboard surfaces as "Notes — dropped".
 - **`anonymous_users` retention**: keep the 24-hour idle threshold
   unchanged for v1.
 - **Recording**: not in v1; planned for v2.

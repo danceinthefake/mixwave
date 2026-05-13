@@ -26,6 +26,14 @@ defmodule MixwaveWeb.ChamberLive do
   @instruments [:drums, :keyboard, :guitar, :bass, :pad, :suling, :kendang]
   @switch_cooldown_ms 1_000
 
+  # Anti-flood guard on the `note` event. 20/sec/user is plenty of
+  # headroom for human play (a fast drummer is ~10 hits/sec) and
+  # caps automated spam decisively. Drops past the budget are
+  # silent client-side; the server emits a telemetry event so the
+  # admin Dashboard can show how many got shed.
+  @note_rate_max 20
+  @note_rate_window_ms 1_000
+
   @impl true
   def mount(%{"slug" => slug}, _session, socket) do
     case Chambers.find_by_slug(slug) do
@@ -155,13 +163,30 @@ defmodule MixwaveWeb.ChamberLive do
   @impl true
   def handle_event("note", payload, socket) do
     user = socket.assigns.current_user
+    slug = socket.assigns.chamber_slug
 
-    payload
-    |> Map.put("user_id", user.id)
-    |> Map.put("display_name", user.display_name)
-    |> then(&Mixwave.Chambers.broadcast_note(socket.assigns.chamber_slug, &1))
+    case Mixwave.RateLimiter.hit(
+           {:note, user.id, slug},
+           @note_rate_max,
+           @note_rate_window_ms
+         ) do
+      :ok ->
+        payload
+        |> Map.put("user_id", user.id)
+        |> Map.put("display_name", user.display_name)
+        |> then(&Mixwave.Chambers.broadcast_note(slug, &1))
 
-    {:noreply, socket}
+        {:noreply, socket}
+
+      :rate_limited ->
+        :telemetry.execute(
+          [:mixwave, :chamber, :note_dropped],
+          %{count: 1},
+          %{slug: slug, user_id: user.id}
+        )
+
+        {:noreply, socket}
+    end
   end
 
   @impl true

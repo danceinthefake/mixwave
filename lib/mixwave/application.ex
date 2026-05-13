@@ -13,6 +13,16 @@ defmodule Mixwave.Application do
     # Initialised here so it exists before the first chamber starts.
     :ets.new(:chamber_restart_counts, [:set, :public, :named_table, write_concurrency: true])
 
+    # Public ETS bucket store for the note-event rate limiter
+    # (one row per {scope, user, slug}). Created here so the first
+    # incoming LV `note` event finds it ready.
+    :ets.new(Mixwave.RateLimiter.table(), [
+      :set,
+      :public,
+      :named_table,
+      write_concurrency: true
+    ])
+
     children = [
       MixwaveWeb.Telemetry,
       Mixwave.Repo,

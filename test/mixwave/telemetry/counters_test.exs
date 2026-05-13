@@ -9,9 +9,9 @@ defmodule Mixwave.Telemetry.CountersTest do
       assert is_map(snap)
 
       for key <- ~w(
-            total_notes total_created total_deleted total_restarted
-            notes_last_60s notes_last_10s notes_per_second
-            notes_by_instrument uptime_ms
+            total_notes total_notes_dropped total_created total_deleted
+            total_restarted notes_last_60s notes_last_10s
+            notes_per_second notes_by_instrument uptime_ms
           )a do
         assert Map.has_key?(snap, key), "missing key #{inspect(key)}"
       end
@@ -65,6 +65,17 @@ defmodule Mixwave.Telemetry.CountersTest do
       assert after_snap.total_created == before.total_created + 1
       assert after_snap.total_deleted == before.total_deleted + 1
       assert after_snap.total_restarted == before.total_restarted + 1
+    end
+
+    test "note_dropped bumps total_notes_dropped" do
+      before = Counters.snapshot()
+
+      :telemetry.execute([:mixwave, :chamber, :note_dropped], %{count: 1}, %{slug: "a"})
+
+      _ = Counters.snapshot()
+      after_snap = Counters.snapshot()
+
+      assert after_snap.total_notes_dropped == before.total_notes_dropped + 1
     end
   end
 end

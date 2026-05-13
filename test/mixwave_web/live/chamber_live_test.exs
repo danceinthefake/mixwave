@@ -72,4 +72,56 @@ defmodule MixwaveWeb.ChamberLiveTest do
       assert info.event_count >= 1
     end
   end
+
+  describe "note rate limiting" do
+    setup do
+      Mixwave.RateLimiter.reset()
+      :ok
+    end
+
+    test "drops notes past 20/sec/user", %{conn: conn, chamber: chamber} do
+      Phoenix.PubSub.subscribe(Mixwave.PubSub, Chambers.topic(chamber.slug))
+
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      payload = %{"instrument" => "drums", "style" => "synth", "note" => "kick"}
+
+      # 30 hits — first 20 should broadcast, the next 10 should be
+      # silently dropped by the limiter.
+      for _ <- 1..30, do: render_hook(view, "note", payload)
+
+      received = drain_chamber_notes(0)
+
+      assert received == 20
+    end
+
+    test "emits the [:mixwave, :chamber, :note_dropped] telemetry event on drop",
+         %{conn: conn, chamber: chamber} do
+      test_pid = self()
+
+      :telemetry.attach(
+        "note_dropped_test_handler_#{:erlang.unique_integer([:positive])}",
+        [:mixwave, :chamber, :note_dropped],
+        fn _, _, _, _ -> send(test_pid, :dropped) end,
+        nil
+      )
+
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+      payload = %{"instrument" => "drums", "style" => "synth", "note" => "kick"}
+
+      for _ <- 1..25, do: render_hook(view, "note", payload)
+
+      assert_receive :dropped, 500
+    end
+  end
+
+  # Counts {:chamber_note, _} messages already buffered on the test
+  # PID's mailbox. Stops as soon as none arrive within 50 ms.
+  defp drain_chamber_notes(acc) do
+    receive do
+      {:chamber_note, _} -> drain_chamber_notes(acc + 1)
+    after
+      50 -> acc
+    end
+  end
 end

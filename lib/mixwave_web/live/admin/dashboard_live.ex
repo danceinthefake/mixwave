@@ -118,6 +118,11 @@ defmodule MixwaveWeb.Admin.DashboardLive do
         />
         <.stat label="Notes — total" value={@telemetry.total_notes} />
         <.stat
+          label="Notes — dropped"
+          value={@telemetry.total_notes_dropped}
+          hint="rate-limited at 20/sec/user"
+        />
+        <.stat
           label="Chambers created"
           value={@telemetry.total_created}
           hint="excluding system / Chaos"
