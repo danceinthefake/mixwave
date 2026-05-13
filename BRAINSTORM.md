@@ -234,6 +234,10 @@ will add a `jams` table at that point, not before.
   per-request Content-Security-Policy header. Prod is nonce-based
   with no `'unsafe-inline'` for scripts; dev is permissive enough
   for Vite HMR + LiveReloader.
+- **User alias**: ✅ shipped — additive nickname on top of the
+  auto-generated `display_name`. Inline editor at the bottom of
+  the Jamming panel; alias renders above the anon name, never
+  replaces it. 32-char cap; blank input clears.
 - **`anonymous_users` retention**: keep the 24-hour idle threshold
   unchanged for v1.
 - **Recording**: not in v1; planned for v2.

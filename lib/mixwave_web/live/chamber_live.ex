@@ -64,6 +64,7 @@ defmodule MixwaveWeb.ChamberLive do
       {:ok, _} =
         Presence.track(self(), presence_topic(slug), user.id, %{
           display_name: user.display_name,
+          alias: user.alias,
           instrument: :drums,
           joined_at: System.system_time(:second)
         })
@@ -174,6 +175,7 @@ defmodule MixwaveWeb.ChamberLive do
         payload
         |> Map.put("user_id", user.id)
         |> Map.put("display_name", user.display_name)
+        |> Map.put("alias", user.alias)
         |> then(&Mixwave.Chambers.broadcast_note(slug, &1))
 
         {:noreply, socket}
@@ -186,6 +188,26 @@ defmodule MixwaveWeb.ChamberLive do
         )
 
         {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_event("set_alias", %{"alias" => value}, socket) do
+    user = socket.assigns.current_user
+    slug = socket.assigns.chamber_slug
+
+    case Mixwave.Accounts.set_alias(user, value) do
+      {:ok, updated} ->
+        # Re-track presence so other clients see the new alias
+        # without needing to re-query the DB.
+        Presence.update(self(), presence_topic(slug), updated.id, fn meta ->
+          %{meta | alias: updated.alias}
+        end)
+
+        {:noreply, assign(socket, :current_user, updated)}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Alias is too long (max 32 chars).")}
     end
   end
 
@@ -261,6 +283,15 @@ defmodule MixwaveWeb.ChamberLive do
   end
 
   defp presence_topic(slug) when is_binary(slug), do: "chamber:#{slug}:presence"
+
+  # Display helpers for the (alias, display_name) pair. The
+  # auto-generated display_name is always shown somewhere; the
+  # alias becomes the headline when set.
+  defp alias_set?(%{alias: a}) when is_binary(a) and a != "", do: true
+  defp alias_set?(_), do: false
+
+  defp primary_name(%{alias: a} = _meta) when is_binary(a) and a != "", do: a
+  defp primary_name(%{display_name: name}), do: name
 
   # Flips the chamber's `activated_at` from NULL to a timestamp
   # the first time someone other than the creator is present.
@@ -546,32 +577,66 @@ defmodule MixwaveWeb.ChamberLive do
             <li
               :for={{user_id, %{metas: [meta | _]}} <- @presences}
               class={[
-                "flex items-center gap-2 px-3 py-1.5 text-sm",
+                "flex items-start gap-2 px-3 py-1.5 text-sm",
                 user_id == @current_user.id && "bg-primary/5"
               ]}
             >
               <span
-                class="size-2 rounded-full shrink-0"
+                class="size-2 rounded-full shrink-0 mt-2"
                 style={"background-color: " <> accent_var(meta.instrument)}
               >
               </span>
               <div class="flex-1 min-w-0">
+                <%!-- Primary line: the alias if set, else the
+                     auto-generated noun-adj-NN name. --%>
                 <div class={[
                   "truncate leading-tight",
                   user_id == @current_user.id && "font-semibold text-foreground",
                   user_id != @current_user.id && "text-foreground"
                 ]}>
-                  {meta.display_name}
+                  {primary_name(meta)}
                   <span :if={user_id == @current_user.id} class="text-muted-foreground font-normal">
                     (you)
                   </span>
                 </div>
-                <div class="text-[11px] text-muted-foreground leading-tight">
-                  {instrument_label(meta.instrument)}
+                <%!-- Secondary line: the anon name whenever an
+                     alias is present (so the auto-generated
+                     identifier never disappears), with the
+                     instrument label trailing. --%>
+                <div class="text-[11px] text-muted-foreground leading-tight truncate font-mono">
+                  <span :if={alias_set?(meta)}>{meta.display_name} · </span>{instrument_label(
+                    meta.instrument
+                  )}
                 </div>
               </div>
             </li>
           </ul>
+          <%!-- Inline alias editor for the current user. Submits on
+               Enter or blur; empty input clears the alias. Lives at
+               the bottom of the panel so it's always reachable. --%>
+          <form
+            phx-submit="set_alias"
+            phx-change="set_alias"
+            class="border-t p-2"
+            id="alias-editor"
+            phx-update="ignore"
+          >
+            <label class="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
+              Your alias
+            </label>
+            <input
+              type="text"
+              name="alias"
+              value={@current_user.alias || ""}
+              maxlength="32"
+              placeholder="Set a nickname…"
+              phx-debounce="600"
+              class="w-full bg-transparent border border-input rounded-md px-2 py-1 text-xs outline-none focus:border-primary/60"
+            />
+            <p class="text-[10px] text-muted-foreground mt-1 px-1">
+              Shown above {@current_user.display_name}. Empty to clear.
+            </p>
+          </form>
         </div>
       </aside>
 
@@ -618,9 +683,9 @@ defmodule MixwaveWeb.ChamberLive do
                     user_id == @current_user.id && "bg-primary text-primary-foreground",
                     user_id != @current_user.id && "bg-muted text-muted-foreground"
                   ]}
-                  title={"#{meta.display_name} · #{instrument_label(meta.instrument)}"}
+                  title={"#{primary_name(meta)}#{if alias_set?(meta), do: " · " <> meta.display_name, else: ""} · #{instrument_label(meta.instrument)}"}
                 >
-                  {meta.display_name |> String.first() |> String.upcase()}
+                  {primary_name(meta) |> String.first() |> String.upcase()}
                 </span>
               </div>
               <span class="text-xs text-muted-foreground tabular-nums whitespace-nowrap">

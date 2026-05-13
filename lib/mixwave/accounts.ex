@@ -44,6 +44,17 @@ defmodule Mixwave.Accounts do
   end
 
   @doc """
+  Sets the user's optional alias. Pass an empty string (or only
+  whitespace) to clear it back to `nil`. The auto-generated
+  `display_name` is never touched.
+  """
+  def set_alias(%AnonymousUser{} = user, value) do
+    user
+    |> AnonymousUser.alias_changeset(%{"alias" => value})
+    |> Repo.update()
+  end
+
+  @doc """
   Deletes anonymous users idle for more than `hours` hours. Returns
   the number of rows deleted. Cascade FK constraints take care of
   songs + comments.

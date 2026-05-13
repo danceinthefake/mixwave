@@ -73,6 +73,42 @@ defmodule MixwaveWeb.ChamberLiveTest do
     end
   end
 
+  describe "alias" do
+    test "set_alias updates the DB + presence meta + UI", %{
+      conn: conn,
+      chamber: chamber,
+      user: user
+    } do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      # Submit the alias form.
+      view
+      |> element("#alias-editor")
+      |> render_submit(%{"alias" => "Bob"})
+
+      # DB row updated.
+      assert %{alias: "Bob"} = Accounts.get_anonymous_user(user.id)
+
+      # Sidebar primary line now shows the alias with the anon
+      # name under it.
+      html = render(view)
+      assert html =~ "Bob"
+      assert html =~ user.display_name
+    end
+
+    test "submitting a blank alias clears it", %{conn: conn, chamber: chamber, user: user} do
+      {:ok, _} = Accounts.set_alias(user, "Bob")
+
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      view
+      |> element("#alias-editor")
+      |> render_submit(%{"alias" => ""})
+
+      assert %{alias: nil} = Accounts.get_anonymous_user(user.id)
+    end
+  end
+
   describe "note rate limiting" do
     setup do
       Mixwave.RateLimiter.reset()

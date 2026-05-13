@@ -12,10 +12,16 @@ defmodule Mixwave.Accounts.AnonymousUser do
 
   schema "anonymous_users" do
     field :display_name, :string
+    # Optional user-set nickname. The auto-generated `display_name`
+    # stays the canonical identifier — UI shows the alias on top
+    # with the anon name beneath. nil means "no alias set."
+    field :alias, :string
     field :last_active_at, :utc_datetime
 
     timestamps(type: :utc_datetime, updated_at: false)
   end
+
+  @max_alias_length 32
 
   @doc """
   Changeset for creating a fresh anonymous user. The display name is
@@ -35,5 +41,35 @@ defmodule Mixwave.Accounts.AnonymousUser do
   """
   def touch_changeset(user, now) do
     change(user, last_active_at: now)
+  end
+
+  @doc """
+  Sets the alias. Trims whitespace; blank → `nil` so users can
+  clear an alias by submitting empty. Caps at #{@max_alias_length}
+  chars.
+  """
+  def alias_changeset(user, attrs) do
+    attrs = normalise_alias(attrs)
+
+    user
+    |> cast(attrs, [:alias])
+    |> validate_length(:alias, max: @max_alias_length)
+  end
+
+  defp normalise_alias(attrs) do
+    case attrs do
+      %{"alias" => value} -> %{attrs | "alias" => blank_to_nil(value)}
+      %{alias: value} -> %{attrs | alias: blank_to_nil(value)}
+      _ -> attrs
+    end
+  end
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
   end
 end

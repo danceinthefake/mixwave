@@ -108,4 +108,36 @@ defmodule Mixwave.AccountsTest do
       assert {:error, :not_found} = Accounts.delete_anonymous_user(Ecto.UUID.generate())
     end
   end
+
+  describe "set_alias/2" do
+    test "sets a trimmed alias and leaves display_name untouched" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      original = user.display_name
+
+      assert {:ok, updated} = Accounts.set_alias(user, "  Bob  ")
+      assert updated.alias == "Bob"
+      assert updated.display_name == original
+    end
+
+    test "blank or whitespace-only alias clears the field" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, user} = Accounts.set_alias(user, "Bob")
+
+      assert {:ok, %{alias: nil}} = Accounts.set_alias(user, "")
+      {:ok, user} = Accounts.set_alias(user, "Bob")
+      assert {:ok, %{alias: nil}} = Accounts.set_alias(user, "   ")
+    end
+
+    test "rejects an alias longer than 32 chars" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      assert {:error, changeset} = Accounts.set_alias(user, String.duplicate("a", 33))
+      assert "should be at most 32 character(s)" in errors_on(changeset).alias
+    end
+
+    test "accepts a 32-char alias exactly at the cap" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      max = String.duplicate("a", 32)
+      assert {:ok, %{alias: ^max}} = Accounts.set_alias(user, max)
+    end
+  end
 end
