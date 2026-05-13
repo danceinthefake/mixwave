@@ -62,6 +62,7 @@ defmodule MixwaveWeb.Router do
       live "/", DashboardLive, :index
       live "/system", SystemLive, :index
       live "/chambers", ChambersLive, :index
+      live "/chambers/:slug", ChamberDetailLive, :show
       live "/users", UsersLive, :index
       live "/activity", ActivityLive, :index
       live "/sweepers", SweepersLive, :index

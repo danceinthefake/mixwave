@@ -156,12 +156,24 @@ defmodule MixwaveWeb.Admin.ChambersLive do
           <tbody class="divide-y">
             <tr :for={c <- @chambers} class={["align-top", c.flashing? && "kill-flash"]}>
               <td class="px-4 py-3">
-                <.link
-                  navigate={~p"/chamber/#{c.slug}"}
-                  class="font-mono text-xs font-medium hover:underline"
-                >
-                  {c.slug}
-                </.link>
+                <div class="flex items-center gap-2">
+                  <%!-- Slug now links to the admin drill-down. The
+                       small ↗ link beside it still opens the
+                       user-facing chamber view. --%>
+                  <.link
+                    navigate={~p"/admin/chambers/#{c.slug}"}
+                    class="font-mono text-xs font-medium hover:underline"
+                  >
+                    {c.slug}
+                  </.link>
+                  <.link
+                    navigate={~p"/chamber/#{c.slug}"}
+                    class="text-[10px] text-muted-foreground hover:text-foreground"
+                    title="Open the user-facing chamber"
+                  >
+                    ↗
+                  </.link>
+                </div>
                 <div class="text-xs text-muted-foreground truncate max-w-[18rem]">
                   {c.title || "(no title)"}
                 </div>

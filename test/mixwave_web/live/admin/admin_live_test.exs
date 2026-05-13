@@ -100,4 +100,33 @@ defmodule MixwaveWeb.Admin.AdminLiveTest do
       assert html =~ to_string(Node.self())
     end
   end
+
+  describe "Chamber detail" do
+    test "renders the chamber's facts + recent-notes panel", %{conn: conn} do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+
+      {:ok, _view, html} = live(conn, ~p"/admin/chambers/#{chamber.slug}")
+      assert html =~ chamber.slug
+      assert html =~ "Recent notes"
+      assert html =~ "Who&#39;s here" or html =~ "Who's here"
+      assert html =~ "Danger zone"
+    end
+
+    test "unknown slug redirects back to the chambers list", %{conn: conn} do
+      assert {:error, {:live_redirect, %{to: "/admin/chambers"}}} =
+               live(conn, ~p"/admin/chambers/does-not-exist")
+    end
+
+    test "delete from the detail page removes the chamber", %{conn: conn} do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+
+      {:ok, view, _html} = live(conn, ~p"/admin/chambers/#{chamber.slug}")
+
+      view |> element("button", "Delete chamber") |> render_click()
+
+      refute Chambers.find_by_slug(chamber.slug)
+    end
+  end
 end

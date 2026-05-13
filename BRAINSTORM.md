@@ -220,6 +220,11 @@ will add a `jams` table at that point, not before.
   (5/15/30/60 min). The banner stores in `banners`, broadcasts on
   `system:banner` PubSub, and a `BannerHook` on_mount plants it on
   every browser LV so the message live-updates without polling.
+- **Per-chamber drill-down**: ✅ shipped — clicking a row in the
+  Chambers tab goes to `/admin/chambers/:slug` with live note feed,
+  presence list, recording status, GenServer uptime + restart
+  count, and Kill / Delete actions (both audited). The Chambers
+  sidebar tab stays highlighted via `current_view` override.
 - **`anonymous_users` retention**: keep the 24-hour idle threshold
   unchanged for v1.
 - **Recording**: not in v1; planned for v2.
