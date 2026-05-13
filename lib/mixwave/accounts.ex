@@ -34,6 +34,37 @@ defmodule Mixwave.Accounts do
   def get_anonymous_user(id), do: Repo.get(AnonymousUser, id)
 
   @doc """
+  Bulk fetch anonymous users by id. Returns a map keyed by id so
+  callers can resolve N rows without N queries. Missing ids
+  silently drop out of the map (the caller decides what to show
+  for a deleted user).
+  """
+  def list_users_by_ids([]), do: %{}
+
+  def list_users_by_ids(ids) when is_list(ids) do
+    import Ecto.Query
+
+    # The caller might hand us arbitrary strings (e.g. telemetry
+    # rows from before the user existed). Filter to valid UUIDs
+    # so a bad id never blows up the query.
+    valid_ids =
+      ids
+      |> Enum.filter(&is_binary/1)
+      |> Enum.filter(fn id -> match?({:ok, _}, Ecto.UUID.cast(id)) end)
+
+    case valid_ids do
+      [] ->
+        %{}
+
+      ids ->
+        AnonymousUser
+        |> where([u], u.id in ^ids)
+        |> Repo.all()
+        |> Map.new(fn u -> {u.id, u} end)
+    end
+  end
+
+  @doc """
   Bumps `last_active_at`. Caller is responsible for any debounce; this
   function unconditionally writes.
   """

@@ -54,6 +54,12 @@ defmodule MixwaveWeb.Admin.Layouts do
       path: "/admin/ops",
       view: MixwaveWeb.Admin.OpsLive,
       icon: "hero-megaphone"
+    },
+    %{
+      label: "Rate limits",
+      path: "/admin/rate-limits",
+      view: MixwaveWeb.Admin.RateLimitsLive,
+      icon: "hero-no-symbol"
     }
   ]
 
