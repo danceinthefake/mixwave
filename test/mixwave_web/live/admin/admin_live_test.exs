@@ -12,7 +12,12 @@ defmodule MixwaveWeb.Admin.AdminLiveTest do
   alias Mixwave.{Accounts, Chambers}
 
   setup %{conn: conn} do
-    conn = Plug.Test.init_test_session(conn, %{admin_authenticated: true})
+    conn =
+      Plug.Test.init_test_session(conn, %{
+        admin_authenticated: true,
+        admin_username: "admin"
+      })
+
     %{conn: conn}
   end
 
@@ -148,6 +153,21 @@ defmodule MixwaveWeb.Admin.AdminLiveTest do
       view |> element("button", "Delete chamber") |> render_click()
 
       refute Chambers.find_by_slug(chamber.slug)
+    end
+
+    test "audit row attributes the action to the signed-in admin", %{conn: conn} do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, chamber} = Chambers.create_chamber(user.id)
+
+      {:ok, view, _html} = live(conn, ~p"/admin/chambers/#{chamber.slug}")
+      view |> element("button", "Delete chamber") |> render_click()
+
+      action =
+        Mixwave.Audit.recent_actions(5)
+        |> Enum.find(&(&1.action == "delete_chamber" and &1.target == "chamber:#{chamber.slug}"))
+
+      assert action
+      assert action.admin_user == "admin"
     end
   end
 end

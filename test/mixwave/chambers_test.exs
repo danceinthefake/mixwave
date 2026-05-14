@@ -208,22 +208,42 @@ defmodule Mixwave.ChambersTest do
       assert is_nil(Chambers.find_by_id(idle.id))
     end
 
-    test "delete_idle_since skips system chambers and unactivated ones", %{user: user} do
+    test "delete_idle_since skips system chambers and fresh-grace ones", %{user: user} do
       cutoff = DateTime.utc_now() |> DateTime.add(-1, :hour) |> DateTime.truncate(:second)
       ancient = DateTime.utc_now() |> DateTime.add(-48, :hour) |> DateTime.truncate(:second)
 
+      # System chamber — `creator_user_id` is NULL, exempt from
+      # the sweeper even at ancient activity.
       {:ok, chaos} = Chambers.ensure_chaos_chamber()
       chaos |> Ecto.Changeset.change(last_activity_at: ancient) |> Repo.update!()
 
-      {:ok, unactivated} = Chambers.create_chamber(user.id)
-
-      unactivated
-      |> Ecto.Changeset.change(last_activity_at: ancient)
-      |> Repo.update!()
+      # Unactivated chamber, still inside the 30-min grace window
+      # — owned by the GenServer's `:check_grace` timer, not the
+      # sweeper.
+      {:ok, unactivated_fresh} = Chambers.create_chamber(user.id)
 
       assert Chambers.delete_idle_since(cutoff) == 0
       refute is_nil(Chambers.find_by_id(chaos.id))
-      refute is_nil(Chambers.find_by_id(unactivated.id))
+      refute is_nil(Chambers.find_by_id(unactivated_fresh.id))
+    end
+
+    test "delete_idle_since reaps unactivated chambers past their grace window",
+         %{user: user} do
+      cutoff = DateTime.utc_now() |> DateTime.add(-24, :hour) |> DateTime.truncate(:second)
+      past_grace = DateTime.utc_now() |> DateTime.add(-60, :minute) |> DateTime.truncate(:second)
+
+      {:ok, orphan} = Chambers.create_chamber(user.id)
+
+      # Backdate to past the 30-min grace window. Simulates the
+      # case where the chamber's GenServer died (BEAM restart,
+      # supervisor giving up) before `:check_grace` could fire,
+      # leaving the row stranded.
+      orphan
+      |> Ecto.Changeset.change(inserted_at: past_grace, last_activity_at: past_grace)
+      |> Repo.update!()
+
+      assert Chambers.delete_idle_since(cutoff) == 1
+      assert is_nil(Chambers.find_by_id(orphan.id))
     end
   end
 

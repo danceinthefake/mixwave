@@ -45,7 +45,11 @@ defmodule MixwaveWeb.Admin.ChambersLive do
 
       %{slug: slug} = chamber ->
         Logger.warning("[admin/chambers] force-delete: slug=#{slug} id=#{id}")
-        Mixwave.Audit.log("delete_chamber", "chamber:#{slug}", %{id: id})
+
+        Mixwave.Audit.log_as(socket.assigns.current_admin, "delete_chamber", "chamber:#{slug}", %{
+          id: id
+        })
+
         Chambers.delete(chamber)
 
         Phoenix.PubSub.broadcast(

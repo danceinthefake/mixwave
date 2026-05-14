@@ -17,12 +17,24 @@ defmodule Mixwave.Audit do
 
   @doc """
   Convenience wrapper that auto-fills `admin_user` from the
-  configured `:admin_user` env. Most admin handlers can just call
-  `Audit.log/2` or `Audit.log/3` instead of `log_action/4`.
+  configured `:admin_user` env. Use this for actions taken
+  outside an LV context (system-driven sweeps, RPC calls,
+  break-glass paths) where no logged-in admin is attached.
   """
   def log(action, target, metadata \\ %{}) when is_binary(action) do
     admin = Application.get_env(:mixwave, :admin_user, "admin")
     log_action(action, target, admin, metadata)
+  end
+
+  @doc """
+  Like `log/3` but takes the admin user explicitly. Admin LVs
+  should call this with `socket.assigns.current_admin` so the
+  audit row points at the human who took the action instead of
+  the catch-all env user.
+  """
+  def log_as(admin_user, action, target, metadata \\ %{})
+      when is_binary(admin_user) and is_binary(action) do
+    log_action(action, target, admin_user, metadata)
   end
 
   @doc """

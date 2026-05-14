@@ -230,21 +230,40 @@ defmodule Mixwave.Chambers do
     |> Repo.update()
   end
 
-  @doc """
-  Deletes every chamber whose `last_activity_at` is older than the
-  given cutoff. Returns the count of deleted rows. The sweeper
-  passes `cutoff = now - 24h`.
+  # Must match the chamber GenServer's @grace_period_ms. The
+  # Server's timer is the happy path for unactivated chambers;
+  # this constant is the sweeper backstop for chambers whose
+  # GenServer died before the grace check could fire (BEAM
+  # restart, supervisor giving up after too many crashes, etc.).
+  @grace_period_minutes 30
 
-  Only sweeps chambers that have been activated — non-activated
-  chambers are owned by their GenServer's grace-period timer.
+  @doc """
+  Deletes idle chambers in two passes:
+
+    * **Activated chambers** (someone other than the creator
+      joined): swept when `last_activity_at < cutoff` (the
+      sweeper passes `cutoff = now - 24h`).
+    * **Unactivated chambers**: swept when their row is older
+      than the #{@grace_period_minutes}-minute grace window.
+      The chamber's GenServer normally deletes these via its
+      `:check_grace` timer; this is the backstop for the case
+      where the GenServer died before grace fired.
+
+  System chambers (`creator_user_id` is NULL — the Chaos
+  chamber) are exempt and live forever.
   """
+
   def delete_idle_since(%DateTime{} = cutoff) do
+    grace_cutoff =
+      DateTime.utc_now()
+      |> DateTime.add(-@grace_period_minutes * 60, :second)
+
     {count, _} =
       from(c in Chamber,
         where:
-          not is_nil(c.activated_at) and
-            not is_nil(c.creator_user_id) and
-            c.last_activity_at < ^cutoff
+          not is_nil(c.creator_user_id) and
+            ((not is_nil(c.activated_at) and c.last_activity_at < ^cutoff) or
+               (is_nil(c.activated_at) and c.inserted_at < ^grace_cutoff))
       )
       |> Repo.delete_all()
 

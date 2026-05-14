@@ -48,7 +48,7 @@ defmodule MixwaveWeb.Admin.SweepersLive do
         Logger.warning("[admin/sweepers] manual sweep_now: #{sweeper.label}")
         {:ok, deleted} = sweeper.module.sweep_now()
 
-        Mixwave.Audit.log("run_sweeper", "sweeper:#{key}", %{
+        Mixwave.Audit.log_as(socket.assigns.current_admin, "run_sweeper", "sweeper:#{key}", %{
           label: sweeper.label,
           deleted: deleted
         })

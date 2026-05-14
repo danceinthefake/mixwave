@@ -1,16 +1,25 @@
 defmodule MixwaveWeb.AdminSessionController do
   @moduledoc """
-  Login + logout for the `/admin` section. Replaces HTTP Basic
-  Auth (browser popup) with a proper session-backed form so the
-  login UX matches the rest of the app.
+  Login + logout for the `/admin` section.
 
-  The credentials are still env-driven — `:admin_user` /
-  `:admin_password` from `Application.get_env(:mixwave, ...)` —
-  but on success we set `:admin_authenticated` in the session;
-  `MixwaveWeb.Plugs.AdminAuth` checks that flag instead of the
-  Authorization header.
+  Authentication tries two sources, in order:
+
+    1. **Database** — `Mixwave.Admins.authenticate/2`. Per-user
+       rows with bcrypt-hashed passwords. The audit log
+       attributes actions to the row's username.
+    2. **Env fallback** — `:admin_user` / `:admin_password` from
+       app env. Intended as a break-glass route: if every admin
+       has forgotten their password, the env credentials still
+       let an operator in. Audit rows from an env login attribute
+       to the env username (typically "admin").
+
+  Both paths set the same session keys
+  (`:admin_authenticated`, `:admin_username`), so downstream
+  plugs and LVs can stay source-agnostic.
   """
   use MixwaveWeb, :controller
+
+  alias Mixwave.Admins
 
   @doc """
   Renders the login form. If the user is already authenticated,
@@ -26,23 +35,26 @@ defmodule MixwaveWeb.AdminSessionController do
   end
 
   @doc """
-  Validates submitted credentials against the configured admin
-  user/password. On success: regenerates the session id, flips
-  the authenticated flag, redirects to `/admin`. On failure: re-
-  renders the form with an error message and the entered username
-  preserved.
+  Validates submitted credentials, first against the admins
+  table, then against the env fallback. On success: regenerates
+  the session id, stashes the authenticated flag + username,
+  redirects to `/admin`. On failure: re-renders the form with an
+  error message and the entered username preserved.
   """
   def create(conn, %{"session" => %{"username" => user, "password" => pass}}) do
-    if valid?(user, pass) do
-      conn
-      |> configure_session(renew: true)
-      |> put_session(:admin_authenticated, true)
-      |> put_flash(:info, "Welcome, admin.")
-      |> redirect(to: ~p"/admin")
-    else
-      conn
-      |> put_status(:unauthorized)
-      |> render(:new, error: "Invalid username or password.", username: user)
+    case verify(user, pass) do
+      {:ok, username} ->
+        conn
+        |> configure_session(renew: true)
+        |> put_session(:admin_authenticated, true)
+        |> put_session(:admin_username, username)
+        |> put_flash(:info, "Welcome, #{username}.")
+        |> redirect(to: ~p"/admin")
+
+      :error ->
+        conn
+        |> put_status(:unauthorized)
+        |> render(:new, error: "Invalid username or password.", username: user)
     end
   end
 
@@ -54,11 +66,28 @@ defmodule MixwaveWeb.AdminSessionController do
   def delete(conn, _params) do
     conn
     |> delete_session(:admin_authenticated)
+    |> delete_session(:admin_username)
     |> put_flash(:info, "Logged out.")
     |> redirect(to: ~p"/")
   end
 
-  defp valid?(user, pass) do
+  # First try the admins table. If that doesn't match, try the env
+  # break-glass credentials. Returns {:ok, username} or :error.
+  defp verify(user, pass) when is_binary(user) and is_binary(pass) do
+    case Admins.authenticate(user, pass) do
+      %Mixwave.Admins.Admin{username: username} ->
+        {:ok, username}
+
+      nil ->
+        if env_match?(user, pass) do
+          {:ok, Application.get_env(:mixwave, :admin_user, "admin")}
+        else
+          :error
+        end
+    end
+  end
+
+  defp env_match?(user, pass) do
     expected_user = Application.get_env(:mixwave, :admin_user)
     expected_pass = Application.get_env(:mixwave, :admin_password)
 

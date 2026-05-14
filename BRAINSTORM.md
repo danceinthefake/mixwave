@@ -225,6 +225,16 @@ will add a `jams` table at that point, not before.
   presence list, recording status, GenServer uptime + restart
   count, and Kill / Delete actions (both audited). The Chambers
   sidebar tab stays highlighted via `current_view` override.
+- **Per-user admin auth**: ✅ shipped — `admins` table with
+  bcrypt-hashed passwords + a new Admins section on the Ops tab
+  for add / delete. AdminSessionController first tries
+  `Admins.authenticate/2`; on miss falls back to the env
+  `ADMIN_USER` / `ADMIN_PASSWORD` (kept as a break-glass route
+  if every DB row's password is lost). Each login stashes
+  `:admin_username` in the session, the admin `live_session`
+  pulls it into `:current_admin`, and audit rows now use
+  `Audit.log_as/4` so they attribute to a real person instead
+  of all reading "admin".
 - **Graceful shutdown / drain**: ✅ shipped — `Mixwave.Drain`
   sits at the tail of the supervision tree so it's the first
   process terminated on SIGTERM. Its `terminate/2` broadcasts

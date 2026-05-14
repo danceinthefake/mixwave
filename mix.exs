@@ -86,6 +86,7 @@ defmodule Mixwave.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:live_vue, "~> 1.2"},
+      {:bcrypt_elixir, "~> 3.0"},
       {:igniter, "~> 0.5", only: [:dev]},
       {:excoveralls, "~> 0.18", only: :test}
     ]

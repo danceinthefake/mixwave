@@ -1,18 +1,19 @@
 defmodule MixwaveWeb.Admin.OpsLive do
   @moduledoc """
-  Admin → Ops tab. Two things share this page:
+  Admin → Ops tab. Three things share this page:
 
     * **Broadcast banner** — admin types a message, picks a
       duration, and every connected LV shows it at the top of the
       page until it expires.
+    * **Admins** — per-user admin accounts (add / remove); the
+      env break-glass admin always works regardless of what's in
+      this table.
     * **Audit log** — append-only history of admin actions
       (kills, drains, broadcasts, sweeper runs, force-expires).
-
-  Both back onto the `banners` and `admin_actions` tables.
   """
   use MixwaveWeb, :live_view
 
-  alias Mixwave.{Audit, Banners}
+  alias Mixwave.{Admins, Audit, Banners}
   alias MixwaveWeb.Admin.Layouts, as: AdminLayouts
 
   @durations [5, 15, 30, 60]
@@ -30,9 +31,12 @@ defmodule MixwaveWeb.Admin.OpsLive do
      |> assign(:actions, Audit.recent_actions(100))
      |> assign(:total_actions, Audit.count_actions())
      |> assign(:active_banner, Banners.current_banner())
+     |> assign(:admins, Admins.list_admins())
      |> assign(:durations, @durations)
      |> assign(:default_duration, 15)
-     |> assign(:message_input, "")}
+     |> assign(:message_input, "")
+     |> assign(:new_admin, %{"username" => "", "password" => ""})
+     |> assign(:new_admin_error, nil)}
   end
 
   @impl true
@@ -68,11 +72,11 @@ defmodule MixwaveWeb.Admin.OpsLive do
         {:noreply, put_flash(socket, :error, "Invalid duration.")}
 
       true ->
-        admin = Application.get_env(:mixwave, :admin_user, "admin")
+        admin = socket.assigns.current_admin
 
         case Banners.set_banner(message, duration, admin) do
           {:ok, banner} ->
-            Audit.log("broadcast_banner", nil, %{
+            Audit.log_as(admin, "broadcast_banner", nil, %{
               message: message,
               duration_minutes: duration,
               banner_id: banner.id
@@ -97,10 +101,61 @@ defmodule MixwaveWeb.Admin.OpsLive do
     end
   end
 
+  def handle_event(
+        "add_admin",
+        %{"username" => username, "password" => password},
+        socket
+      ) do
+    case Admins.create_admin(%{username: username, password: password}) do
+      {:ok, admin} ->
+        Audit.log_as(socket.assigns.current_admin, "add_admin", "admin:#{admin.username}", %{
+          id: admin.id
+        })
+
+        {:noreply,
+         socket
+         |> assign(:admins, Admins.list_admins())
+         |> assign(:new_admin, %{"username" => "", "password" => ""})
+         |> assign(:new_admin_error, nil)
+         |> assign(:actions, Audit.recent_actions(100))
+         |> assign(:total_actions, Audit.count_actions())
+         |> put_flash(:info, "Added admin #{admin.username}.")}
+
+      {:error, changeset} ->
+        error =
+          changeset.errors
+          |> Enum.map(fn {f, {msg, _}} -> "#{f} #{msg}" end)
+          |> Enum.join("; ")
+
+        {:noreply, assign(socket, :new_admin_error, error)}
+    end
+  end
+
+  def handle_event("delete_admin", %{"id" => id}, socket) do
+    case Admins.get_admin(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Admin not found.")}
+
+      admin ->
+        {:ok, _} = Admins.delete_admin(admin)
+
+        Audit.log_as(socket.assigns.current_admin, "delete_admin", "admin:#{admin.username}", %{
+          id: admin.id
+        })
+
+        {:noreply,
+         socket
+         |> assign(:admins, Admins.list_admins())
+         |> assign(:actions, Audit.recent_actions(100))
+         |> assign(:total_actions, Audit.count_actions())
+         |> put_flash(:info, "Deleted admin #{admin.username}.")}
+    end
+  end
+
   def handle_event("clear_banner", _params, socket) do
     case Banners.clear_banner() do
       {:ok, _} ->
-        Audit.log("clear_banner", nil, %{})
+        Audit.log_as(socket.assigns.current_admin, "clear_banner", nil, %{})
 
         {:noreply,
          socket
@@ -238,6 +293,103 @@ defmodule MixwaveWeb.Admin.OpsLive do
             <.button type="submit" variant="primary" disabled={String.trim(@message_input) == ""}>
               Broadcast
             </.button>
+          </div>
+        </form>
+      </section>
+
+      <%!-- Admins. --%>
+      <section class="mt-6 rounded-xl border bg-card p-5 space-y-4">
+        <div>
+          <h2 class="text-sm font-semibold font-display tracking-tight">Admins</h2>
+          <p class="text-xs text-muted-foreground mt-1">
+            Per-user admin accounts. The env <code class="font-mono">ADMIN_USER</code>
+            / <code class="font-mono">ADMIN_PASSWORD</code>
+            pair always works as a break-glass login regardless of what's in this list. You are signed in as <span class="font-medium text-foreground">{@current_admin}</span>.
+          </p>
+        </div>
+
+        <%!-- Existing admins. --%>
+        <div
+          :if={@admins == []}
+          class="rounded-md border border-dashed bg-card/50 p-4 text-center text-sm text-muted-foreground"
+        >
+          No DB-backed admins yet — only the env break-glass account works right now.
+        </div>
+
+        <ul :if={@admins != []} class="divide-y rounded-md border">
+          <li
+            :for={admin <- @admins}
+            class="px-3 py-2 flex items-center gap-3"
+          >
+            <div class="flex-1 min-w-0">
+              <div class="font-medium truncate">{admin.username}</div>
+              <div class="text-[11px] text-muted-foreground tabular-nums">
+                last login {if admin.last_login_at, do: time_ago(admin.last_login_at), else: "never"} · added {time_ago(
+                  admin.inserted_at
+                )}
+              </div>
+            </div>
+            <%!-- Don't let the signed-in admin delete themselves —
+                 fast track to a lockout (well, the env user still
+                 works, but it'd be confusing UX). --%>
+            <button
+              :if={admin.username != @current_admin}
+              type="button"
+              phx-click="delete_admin"
+              phx-value-id={admin.id}
+              data-confirm={"Delete admin #{admin.username}? Their session ends on next request."}
+              class="rounded-md border bg-card hover:bg-destructive/10 hover:text-destructive px-2.5 py-1 text-xs cursor-pointer transition-colors"
+            >
+              Delete
+            </button>
+            <span
+              :if={admin.username == @current_admin}
+              class="text-[10px] text-muted-foreground italic"
+            >
+              (you)
+            </span>
+          </li>
+        </ul>
+
+        <%!-- Add admin form. --%>
+        <form phx-submit="add_admin" class="space-y-3 mt-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Username
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={@new_admin["username"]}
+                maxlength="32"
+                placeholder="kiki"
+                class="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary/60"
+              />
+            </div>
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                maxlength="72"
+                placeholder="min 8 chars"
+                class="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary/60"
+              />
+            </div>
+          </div>
+
+          <p
+            :if={@new_admin_error}
+            class="text-xs text-destructive"
+          >
+            {@new_admin_error}
+          </p>
+
+          <div class="flex justify-end">
+            <.button type="submit" variant="primary">Add admin</.button>
           </div>
         </form>
       </section>

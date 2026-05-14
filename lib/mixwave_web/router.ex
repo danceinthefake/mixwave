@@ -57,6 +57,7 @@ defmodule MixwaveWeb.Router do
     live_session :admin,
       on_mount: [
         {MixwaveWeb.UserAuth, :current_user},
+        {MixwaveWeb.UserAuth, :current_admin},
         {MixwaveWeb.Live.BannerHook, :default}
       ] do
       live "/", DashboardLive, :index

@@ -27,6 +27,10 @@ config :logger, level: :warning
 # client; AdminAuth refuses requests when no password is set.
 config :mixwave, admin_user: "admin", admin_password: "test"
 
+# Use bcrypt's minimum rounds in tests — production-grade rounds
+# make every Admins.create_admin call take ~250 ms.
+config :bcrypt_elixir, :log_rounds, 4
+
 # Tests render HEEX through the same root layout as dev/prod. The
 # layout's PhoenixVite.Components.assets call decides between
 # Vite dev paths and the prod manifest by inspecting :live_vue's

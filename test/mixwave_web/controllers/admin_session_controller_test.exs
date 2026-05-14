@@ -21,7 +21,7 @@ defmodule MixwaveWeb.AdminSessionControllerTest do
   end
 
   describe "POST /admin/login" do
-    test "redirects to /admin and sets the session flag on valid creds", %{conn: conn} do
+    test "redirects to /admin and sets the session flag on valid env creds", %{conn: conn} do
       # config/test.exs sets admin_user="admin" admin_password="test"
       conn =
         post(conn, ~p"/admin/login", %{
@@ -30,6 +30,20 @@ defmodule MixwaveWeb.AdminSessionControllerTest do
 
       assert redirected_to(conn) == ~p"/admin"
       assert get_session(conn, :admin_authenticated) == true
+      assert get_session(conn, :admin_username) == "admin"
+    end
+
+    test "logs in with a DB-backed admin row and stashes the username", %{conn: conn} do
+      {:ok, _} = Mixwave.Admins.create_admin(%{username: "kiki", password: "supersecret"})
+
+      conn =
+        post(conn, ~p"/admin/login", %{
+          "session" => %{"username" => "kiki", "password" => "supersecret"}
+        })
+
+      assert redirected_to(conn) == ~p"/admin"
+      assert get_session(conn, :admin_authenticated) == true
+      assert get_session(conn, :admin_username) == "kiki"
     end
 
     test "re-renders the form with an error on bad creds", %{conn: conn} do

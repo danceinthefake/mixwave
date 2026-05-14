@@ -33,4 +33,22 @@ defmodule MixwaveWeb.UserAuth do
     # user rather than crashing so the page at least renders.
     {:cont, assign(socket, :current_user, nil)}
   end
+
+  # `:current_admin` variant — wired into the :admin live_session
+  # in the router. Pulls `:admin_username` out of the session
+  # into the LV's `:current_admin` assign so handlers can
+  # attribute audit rows to the human (or env break-glass user)
+  # who's logged in.
+  def on_mount(:current_admin, _params, %{"admin_username" => username}, socket)
+      when is_binary(username) do
+    {:cont, assign(socket, :current_admin, username)}
+  end
+
+  def on_mount(:current_admin, _params, _session, socket) do
+    # Should never happen — AdminAuth blocks the request before
+    # the LV mounts. Fall back to the env user so an audit row
+    # never carries nil.
+    fallback = Application.get_env(:mixwave, :admin_user, "admin")
+    {:cont, assign(socket, :current_admin, fallback)}
+  end
 end

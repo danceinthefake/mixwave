@@ -91,7 +91,15 @@ defmodule MixwaveWeb.Admin.ChamberDetailLive do
   def handle_event("delete_chamber", _params, socket) do
     chamber = socket.assigns.chamber
 
-    Mixwave.Audit.log("delete_chamber", "chamber:#{chamber.slug}", %{id: chamber.id})
+    Mixwave.Audit.log_as(
+      socket.assigns.current_admin,
+      "delete_chamber",
+      "chamber:#{chamber.slug}",
+      %{
+        id: chamber.id
+      }
+    )
+
     Chambers.delete(chamber)
 
     Phoenix.PubSub.broadcast(
@@ -111,7 +119,10 @@ defmodule MixwaveWeb.Admin.ChamberDetailLive do
 
     case Registry.lookup(Mixwave.Chambers.Registry, slug) do
       [{pid, _}] ->
-        Mixwave.Audit.log("kill_chamber", "chamber:#{slug}", %{pid: inspect(pid)})
+        Mixwave.Audit.log_as(socket.assigns.current_admin, "kill_chamber", "chamber:#{slug}", %{
+          pid: inspect(pid)
+        })
+
         Process.exit(pid, :kill)
         {:noreply, put_flash(socket, :info, "Killed GenServer — supervisor will restart it.")}
 
@@ -308,7 +319,7 @@ defmodule MixwaveWeb.Admin.ChamberDetailLive do
                   {meta[:alias] || meta.display_name}
                 </div>
                 <div class="text-[11px] text-muted-foreground font-mono truncate">
-                  <span :if={meta[:alias]}>{meta.display_name}   · </span>
+                  <span :if={meta[:alias]}>{meta.display_name}    · </span>
                   {meta.instrument} · {user_id}
                 </div>
               </div>

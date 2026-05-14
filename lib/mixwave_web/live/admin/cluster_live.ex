@@ -83,7 +83,12 @@ defmodule MixwaveWeb.Admin.ClusterLive do
 
         case Node.connect(node) do
           true ->
-            Mixwave.Audit.log("connect_node", "node:#{node}", %{})
+            Mixwave.Audit.log_as(
+              socket.assigns.current_admin,
+              "connect_node",
+              "node:#{node}",
+              %{}
+            )
 
             {:noreply,
              socket
@@ -109,7 +114,7 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   def handle_event("disconnect", %{"node" => target}, socket) do
     node = String.to_atom(target)
     Logger.warning("[admin/cluster] disconnect: #{inspect(node)}")
-    Mixwave.Audit.log("disconnect_node", "node:#{node}", %{})
+    Mixwave.Audit.log_as(socket.assigns.current_admin, "disconnect_node", "node:#{node}", %{})
     Node.disconnect(node)
     {:noreply, load(socket)}
   end
@@ -117,7 +122,7 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   def handle_event("drain", %{"node" => target}, socket) do
     node = String.to_atom(target)
     Logger.warning("[admin/cluster] drain: #{inspect(node)}")
-    Mixwave.Audit.log("drain_node", "node:#{node}", %{})
+    Mixwave.Audit.log_as(socket.assigns.current_admin, "drain_node", "node:#{node}", %{})
 
     result =
       cond do
