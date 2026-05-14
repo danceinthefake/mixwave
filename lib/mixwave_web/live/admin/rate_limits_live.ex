@@ -115,7 +115,12 @@ defmodule MixwaveWeb.Admin.RateLimitsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
+    <AdminLayouts.admin_shell
+      current_view={__MODULE__}
+      flash={@flash}
+      banner={assigns[:banner]}
+      draining?={assigns[:draining?] || false}
+    >
       <.header>
         Rate limits
         <:subtitle>

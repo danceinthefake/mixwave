@@ -46,7 +46,7 @@ defmodule MixwaveWeb.LandingLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} banner={assigns[:banner]}>
+    <Layouts.app flash={@flash} banner={assigns[:banner]} draining?={assigns[:draining?] || false}>
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 py-16 min-h-[calc(100dvh-3.5rem)] flex items-center justify-center">
         <div class="w-full max-w-3xl space-y-10">
           <div class="text-center space-y-3">

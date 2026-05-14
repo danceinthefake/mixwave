@@ -49,7 +49,11 @@ defmodule Mixwave.Application do
       # Tracks who's in the chamber + their selected instrument.
       MixwaveWeb.Presence,
       # Start to serve requests, typically the last entry
-      MixwaveWeb.Endpoint
+      MixwaveWeb.Endpoint,
+      # Graceful-shutdown coordinator. Listed LAST so it's the
+      # FIRST process terminated when SIGTERM arrives — see the
+      # module docstring for the full sequence.
+      Mixwave.Drain
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

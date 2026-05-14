@@ -167,6 +167,7 @@ defmodule MixwaveWeb.Admin.ChamberDetailLive do
       current_view={MixwaveWeb.Admin.ChambersLive}
       flash={@flash}
       banner={assigns[:banner]}
+      draining?={assigns[:draining?] || false}
     >
       <%!-- Breadcrumb back to the list. --%>
       <.link
@@ -307,7 +308,7 @@ defmodule MixwaveWeb.Admin.ChamberDetailLive do
                   {meta[:alias] || meta.display_name}
                 </div>
                 <div class="text-[11px] text-muted-foreground font-mono truncate">
-                  <span :if={meta[:alias]}>{meta.display_name}  · </span>
+                  <span :if={meta[:alias]}>{meta.display_name}   · </span>
                   {meta.instrument} · {user_id}
                 </div>
               </div>

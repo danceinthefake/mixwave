@@ -157,7 +157,12 @@ defmodule MixwaveWeb.Admin.OpsLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <AdminLayouts.admin_shell current_view={__MODULE__} flash={@flash} banner={assigns[:banner]}>
+    <AdminLayouts.admin_shell
+      current_view={__MODULE__}
+      flash={@flash}
+      banner={assigns[:banner]}
+      draining?={assigns[:draining?] || false}
+    >
       <.header>
         Ops
         <:subtitle>

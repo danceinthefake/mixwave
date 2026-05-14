@@ -30,10 +30,32 @@ defmodule MixwaveWeb.Layouts do
     default: nil,
     doc: "active system banner, set by the BannerHook on_mount"
 
+  attr :draining?, :boolean,
+    default: false,
+    doc: "true when the host node is shutting down, set by BannerHook"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
+    <%!-- Drain warning. Wins over the admin banner because it's
+         a "your connection is about to die" signal — render it
+         first so it sits at the very top. --%>
+    <div
+      :if={@draining?}
+      class="bg-amber-500/15 border-b border-amber-500/40 text-foreground"
+    >
+      <div class="mx-auto max-w-5xl flex items-start gap-3 px-4 sm:px-6 lg:px-8 py-2">
+        <.icon
+          name="hero-arrow-path-mini"
+          class="size-4 mt-0.5 shrink-0 text-amber-500 motion-safe:animate-spin"
+        />
+        <p class="flex-1 text-sm leading-snug">
+          Server restarting — you'll briefly disconnect and the page will reconnect automatically.
+        </p>
+      </div>
+    </div>
+
     <%!-- Admin-broadcast banner. Rendered above the header so it
          doesn't get scrolled off; auto-hides as soon as the row
          expires (BannerHook pushes nil on the PubSub topic). --%>

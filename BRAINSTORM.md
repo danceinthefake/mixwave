@@ -225,6 +225,16 @@ will add a `jams` table at that point, not before.
   presence list, recording status, GenServer uptime + restart
   count, and Kill / Delete actions (both audited). The Chambers
   sidebar tab stays highlighted via `current_view` override.
+- **Graceful shutdown / drain**: ✅ shipped — `Mixwave.Drain`
+  sits at the tail of the supervision tree so it's the first
+  process terminated on SIGTERM. Its `terminate/2` broadcasts
+  `{:node_draining, Node.self()}` on `system:drain` PubSub, then
+  sleeps a 3 s grace window while PubSub + Endpoint are still
+  alive. Every browser LV subscribes via `BannerHook` and the
+  layout paints an amber "Server restarting — reconnecting…"
+  strip the moment the message lands. ChamberServer.terminate/2
+  was already flushing the recording queue, so an in-progress
+  recording is preserved across rolling deploys.
 - **System health tab**: ✅ shipped — `/admin/health` surfaces a
   one-glance snapshot via `Mixwave.SystemHealth` — BEAM (processes,
   atoms, run queue, schedulers, reductions, ports), memory

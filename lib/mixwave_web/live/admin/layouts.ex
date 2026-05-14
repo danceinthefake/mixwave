@@ -77,13 +77,14 @@ defmodule MixwaveWeb.Admin.Layouts do
   attr :current_view, :atom, required: true
   attr :flash, :map, default: %{}
   attr :banner, :any, default: nil
+  attr :draining?, :boolean, default: false
   slot :inner_block, required: true
 
   def admin_shell(assigns) do
     assigns = assign(assigns, :tabs, @tabs)
 
     ~H"""
-    <Layouts.app flash={@flash} width={:wide} banner={@banner}>
+    <Layouts.app flash={@flash} width={:wide} banner={@banner} draining?={@draining?}>
       <div class="grid grid-cols-1 lg:grid-cols-[14rem_1fr] gap-6">
         <aside class="lg:sticky lg:top-4 lg:self-start">
           <div class="rounded-xl border bg-card p-2">
