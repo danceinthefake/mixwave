@@ -37,7 +37,9 @@ defmodule Mixwave.MixProject do
   def application do
     [
       mod: {Mixwave.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      # :os_mon powers LiveDashboard's "OS Data" tab (CPU / memory /
+      # disk via Erlang's OS-monitor app).
+      extra_applications: [:logger, :runtime_tools, :os_mon]
     ]
   end
 
@@ -72,6 +74,9 @@ defmodule Mixwave.MixProject do
       {:phoenix_live_view, "~> 1.1.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
+      # Powers LiveDashboard's "Ecto Stats" tab (Postgres-specific
+      # queries: index usage, cache hit rate, locks, table sizes).
+      {:ecto_psql_extras, "~> 0.8"},
       {:heroicons,
        github: "tailwindlabs/heroicons",
        tag: "v2.2.0",

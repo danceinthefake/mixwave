@@ -88,6 +88,8 @@ defmodule MixwaveWeb.Router do
 
     import Phoenix.LiveDashboard.Router
 
-    live_dashboard "/beam", metrics: MixwaveWeb.Telemetry
+    live_dashboard "/beam",
+      metrics: MixwaveWeb.Telemetry,
+      ecto_repos: [Mixwave.Repo]
   end
 end
