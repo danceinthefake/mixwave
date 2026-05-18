@@ -66,6 +66,17 @@ defmodule MixwaveWeb.ChamberLive do
           display_name: user.display_name,
           alias: user.alias,
           instrument: :drums,
+          joined_at: System.system_time(:second),
+          node: Node.self()
+        })
+
+      # Mirror the join on a global "who's online + where" topic so
+      # admin UsersLive can show node + chamber per user without
+      # enumerating every chamber's presence topic.
+      {:ok, _} =
+        Presence.track(self(), "users:online", user.id, %{
+          node: Node.self(),
+          chamber: slug,
           joined_at: System.system_time(:second)
         })
     end

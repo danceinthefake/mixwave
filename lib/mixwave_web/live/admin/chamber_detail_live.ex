@@ -323,6 +323,13 @@ defmodule MixwaveWeb.Admin.ChamberDetailLive do
                   {meta.instrument} · {user_id}
                 </div>
               </div>
+              <span
+                :if={meta[:node]}
+                title={"Connected via #{meta.node}"}
+                class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md border bg-muted/50 text-[10px] font-mono text-muted-foreground"
+              >
+                {meta.node}
+              </span>
             </li>
           </ul>
           <div

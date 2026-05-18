@@ -9,16 +9,40 @@ defmodule MixwaveWeb.Admin.UsersLive do
 
   alias Mixwave.Accounts
   alias MixwaveWeb.Admin.Layouts, as: AdminLayouts
+  alias MixwaveWeb.Presence
+
+  @online_topic "users:online"
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: :timer.send_interval(5_000, :tick)
-    {:ok, assign(socket, :users, Accounts.list_users())}
+    if connected?(socket) do
+      :timer.send_interval(5_000, :tick)
+      Phoenix.PubSub.subscribe(Mixwave.PubSub, @online_topic)
+    end
+
+    {:ok,
+     socket
+     |> assign(:users, Accounts.list_users())
+     |> assign(:online, online_map())}
   end
 
   @impl true
   def handle_info(:tick, socket) do
     {:noreply, assign(socket, :users, Accounts.list_users())}
+  end
+
+  def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
+    {:noreply, assign(socket, :online, online_map())}
+  end
+
+  # user_id -> %{node: atom, chamber: slug} for everyone currently
+  # connected to any chamber. Drops the metas wrapping that
+  # Presence.list returns and keeps the first meta — a user with
+  # multiple tabs gets attributed to whichever joined first.
+  defp online_map do
+    @online_topic
+    |> Presence.list()
+    |> Map.new(fn {user_id, %{metas: [meta | _]}} -> {user_id, meta} end)
   end
 
   @impl true
@@ -88,6 +112,7 @@ defmodule MixwaveWeb.Admin.UsersLive do
           <thead class="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr class="text-left">
               <th class="px-4 py-2">Display name</th>
+              <th class="px-4 py-2">Connected</th>
               <th class="px-4 py-2 text-right">Active</th>
               <th class="px-4 py-2 text-right">Created</th>
               <th class="px-4 py-2"></th>
@@ -96,6 +121,20 @@ defmodule MixwaveWeb.Admin.UsersLive do
           <tbody class="divide-y">
             <tr :for={u <- @users} class="align-top">
               <td class="px-4 py-3 font-mono text-xs">{u.display_name}</td>
+              <td class="px-4 py-3 text-xs">
+                <%= if meta = @online[u.id] do %>
+                  <span
+                    class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md border bg-card text-foreground"
+                    title={"On node #{meta.node} via chamber/#{meta.chamber}"}
+                  >
+                    <span class="size-1.5 rounded-full bg-emerald-500"></span>
+                    <span class="font-mono text-[11px]">{meta.node}</span>
+                    <span class="text-muted-foreground">· {meta.chamber}</span>
+                  </span>
+                <% else %>
+                  <span class="text-muted-foreground/60">offline</span>
+                <% end %>
+              </td>
               <td class="px-4 py-3 text-right text-xs text-muted-foreground">
                 {time_ago(u.last_active_at)}
               </td>
