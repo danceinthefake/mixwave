@@ -79,19 +79,15 @@ defmodule MixwaveWeb.Router do
   #   pipe_through :api
   # end
 
-  # Enable LiveDashboard in development
-  if Application.compile_env(:mixwave, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
+  # Phoenix LiveDashboard — BEAM internals, telemetry charts, ETS
+  # tables, process picker. Behind the same :admin pipeline as the
+  # rest of /admin so it stays gated in prod (and uses admin/dev
+  # creds locally).
+  scope "/admin" do
+    pipe_through :admin
+
     import Phoenix.LiveDashboard.Router
 
-    scope "/dev" do
-      pipe_through :browser
-
-      live_dashboard "/dashboard", metrics: MixwaveWeb.Telemetry
-    end
+    live_dashboard "/beam", metrics: MixwaveWeb.Telemetry
   end
 end
