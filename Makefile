@@ -85,9 +85,15 @@ precommit: db-up ## Elixir precommit alias (compile-as-errors + unlock + format 
 
 ##@ Database
 
-db-up: ## Start the local Postgres container (mixwave-pg). No-op if already up.
-	@docker start mixwave-pg >/dev/null 2>&1 || \
-		echo "  (mixwave-pg not running and 'docker start' failed — create it or check Docker)"
+db-up: ## Start the local Postgres container (mixwave-pg). Creates it on first run.
+	@if docker container inspect mixwave-pg >/dev/null 2>&1; then \
+		docker start mixwave-pg >/dev/null; \
+	else \
+		echo "  Creating mixwave-pg container..."; \
+		docker run -d --name mixwave-pg \
+			-e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
+			-p 5432:5432 postgres:16-alpine >/dev/null; \
+	fi
 
 db-reset: db-up ## Drop + recreate the dev DB.
 	mix ecto.reset
