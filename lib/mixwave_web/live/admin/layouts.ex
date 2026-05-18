@@ -66,6 +66,12 @@ defmodule MixwaveWeb.Admin.Layouts do
       path: "/admin/health",
       view: MixwaveWeb.Admin.HealthLive,
       icon: "hero-heart"
+    },
+    %{
+      label: "BEAM",
+      path: "/admin/beam",
+      view: Phoenix.LiveDashboard.PageLive,
+      icon: "hero-chart-bar-square"
     }
   ]
 
