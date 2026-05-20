@@ -11,12 +11,19 @@ declare module "vue" {
 export default createLiveVue({
   // name will be passed as-is in v-component of the .vue HEEX component
   resolve: (name) => {
-    // we're importing from ../../lib to allow collocating Vue files with LiveView files
-    // eager: true disables lazy loading - all these components will be part of the app.js bundle
-    // more: https://vite.dev/guide/features.html#glob-import
+    // Lazy globs — each .vue file becomes its own dynamic-import chunk.
+    // `ComponentMap` allows `Promise<Component>` values (see live_vue
+    // types.ts), so the resolver hands the promise straight through;
+    // Vue resolves it on mount. The big win: Tone.js + audio.ts +
+    // tonejs-instruments only ship to the browser when the user
+    // actually opens a chamber, not on every page hit.
+    //
+    // The LiveView-collocated tree (../../lib) stays in the same
+    // pattern for consistency.
+    // https://vite.dev/guide/features.html#glob-import
     const components = {
-      ...import.meta.glob("./**/*.vue", { eager: true }),
-      ...import.meta.glob("../../lib/**/*.vue", { eager: true }),
+      ...import.meta.glob("./**/*.vue"),
+      ...import.meta.glob("../../lib/**/*.vue"),
     } as ComponentMap
 
     // finds component by name or path suffix and gives a nice error message.

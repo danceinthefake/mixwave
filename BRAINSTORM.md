@@ -259,6 +259,16 @@ hint, which is now tracked in §5a Punch list:
   padding use `env(safe-area-inset-bottom)` so the home indicator
   doesn't cover controls; the dock collapses instrument tabs to
   their colored dot below `sm:` so all 7 fit a 360 px viewport.
+- **Lazy Vue islands**: ✅ shipped — `assets/vue/index.ts` resolver
+  drops `eager: true` from the `import.meta.glob` calls. live_vue
+  already accepts `Promise<Component>` in its `ComponentMap`
+  (`deps/live_vue/assets/types.ts:27-28`), so Vite splits each
+  `.vue` file into its own chunk and bundles Tone.js + `audio.ts`
+  + `tonejs-instruments` into a shared chunk that loads only when
+  a chamber actually mounts an instrument. Entry bundle dropped
+  from 583 KB / 163 KB gzipped to **162 KB / 51 KB gzipped**
+  (-72% raw, -69% gzipped). The audio chunk is ~290 KB / 70 KB
+  gzipped and ships lazily.
 - **A11y baseline**: ✅ shipped — every instrument-pad button
   carries an `aria-label` with the pad's name plus its keyboard
   shortcut hint; style-flavor buttons announce selection via
