@@ -179,9 +179,11 @@ will add a `jams` table at that point, not before.
     broadcasts `system:drain` on SIGTERM so clients see the amber
     "Server restarting" banner and reconnect to the survivor.
 20. ⏳ README + GIF + open-source — README is comprehensive (479
-    lines, brand assets, badge plumbing) but **no embedded GIF or
-    screenshot** of the app in action. Coverage badge URLs still
-    say `OWNER/REPO`. See Punch list.
+    lines, brand assets, badge plumbing). Coverage badge URLs now
+    point at `danceinthefake/mixwave` (resolve once CI is back on).
+    README has an `<img>` slot reserved for `docs/walkthrough.gif`
+    with capture instructions inline; the asset itself still has
+    to be recorded. See Punch list.
 21. ⏳ Public URL — `fly.toml` configures `mixwave.fly.dev` but
     we haven't actually pushed a deploy yet. User-action item.
 
@@ -190,9 +192,10 @@ will add a `jams` table at that point, not before.
 One thread of v1–v3 is still genuinely open (one more is paused
 on a non-code decision):
 
-- **README walkthrough media** (v3 #20) — capture a short loop
-  of two browsers jamming, drop it into README, fix the
-  `OWNER/REPO` badge URLs.
+- **README walkthrough GIF** (v3 #20) — capture a short loop of
+  two browsers jamming and drop it into `docs/walkthrough.gif`
+  (the README already points there with capture instructions
+  inline). Badge URLs are already fixed.
 - ⏸ **First deploy / public URL** (v3 #21) — paused: hosting
   platform not picked yet; CI is currently set to
   `workflow_dispatch` only in `.github/workflows/ci.yml`.

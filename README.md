@@ -8,12 +8,9 @@
   CI is currently PAUSED (manual-only) until a hosting platform
   is chosen — see .github/workflows/ci.yml. Until it's re-enabled,
   the badges branch won't exist and the images below will 404.
-
-  Once re-enabled, replace `OWNER/REPO` with your actual GitHub
-  `<owner>/<repo>` so the badges resolve.
 -->
-![Elixir coverage](https://raw.githubusercontent.com/OWNER/REPO/badges/badges/elixir-coverage.svg)
-![Vue coverage](https://raw.githubusercontent.com/OWNER/REPO/badges/badges/vue-coverage.svg)
+![Elixir coverage](https://raw.githubusercontent.com/danceinthefake/mixwave/badges/badges/elixir-coverage.svg)
+![Vue coverage](https://raw.githubusercontent.com/danceinthefake/mixwave/badges/badges/vue-coverage.svg)
 
 Real-time collaborative music chambers — pick a chamber, pick an
 instrument, jam alongside everyone else who has the link. Built on
@@ -21,6 +18,22 @@ instrument, jam alongside everyone else who has the link. Built on
 
 > WebSocket fan-out, hot-restartable chambers, cross-node
 > clustering, client-side audio synthesis — all native, no broker.
+
+<!--
+  Walkthrough media. Capture a short loop (8–15 s, looped GIF or
+  muted MP4) of two browser windows joined to the same chamber,
+  one playing keys / drums and the other lighting up via the
+  remote-hit pulses. The whole pitch of mixwave lands faster from
+  a 10-second clip than from any amount of prose.
+
+  Asset path: docs/walkthrough.gif (commit the file there).
+  Recommended size: ≤ 4 MB, ≤ 1280 px wide so GitHub renders it
+  inline. ffmpeg one-liner to convert a screen recording:
+
+    ffmpeg -i recording.mp4 -vf "fps=15,scale=1280:-1:flags=lanczos" \
+      -loop 0 docs/walkthrough.gif
+-->
+![Two browsers jamming in the same chamber](docs/walkthrough.gif)
 
 ---
 
