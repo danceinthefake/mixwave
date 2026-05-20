@@ -170,10 +170,10 @@ will add a `jams` table at that point, not before.
     IPv6 distribution, kill-signal/timeout for graceful drain;
     `:dns_cluster` dep wired in `application.ex`. Actual
     `fly scale count 2` deploy is a deployment step, not code.
-18. ⏳ Cluster LiveView — `/admin/cluster` shows nodes, process
-    counts, memory, and the drain button, but **no cross-node
-    latency / RTT metric**. The BRAINSTORM line called for one;
-    code doesn't have it. See Punch list.
+18. ✅ Cluster LiveView — `/admin/cluster` shows nodes, RTT
+    (per-tick `:erpc.call` round-trip to `:erlang.node/0`,
+    rendered next to each peer), process counts, memory,
+    schedulers, OTP release, plus the drain button.
 19. ✅ "Drain node N" button — `/admin/cluster` row action kills the
     target `MixwaveWeb.Endpoint` via `:rpc.call`; `Mixwave.Drain`
     broadcasts `system:drain` on SIGTERM so clients see the amber
@@ -187,16 +187,22 @@ will add a `jams` table at that point, not before.
 
 ## 5a. Audit punch list (2026-05-19)
 
-Two threads of v1–v3 are still genuinely open:
+One thread of v1–v3 is still genuinely open (one more is paused
+on a non-code decision):
 
-- **Cross-node latency in ClusterLive** (v3 #18) — schedule a
-  small RPC ping from the LV (e.g. `:erpc.call` round-trip with
-  `:erlang.monotonic_time/1` deltas) and render an RTT column
-  next to each peer node.
-- **README walkthrough media + first deploy** (v3 #20, #21) —
-  capture a short loop of two browsers jamming, drop it into
-  README, fix the `OWNER/REPO` badge URLs, then run the first
-  `fly deploy` to claim the public subdomain.
+- **README walkthrough media** (v3 #20) — capture a short loop
+  of two browsers jamming, drop it into README, fix the
+  `OWNER/REPO` badge URLs.
+- ⏸ **First deploy / public URL** (v3 #21) — paused: hosting
+  platform not picked yet; CI is currently set to
+  `workflow_dispatch` only in `.github/workflows/ci.yml`.
+
+Done since the original audit:
+
+- ✅ **Cross-node latency in ClusterLive** (v3 #18) — `:erpc.call`
+  ping to `:erlang.node/0` per tick, microsecond delta via
+  `:erlang.monotonic_time/1`, rendered as an RTT column next to
+  each peer node (self row shows "—").
 
 Everything else from the original scope (v1 jam loop, v2 recording
 + chaos + extra instruments, v3 cluster + drain) is shipped.

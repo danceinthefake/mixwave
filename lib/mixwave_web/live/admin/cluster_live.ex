@@ -190,20 +190,38 @@ defmodule MixwaveWeb.Admin.ClusterLive do
 
     rows =
       Enum.map(nodes, fn node ->
-        info =
+        {info, rtt_us} =
           if node == self_node do
-            local_info()
+            {local_info(), nil}
           else
-            case :rpc.call(node, __MODULE__, :local_info, [], 1_500) do
-              {:badrpc, _} = err -> %{error: err}
-              ok -> ok
-            end
+            info =
+              case :rpc.call(node, __MODULE__, :local_info, [], 1_500) do
+                {:badrpc, _} = err -> %{error: err}
+                ok -> ok
+              end
+
+            {info, measure_rtt(node)}
           end
 
-        Map.merge(info, %{node: node, self?: node == self_node})
+        Map.merge(info, %{node: node, self?: node == self_node, rtt_us: rtt_us})
       end)
 
     assign(socket, :nodes, rows)
+  end
+
+  # Round-trip ping for an RTT readout. Calls `:erlang.node/0` on
+  # the peer — it returns the peer's own node atom and does no real
+  # work, so the timing is dominated by network + serialization, not
+  # the remote computation. Returns microseconds (nil on failure).
+  defp measure_rtt(node) do
+    t0 = :erlang.monotonic_time(:microsecond)
+
+    try do
+      _ = :erpc.call(node, :erlang, :node, [], 1_500)
+      :erlang.monotonic_time(:microsecond) - t0
+    catch
+      _kind, _reason -> nil
+    end
   end
 
   @doc """
@@ -234,6 +252,10 @@ defmodule MixwaveWeb.Admin.ClusterLive do
   defp format_uptime(ms) when ms < 3_600_000, do: "#{div(ms, 60_000)}m"
   defp format_uptime(ms) when ms < 86_400_000, do: "#{div(ms, 3_600_000)}h"
   defp format_uptime(ms), do: "#{div(ms, 86_400_000)}d"
+
+  defp format_rtt(nil), do: "—"
+  defp format_rtt(us) when us < 10_000, do: "#{Float.round(us / 1_000, 1)} ms"
+  defp format_rtt(us), do: "#{round(us / 1_000)} ms"
 
   @impl true
   def render(assigns) do
@@ -285,6 +307,7 @@ defmodule MixwaveWeb.Admin.ClusterLive do
           <thead class="bg-muted/40 text-xs uppercase tracking-wider text-muted-foreground">
             <tr class="text-left">
               <th class="px-4 py-2">Node</th>
+              <th class="px-4 py-2 text-right">RTT</th>
               <th class="px-4 py-2 text-right">Uptime</th>
               <th class="px-4 py-2 text-right">Processes</th>
               <th class="px-4 py-2 text-right">Memory</th>
@@ -308,6 +331,9 @@ defmodule MixwaveWeb.Admin.ClusterLive do
                     connected
                   </span>
                 </div>
+              </td>
+              <td class="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                {format_rtt(n[:rtt_us])}
               </td>
               <td class="px-4 py-3 text-right tabular-nums text-muted-foreground">
                 {format_uptime(n[:uptime_ms])}
