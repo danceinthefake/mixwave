@@ -1,4 +1,4 @@
-import { h, type Component } from "vue"
+import { h, defineAsyncComponent, type AsyncComponentLoader, type Component } from "vue"
 import { createLiveVue, findComponent, type LiveHook, type ComponentMap } from "live_vue"
 
 // needed to make $live available in the Vue component
@@ -8,22 +8,38 @@ declare module "vue" {
   }
 }
 
+// Wrap each lazy `() => import(...)` glob entry in defineAsyncComponent
+// so the resolver returns a *synchronous* Vue component handle that
+// Vue internally hydrates from the dynamic import. Returning the raw
+// Promise here races live_vue's `mounted()` against its own `updated()`:
+// mounted awaits the import before setting `this.vue`, but a LiveView
+// patch arriving during that window calls `updated()` against an
+// undefined `this.vue` and throws (hooks.ts:55-57). defineAsyncComponent
+// gives the hook a real component immediately while keeping the bundle
+// split — Vite still sees the `() => import(...)` factory and emits a
+// per-component chunk.
+function lazy(glob: Record<string, () => Promise<unknown>>): Record<string, Component> {
+  return Object.fromEntries(
+    Object.entries(glob).map(([path, factory]) => [
+      path,
+      defineAsyncComponent(factory as AsyncComponentLoader),
+    ]),
+  )
+}
+
 export default createLiveVue({
   // name will be passed as-is in v-component of the .vue HEEX component
   resolve: (name) => {
     // Lazy globs — each .vue file becomes its own dynamic-import chunk.
-    // `ComponentMap` allows `Promise<Component>` values (see live_vue
-    // types.ts), so the resolver hands the promise straight through;
-    // Vue resolves it on mount. The big win: Tone.js + audio.ts +
-    // tonejs-instruments only ship to the browser when the user
-    // actually opens a chamber, not on every page hit.
+    // Tone.js + audio.ts + tonejs-instruments only ship to the browser
+    // when the user actually opens a chamber, not on every page hit.
     //
     // The LiveView-collocated tree (../../lib) stays in the same
     // pattern for consistency.
     // https://vite.dev/guide/features.html#glob-import
     const components = {
-      ...import.meta.glob("./**/*.vue"),
-      ...import.meta.glob("../../lib/**/*.vue"),
+      ...lazy(import.meta.glob("./**/*.vue")),
+      ...lazy(import.meta.glob("../../lib/**/*.vue")),
     } as ComponentMap
 
     // finds component by name or path suffix and gives a nice error message.
