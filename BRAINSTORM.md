@@ -290,6 +290,16 @@ hint, which is now tracked in §5a Punch list:
   that announces "Recording started / stopped" on toggle;
   decorative dots (presence sidebar, dock tabs, REC indicator)
   are marked `aria-hidden="true"` so they don't double-read.
+- **A11y tier-3 (reduced motion + visible focus)**: ✅ shipped —
+  `assets/css/app.css` gained a `.pad-touch:focus-visible` rule
+  (`outline: 2px solid var(--ring); outline-offset: 2px`) so the
+  dock instrument tabs and every instrument pad show a clear
+  keyboard-navigation ring without firing on mouse / touch focus.
+  A `@media (prefers-reduced-motion: reduce)` block at the file
+  bottom collapses every `animation-duration` and
+  `transition-duration` to ~0 ms, silencing the REC pulse and the
+  admin chamber kill-flash for motion-sensitive users. CSS bundle
+  grew by 0.4 KB raw / ~10 B gzipped.
 - **A11y tier-2 (touch targets + dock-presence labels)**: ✅
   shipped — dock instrument tabs gained `min-h-11 min-w-11
   justify-center` so the mobile dot-only state clears WCAG 2.5.5's

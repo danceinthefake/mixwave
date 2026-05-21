@@ -262,4 +262,37 @@
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Keyboard-navigation focus ring on every interactive pad / dock
+     tab / style button. The `:focus-visible` pseudo only fires on
+     Tab navigation and assistive-tech focus, not on mouse clicks,
+     so mouse / touch users don't see a stray outline after every
+     tap. The 2 px ring + 2 px offset stays legible across the
+     dock's translucent backdrop and the pads' neon accents — the
+     bare `outline-ring/50` from the @layer base default rendered
+     too faintly against bright pad fills. */
+  .pad-touch:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Respect prefers-reduced-motion. Browser / OS setting translates
+   to: silence the REC button's `animate-pulse` heartbeat, collapse
+   the admin chamber `.kill-flash` keyframes to a static state
+   change, and shrink every CSS transition to ~instant so state
+   updates don't ease. The per-pad `.glow-*` utilities are static
+   box-shadows toggled by class state (not @keyframes animations),
+   so they already comply — only their transition timing here.
+   This is the W3C canonical pattern; `!important` is needed to
+   defeat Tailwind's own transition utilities. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
