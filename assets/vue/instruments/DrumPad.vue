@@ -42,6 +42,11 @@
 
 import { onUnmounted, ref, toRef } from "vue"
 import { useLiveVue } from "live_vue"
+// Side-effect import: registers all three drum engines (synth / 808 /
+// acoustic) into audio.ts's engine map at module load. The engines
+// live in their own lazy chunk so MembraneSynth + NoiseSynth +
+// MetalSynth setup code only ships when this component mounts.
+import "@/lib/audio/drums"
 import { ensureStarted, play, stopAll, type DrumName } from "@/lib/audio"
 import { useInstrumentFlash, useInstrumentKeyboard } from "@/lib/instrument"
 

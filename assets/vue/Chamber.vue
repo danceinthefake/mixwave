@@ -19,7 +19,9 @@
 
 import { onMounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
-import * as Tone from "tone"
+// Named imports for tree-shake. See assets/vue/lib/audio.ts for
+// the full rationale.
+import { context as toneContext } from "tone"
 import DrumPad from "@/instruments/DrumPad.vue"
 import KeyboardPad from "@/instruments/KeyboardPad.vue"
 import GuitarPad from "@/instruments/GuitarPad.vue"
@@ -124,7 +126,7 @@ onMounted(() => {
   // If the AudioContext is already running (e.g., the user
   // navigated here from another page where they interacted),
   // skip the gate.
-  if (Tone.context?.state === "running") {
+  if (toneContext?.state === "running") {
     audioReady.value = true
   }
 })

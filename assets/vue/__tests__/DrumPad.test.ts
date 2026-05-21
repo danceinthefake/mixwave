@@ -14,6 +14,11 @@ vi.mock("@/lib/audio", () => ({
   stopAll: stopAllMock,
 }))
 
+// DrumPad.vue side-effect-imports the drum engine module so its
+// engines register into the audio.ts map at mount time. In tests we
+// don't want any real Tone.js engine wiring — stub it as a no-op.
+vi.mock("@/lib/audio/drums", () => ({}))
+
 vi.mock("live_vue", () => ({
   useLiveVue: () => ({ pushEvent: pushEventMock }),
 }))
