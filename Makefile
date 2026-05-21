@@ -85,15 +85,8 @@ precommit: db-up ## Elixir precommit alias (compile-as-errors + unlock + format 
 
 ##@ Database
 
-db-up: ## Start the local Postgres container (mixchamb-pg). Creates it on first run.
-	@if docker container inspect mixchamb-pg >/dev/null 2>&1; then \
-		docker start mixchamb-pg >/dev/null; \
-	else \
-		echo "  Creating mixchamb-pg container..."; \
-		docker run -d --name mixchamb-pg \
-			-e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
-			-p 5432:5432 postgres:16-alpine >/dev/null; \
-	fi
+db-up: ## Start the local Postgres container (mixchamb-pg via docker compose).
+	@docker compose up -d db >/dev/null
 
 db-reset: db-up ## Drop + recreate the dev DB.
 	mix ecto.reset

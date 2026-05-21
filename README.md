@@ -131,12 +131,12 @@ Each row's "Where to look" is a feature you can poke at running locally.
 
 - **Elixir 1.18+ / OTP 27+**
 - **Node 22+**
-- **Postgres 15+** (Docker is easiest):
+- **Postgres 15+** via the bundled compose file:
   ```sh
-  docker run -d --name mixchamb-pg \
-    -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres \
-    -p 5432:5432 postgres:16-alpine
+  docker compose up -d db   # or `make db-up`
   ```
+  Data persists in the named `mixchamb-pg-data` volume across
+  restarts; `docker compose down -v` wipes it.
 
 The app uses no external API keys or storage — Tone.js samples
 come from public CDN URLs the browser fetches directly.

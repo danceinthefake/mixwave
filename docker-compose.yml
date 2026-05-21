@@ -1,0 +1,28 @@
+# Local Postgres for mixchamb dev / test / LAN-prod. The Makefile's
+# `db-up` target points at this file, so `make db-up` and
+# `docker compose up -d db` are interchangeable.
+#
+# Data lives in the named volume `mixchamb-pg-data`, so
+# `docker compose down` leaves your DBs alone. To nuke everything:
+# `docker compose down -v`.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mixchamb-pg
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - mixchamb-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mixchamb-pg-data:
