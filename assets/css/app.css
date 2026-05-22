@@ -230,6 +230,56 @@
   .glow-suling   { box-shadow: 0 0 28px -2px oklch(from var(--accent-suling) l c h / 0.55); }
   .glow-kendang  { box-shadow: 0 0 28px -2px oklch(from var(--accent-kendang) l c h / 0.55); }
 
+  /* Brand gradient utilities. The pink → cyan → green sequence
+     matches the stops in priv/static/images/logo.svg so anywhere
+     the brand needs to lead (hero copy, hero glow, ambient wash)
+     traces back to the mark's exact colours.
+     See assets/UI.md "Brand gradient" for usage rules. */
+
+  /* Soft-glow tint behind the hero logo so it reads as lit, not
+     pasted onto the dark background. */
+  .brand-glow {
+    background: radial-gradient(
+      circle at 35% 50%, #e94886 0%, transparent 55%
+    ),
+    radial-gradient(
+      circle at 65% 50%, #b5e651 0%, transparent 55%
+    ),
+    radial-gradient(
+      circle at 50% 50%, #56d2e6 0%, transparent 60%
+    );
+  }
+
+  /* Ambient page-level wash. Very low opacity so it lifts the
+     surface off pure charcoal without competing with the cards.
+     Two off-centre blobs mirror the gradient direction in the
+     logo (top-left → bottom-right). */
+  .brand-wash {
+    background:
+      radial-gradient(
+        circle 60vw at 18% 12%, oklch(from #e94886 l c h / 0.10) 0%, transparent 60%
+      ),
+      radial-gradient(
+        circle 55vw at 82% 88%, oklch(from #b5e651 l c h / 0.08) 0%, transparent 60%
+      ),
+      radial-gradient(
+        circle 50vw at 50% 50%, oklch(from #56d2e6 l c h / 0.05) 0%, transparent 65%
+      );
+  }
+
+  /* Gradient text fill for hero headings. Keep this rare — one
+     heading per page at most, and only on the hero copy that's
+     meant to read as the brand mark spelt out. */
+  .brand-gradient-text {
+    background-image: linear-gradient(
+      135deg, #e94886 0%, #56d2e6 55%, #b5e651 100%
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
   /* Supervisor LV: when a chamber's GenServer restarts, the row gets
      this class for ~1.5s as visual proof of the chaos kill. Driven
      by the chamber's uptime + restart count — no client-side state.

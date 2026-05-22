@@ -50,11 +50,31 @@ defmodule MixchambWeb.LandingLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} banner={assigns[:banner]} draining?={assigns[:draining?] || false}>
+      <%!-- Ambient brand wash. A very faint radial gradient sitting
+           behind the hero, tinted in the brick-stack logo's pink →
+           cyan → green stops. Visually lifts the page off pure
+           charcoal without drawing the eye away from the cards. --%>
+      <div
+        aria-hidden="true"
+        class="pointer-events-none fixed inset-0 -z-10 brand-wash"
+      >
+      </div>
+
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 py-16 min-h-[calc(100dvh-3.5rem)] flex items-center justify-center">
         <div class="w-full max-w-5xl space-y-10">
           <div class="text-center space-y-3">
-            <img src={~p"/images/logo.svg"} alt="" class="size-16 mx-auto" />
-            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight font-display">
+            <%!-- Logo with a soft brand-coloured glow underneath so
+                 it reads as the lit centre of the page instead of a
+                 dim chip on a flat background. --%>
+            <div class="relative mx-auto w-fit">
+              <div
+                aria-hidden="true"
+                class="absolute inset-0 -m-6 rounded-full blur-2xl opacity-60 brand-glow"
+              >
+              </div>
+              <img src={~p"/images/logo.svg"} alt="" class="relative size-16" />
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-bold tracking-tight font-display brand-gradient-text">
               Pick a chamber
             </h1>
             <p class="text-sm text-muted-foreground">
