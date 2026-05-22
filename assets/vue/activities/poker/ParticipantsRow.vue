@@ -44,7 +44,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
         v-for="p in participants"
         :key="p.user_id"
         :class="[
-          'flex flex-col items-center gap-1.5 min-w-24',
+          'flex flex-col items-center gap-2 min-w-24',
           p.user_id === current_user_id && 'opacity-100',
         ]"
       >

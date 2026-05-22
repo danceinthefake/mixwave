@@ -785,7 +785,11 @@ defmodule MixchambWeb.ChamberLive do
 
   # Display title or fallback. Used both in the page <title> and
   # the heading above the stage.
-  defp display_title(%{title: nil, slug: slug}), do: "Untitled chamber · #{slug}"
+  # Pre-rename chambers don't have a title yet. The slug lives in
+  # the URL bar — no need to leak it into the H1. "Untitled chamber"
+  # alone is the friendlier placeholder; the creator's inline-edit
+  # form sits right below the H1 so they can rename in one tap.
+  defp display_title(%{title: nil}), do: "Untitled chamber"
   defp display_title(%{title: title}), do: title
 
   defp page_title_for(chamber), do: "#{display_title(chamber)} · mixchamb"
@@ -836,7 +840,7 @@ defmodule MixchambWeb.ChamberLive do
                   name="title"
                   value={@chamber.title || ""}
                   maxlength="80"
-                  placeholder={"Untitled chamber · " <> @chamber.slug}
+                  placeholder="Untitled chamber"
                   class="flex-1 bg-transparent border-none outline-none text-2xl font-bold tracking-tight font-display text-foreground placeholder:text-muted-foreground/50"
                 />
                 <%!-- The hint is just clutter on mobile, where on-screen
@@ -1050,7 +1054,7 @@ defmodule MixchambWeb.ChamberLive do
             :if={show_invite_banner?(@chamber, @current_user)}
             class="group rounded-xl border bg-card/80 backdrop-blur-sm"
           >
-            <summary class="flex items-center gap-3 p-4 sm:p-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <summary class="flex items-center gap-3 p-4 sm:p-6 cursor-pointer list-none [&::-webkit-details-marker]:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-xl">
               <.icon name="hero-link-mini" class="size-5 text-muted-foreground" />
               <h3 class="flex-1 text-sm font-semibold tracking-tight font-display">
                 Share this chamber
@@ -1060,7 +1064,7 @@ defmodule MixchambWeb.ChamberLive do
                 class="size-4 text-muted-foreground transition-transform group-open:rotate-180"
               />
             </summary>
-            <div class="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3">
+            <div class="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3">
               <p class="text-xs text-muted-foreground">
                 Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
               </p>

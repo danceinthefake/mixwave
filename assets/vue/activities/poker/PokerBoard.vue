@@ -94,7 +94,11 @@ function setDeck(deck: DeckId) {
 </script>
 
 <template>
-  <div v-if="session" class="space-y-6">
+  <section
+    v-if="session"
+    aria-label="Planning poker board"
+    class="space-y-6"
+  >
     <StoryHeader
       :story="session.story"
       :round="session.round"
@@ -134,7 +138,7 @@ function setDeck(deck: DeckId) {
       @next-round="nextRound()"
       @change-deck="setDeck"
     />
-  </div>
+  </section>
 
   <div v-else class="rounded-xl border bg-card/60 p-8 text-center text-muted-foreground">
     Poker session not ready yet.
