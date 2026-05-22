@@ -113,8 +113,19 @@ defmodule MixchambWeb.ChamberLive do
      # `0` here would make the cooldown check (`now - last_switch_at`)
      # produce a negative result and reject every switch.
      |> assign(:last_switch_at, System.monotonic_time(:millisecond) - @switch_cooldown_ms)
-     |> assign(:presences, presences)}
+     |> assign(:presences, presences)
+     |> assign(:poker_session, load_poker_session(chamber))
+     |> assign(:is_host, chamber.creator_user_id == user.id)}
   end
+
+  # Pull the current PokerSession off the chamber's GenServer. Returns
+  # `nil` for non-poker chambers — the assign is still set so the
+  # template can render `:if={@poker_session}` checks uniformly.
+  defp load_poker_session(%{activity: "poker", slug: slug}) do
+    Mixchamb.Chambers.Server.poker_state(slug)
+  end
+
+  defp load_poker_session(_), do: nil
 
   @impl true
   def handle_event("set_kind", %{"kind" => kind}, socket) do
@@ -354,6 +365,67 @@ defmodule MixchambWeb.ChamberLive do
     end
   end
 
+  # ── Poker events from the Vue island ─────────────────────────────
+  # Each one delegates to the chamber's GenServer; the server
+  # broadcasts on success and every client (including this one)
+  # picks the change up via the `{:poker, _, _}` handle_info below.
+
+  @impl true
+  def handle_event("poker_vote", %{"card" => card}, socket) when is_binary(card) do
+    Mixchamb.Chambers.Server.poker_vote(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      card
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("poker_withdraw_vote", _params, socket) do
+    Mixchamb.Chambers.Server.poker_withdraw_vote(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id
+    )
+
+    {:noreply, socket}
+  end
+
+  def handle_event("poker_reveal", _params, socket) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.poker_reveal(socket.assigns.chamber_slug)
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("poker_next_round", params, socket) do
+    if socket.assigns.is_host do
+      story = Map.get(params, "story")
+      Mixchamb.Chambers.Server.poker_next_round(socket.assigns.chamber_slug, story)
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("poker_set_story", %{"story" => story}, socket) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.poker_set_story(socket.assigns.chamber_slug, story)
+    end
+
+    {:noreply, socket}
+  end
+
+  def handle_event("poker_set_deck", %{"deck" => deck}, socket) when is_binary(deck) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.poker_set_deck(
+        socket.assigns.chamber_slug,
+        String.to_existing_atom(deck)
+      )
+    end
+
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
     presences = Presence.list(presence_topic(socket.assigns.chamber_slug))
@@ -372,6 +444,21 @@ defmodule MixchambWeb.ChamberLive do
      socket
      |> put_flash(:info, "Chamber closed — nobody else joined within 30 minutes.")
      |> push_navigate(to: ~p"/")}
+  end
+
+  # Any poker broadcast (vote_cast / withdrawn / revealed / cleared /
+  # story_changed / deck_changed) just re-pulls the authoritative
+  # session from the GenServer. One extra cast per broadcast — cheap,
+  # and avoids having to track per-event diffs against a stale local
+  # copy.
+  def handle_info({:poker, _evt, _payload}, socket) do
+    {:noreply,
+     assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
+  end
+
+  def handle_info({:poker, _evt, _a, _b, _c}, socket) do
+    {:noreply,
+     assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
   end
 
   # Broadcast by the LV that wrote the title change. Everyone else
@@ -512,6 +599,46 @@ defmodule MixchambWeb.ChamberLive do
   # meaningless instrument choice.
   defp presence_dot_color("music", meta), do: accent_var(meta.instrument)
   defp presence_dot_color(_, _), do: "var(--muted-foreground)"
+
+  # Shape the PokerSession into the JSON-safe map that Chamber.vue
+  # (and PokerBoard.vue) consume. Filters vote values during `:voting`
+  # so only the current user's own card is sent to the client; the
+  # rest of the room sees just a "this user has voted" signal until
+  # the host reveals. On `:revealed`, every value is exposed.
+  defp poker_view(nil, _user_id), do: nil
+
+  defp poker_view(session, user_id) do
+    voted_user_ids = session.votes |> Map.keys() |> Enum.sort()
+    my_vote = Map.get(session.votes, user_id)
+
+    %{
+      status: Atom.to_string(session.status),
+      deck: Atom.to_string(session.deck),
+      cards: Mixchamb.Chambers.PokerSession.cards_for(session.deck),
+      story: session.story,
+      round: session.round,
+      my_vote: my_vote,
+      voted_user_ids: voted_user_ids,
+      votes: if(session.status == :revealed, do: session.votes, else: %{})
+    }
+  end
+
+  # Trim the presence map down to the subset PokerBoard needs:
+  # user_id + display_name + alias, sorted by joined_at so the
+  # row order is stable across renders.
+  defp poker_participants(presences) do
+    presences
+    |> Enum.map(fn {user_id, %{metas: [meta | _]}} ->
+      %{
+        user_id: user_id,
+        display_name: meta.display_name,
+        alias: meta.alias,
+        joined_at: meta.joined_at
+      }
+    end)
+    |> Enum.sort_by(& &1.joined_at)
+    |> Enum.map(&Map.delete(&1, :joined_at))
+  end
 
   # Static class strings per instrument so Tailwind picks them up at
   # build time. Uses the per-instrument neon variables defined in
@@ -837,6 +964,10 @@ defmodule MixchambWeb.ChamberLive do
             chamber_title={@chamber.title}
             chamber_slug={@chamber.slug}
             activity={@chamber.activity}
+            poker_session={poker_view(@poker_session, @current_user.id)}
+            poker_participants={poker_participants(@presences)}
+            current_user_id={@current_user.id}
+            is_host={@is_host}
           />
         </div>
       </div>

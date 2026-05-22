@@ -57,6 +57,15 @@ const props = defineProps<{
   // to "music" so legacy chambers without the column behave
   // identically to v3.
   activity: "music" | "poker"
+  // Poker-specific props. `poker_session` is `null` for music
+  // chambers; PokerBoard.vue renders an empty state in that case.
+  // The LV derives `poker_session` per-user (filters vote values
+  // during :voting so only the current user's own card travels
+  // to the client).
+  poker_session?: import("./activities/poker/PokerBoard.vue").PokerSession | null
+  poker_participants?: import("./activities/poker/PokerBoard.vue").Participant[]
+  current_user_id?: string
+  is_host?: boolean
 }>()
 
 // Apply the chamber's audio character whenever the LiveView
@@ -469,5 +478,9 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     v-else-if="props.activity === 'poker'"
     :chamber_slug="props.chamber_slug"
     :chamber_title="props.chamber_title"
+    :poker_session="props.poker_session ?? null"
+    :poker_participants="props.poker_participants ?? []"
+    :current_user_id="props.current_user_id ?? ''"
+    :is_host="props.is_host ?? false"
   />
 </template>

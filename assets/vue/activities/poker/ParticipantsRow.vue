@@ -1,0 +1,154 @@
+<script setup lang="ts">
+// Row of participant avatars + their voted-status indicator. Card
+// silhouette appears once the user votes; on reveal, the silhouette
+// flips to show the value. See features/planning-poker.md §5.
+
+import { computed } from "vue"
+import type { Participant, PokerStatus } from "./PokerBoard.vue"
+
+const props = defineProps<{
+  participants: Participant[]
+  status: PokerStatus
+  voted_user_ids: string[]
+  votes: Record<string, string>
+  current_user_id: string
+}>()
+
+function hasVoted(userId: string): boolean {
+  return props.voted_user_ids.includes(userId)
+}
+
+function voteValue(userId: string): string | undefined {
+  return props.votes[userId]
+}
+
+function displayName(p: Participant): string {
+  return p.alias?.trim() || p.display_name
+}
+
+const votedCount = computed(() => props.voted_user_ids.length)
+</script>
+
+<template>
+  <div class="space-y-2">
+    <div class="flex items-baseline justify-between">
+      <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
+        Players
+      </p>
+      <p class="text-xs text-muted-foreground tabular-nums">
+        {{ votedCount }} / {{ participants.length }} voted
+      </p>
+    </div>
+    <ul class="flex flex-wrap gap-3">
+      <li
+        v-for="p in participants"
+        :key="p.user_id"
+        :class="[
+          'flex flex-col items-center gap-1 min-w-16',
+          p.user_id === current_user_id && 'opacity-100',
+        ]"
+      >
+        <div
+          :class="[
+            'card-silhouette',
+            hasVoted(p.user_id) ? 'is-voted' : 'is-empty',
+            status === 'revealed' && hasVoted(p.user_id) && 'is-revealed',
+          ]"
+          :aria-label="
+            !hasVoted(p.user_id)
+              ? `${displayName(p)} hasn't voted`
+              : status === 'revealed'
+                ? `${displayName(p)} voted ${voteValue(p.user_id)}`
+                : `${displayName(p)} has voted`
+          "
+        >
+          <div class="card-face card-back" aria-hidden="true"></div>
+          <div class="card-face card-front" aria-hidden="true">
+            <span v-if="status === 'revealed'" class="font-bold font-display text-lg">
+              {{ voteValue(p.user_id) ?? "—" }}
+            </span>
+          </div>
+        </div>
+        <span
+          class="text-[11px] text-foreground truncate max-w-20 text-center"
+          :title="displayName(p)"
+        >
+          {{ displayName(p) }}
+          <span v-if="p.user_id === current_user_id" class="text-muted-foreground">
+            (you)
+          </span>
+        </span>
+      </li>
+    </ul>
+  </div>
+</template>
+
+<style scoped>
+/* Card silhouette: 48x64 rounded rect, flips on reveal via
+   transform: rotateY(180deg). The "back" face is a gradient
+   placeholder; the "front" face carries the numeric/string vote. */
+.card-silhouette {
+  position: relative;
+  width: 2.5rem;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  perspective: 600px;
+  transform-style: preserve-3d;
+  transition: transform 400ms cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.card-silhouette.is-empty {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--muted) 0,
+    var(--muted) 4px,
+    var(--card) 4px,
+    var(--card) 8px
+  );
+  border: 1px dashed var(--border);
+  opacity: 0.5;
+}
+
+/* When empty, hide the back/front faces so the parent's dashed
+   hatched pattern shows through. Without this, the card-back's
+   gradient sits on top of the hatched pattern and covers it. */
+.card-silhouette.is-empty .card-face {
+  display: none;
+}
+
+.card-silhouette.is-voted {
+  border: 1px solid var(--primary);
+}
+
+.card-silhouette.is-revealed {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-back {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-keyboard) 100%);
+}
+
+.card-front {
+  background: var(--card);
+  border: 1px solid var(--primary);
+  transform: rotateY(180deg);
+  color: var(--foreground);
+}
+
+/* prefers-reduced-motion: drop the flip animation, just swap. */
+@media (prefers-reduced-motion: reduce) {
+  .card-silhouette {
+    transition: none;
+  }
+}
+</style>

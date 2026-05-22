@@ -180,7 +180,7 @@ order I'd recommend:
    instrument shell when `"music"`, render `<PokerBoard>` when
    `"poker"`; hide music FX bus / volume slider in non-music.
    (~1 hour.)
-5. **`PokerBoard.vue` + 5 sub-components** — six files. The
+5. ✅ **`PokerBoard.vue` + 5 sub-components** — six files. The
    tightest bottleneck of the build. (~1.5 days for a polished
    first pass.)
 6. **Host controls + deck dropdown gating** — reveal / re-vote
