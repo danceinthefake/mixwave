@@ -73,14 +73,24 @@ Remote flashes use `ring-orange-400` regardless of which instrument played them 
 
 Each new activity gets one accent token that carries its primary affordances (button highlights, chip-strip tints, presence dot when the activity is in play). Music is special — it uses the per-instrument palette above instead of a single accent.
 
-| Activity | Token               | Status                                                     |
-| -------- | ------------------- | ---------------------------------------------------------- |
-| Music    | (uses Music palette) | active                                                     |
-| Poker    | `accent-poker`      | reserved — defaults to `--primary` until the v4.1 polish pass |
-| Standup  | `accent-standup`    | reserved — not yet shipped                                  |
-| Retro    | `accent-retro`      | reserved — not yet shipped                                  |
+| Activity | Token              | Hue                            | Status                              |
+| -------- | ------------------ | ------------------------------ | ----------------------------------- |
+| Music    | (uses Music palette) | per-instrument               | active                              |
+| Poker    | `accent-poker`     | cyan `oklch(0.78 0.13 215)`    | **active** — `#56d2e6` from the brand gradient. Tints the activity chip's poker-active state, the "vote pending" silhouette border, and the reveal panel's distribution bars |
+| Standup  | `accent-standup`   | —                              | reserved — not yet shipped          |
+| Retro    | `accent-retro`     | —                              | reserved — not yet shipped          |
 
 When a new activity ships, add one `oklch(...)` entry under `@theme inline` in `assets/css/app.css` and a row here. Don't introduce ad-hoc colors per component.
+
+### Semantic accents
+
+Tokens that carry meaning rather than activity identity. Use these where the *state* of a surface matters (action completed, error, etc.) regardless of which activity is in play.
+
+| Token        | Hue                            | Used for                                                          |
+| ------------ | ------------------------------ | ----------------------------------------------------------------- |
+| `--primary`  | pink `oklch(0.68 0.21 5)`      | "your action" — Reveal / Next round buttons, selected vote card, current-user avatar, `--ring` focus outline. Same hue as the logo's leftmost stop (`#e94886`); intentionally not gradient-tinted so primary affordances stay legible on every background |
+| `--success`  | lime `oklch(0.86 0.20 125)`    | confirmation / outcome / "the number you walked away with" — currently the Avg / Median / Mode values in `RevealPanel`. Same hue as the logo's rightmost stop (`#b5e651`). Reserve for positive feedback states; don't use as a generic "active" tint |
+| `--destructive` | red                         | shadcn default — keep for destructive confirms (delete, reset) and inline error states. Don't replace with brand colours |
 
 ---
 
