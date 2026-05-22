@@ -136,7 +136,7 @@ function setDeck(deck: DeckId) {
     />
   </div>
 
-  <div v-else class="rounded-2xl border bg-card/60 p-8 text-center text-muted-foreground">
+  <div v-else class="rounded-xl border bg-card/60 p-8 text-center text-muted-foreground">
     Poker session not ready yet.
   </div>
 </template>

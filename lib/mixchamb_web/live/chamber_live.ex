@@ -1177,7 +1177,7 @@ defmodule MixchambWeb.ChamberLive do
           >
             Best-effort sync · distant players may sound a beat off
           </p>
-          <div class="flex items-center gap-2 rounded-2xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl">
+          <div class="flex items-center gap-2 rounded-xl border bg-card/80 backdrop-blur-md px-2 py-1.5 shadow-2xl">
             <%!-- Instrument switcher tabs. Music-only — non-music
                  activities don't pick an instrument. --%>
             <div
