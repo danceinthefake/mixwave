@@ -70,13 +70,19 @@ defmodule MixchambWeb.Layouts do
     </div>
 
     <header class="border-b">
-      <div class="mx-auto max-w-5xl flex items-center gap-6 px-4 sm:px-6 lg:px-8 py-3">
-        <a href="/" class="flex items-center gap-2 hover:opacity-80">
+      <div class="mx-auto max-w-5xl flex items-center gap-4 sm:gap-6 px-4 sm:px-6 lg:px-8 py-3">
+        <a href="/" class="flex items-center gap-2 hover:opacity-80 shrink-0">
           <img src={static_url(MixchambWeb.Endpoint, ~p"/images/logo.svg")} width="32" />
           <span class="text-base font-bold tracking-tight font-display">mixchamb</span>
         </a>
-        <span class="text-xs text-muted-foreground">realtime collaborative chambers</span>
-        <div class="ml-auto flex items-center gap-2">
+        <%!-- Tagline is nice-to-have, not load-bearing — logo +
+             wordmark already carry identity. Hide below sm: so the
+             header doesn't collide with the theme toggle on narrow
+             phones (390px and under). --%>
+        <span class="hidden sm:inline text-xs text-muted-foreground truncate">
+          realtime collaborative chambers
+        </span>
+        <div class="ml-auto flex items-center gap-2 shrink-0">
           <.theme_toggle />
         </div>
       </div>
