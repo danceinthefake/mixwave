@@ -106,8 +106,8 @@ const votedCount = computed(() => props.voted_user_ids.length)
     var(--card) 6px,
     var(--card) 12px
   );
-  border: 1.5px dashed var(--border);
-  opacity: 0.5;
+  border: 2.5px dashed var(--muted-foreground);
+  opacity: 0.7;
 }
 
 /* When empty, hide the back/front faces so the parent's dashed
@@ -118,7 +118,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
 }
 
 .card-silhouette.is-voted {
-  border: 1.5px solid var(--primary);
+  border: 2.5px solid var(--primary);
 }
 
 .card-silhouette.is-revealed {
@@ -136,7 +136,15 @@ const votedCount = computed(() => props.voted_user_ids.length)
 }
 
 .card-back {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-keyboard) 100%);
+  /* Brand gradient (pink -> cyan -> green) matching the logo's
+     horizontal stops, applied diagonally on the card so all three
+     colours read along the card's longest axis. */
+  background: linear-gradient(
+    135deg,
+    #e94886 0%,
+    #56d2e6 50%,
+    #b5e651 100%
+  );
 }
 
 .card-front {
