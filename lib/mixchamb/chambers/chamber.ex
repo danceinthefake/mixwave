@@ -19,9 +19,19 @@ defmodule Mixchamb.Chambers.Chamber do
   # Chamber kinds map 1:1 to presets in the Tone.js master FX bus
   # on the client (see `assets/vue/lib/audio.ts`). Add a new kind
   # here AND add a matching preset there, otherwise the client
-  # falls back to whatever its last applied preset was.
+  # falls back to whatever its last applied preset was. Music-only;
+  # ignored when `activity != "music"`.
   @kinds ~w(vacuum anechoic room live hall cathedral plate spring echo)
   def kinds, do: @kinds
+
+  # Activities a chamber can host. Each one lights up a different
+  # Vue island in `Chamber.vue`. The default is `"music"` so existing
+  # rows + new music chambers behave identically to v1-v3. Adding an
+  # activity here is half the work; the other half is the matching
+  # branch in `Chamber.vue` (see features/planning-poker.md for the
+  # pattern).
+  @activities ~w(music poker)
+  def activities, do: @activities
 
   schema "chambers" do
     field :slug, :string
@@ -29,6 +39,7 @@ defmodule Mixchamb.Chambers.Chamber do
     field :title, :string
     field :last_activity_at, :utc_datetime
     field :kind, :string, default: "room"
+    field :activity, :string, default: "music"
     # Creator-controlled REC toggle. When true, every broadcast
     # note is persisted to `chamber_events` for later replay.
     field :is_recording, :boolean, default: false
