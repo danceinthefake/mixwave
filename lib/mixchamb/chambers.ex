@@ -139,6 +139,21 @@ defmodule Mixchamb.Chambers do
   end
 
   @doc """
+  Flips the chamber's activity (music ↔ poker). Persists to the DB
+  and casts to the chamber's GenServer so the in-memory state
+  (PokerSession allocation, broadcast) matches the row.
+  """
+  def set_activity(%Chamber{} = chamber, activity) when is_binary(activity) do
+    chamber
+    |> Chamber.activity_changeset(%{activity: activity})
+    |> Repo.update()
+    |> tap(fn
+      {:ok, updated} -> Server.set_activity(updated.slug, updated.activity)
+      _ -> :ok
+    end)
+  end
+
+  @doc """
   Flips the chamber's REC toggle. On success, casts the new value
   to the chamber's GenServer so its in-memory persistence flag
   matches the row without re-reading the DB on every note.

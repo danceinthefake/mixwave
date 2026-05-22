@@ -434,6 +434,39 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  # Host-only activity switch (music ↔ poker). Chaos chamber stays
+  # music-locked — it has no human creator and the picker isn't
+  # rendered for anyone but the creator anyway, so this guard is
+  # belt-and-braces for hand-crafted phx events.
+  def handle_event("set_activity", %{"activity" => activity}, socket)
+      when is_binary(activity) do
+    chamber = socket.assigns.chamber
+    user = socket.assigns.current_user
+
+    cond do
+      chamber.creator_user_id != user.id ->
+        {:noreply, socket}
+
+      activity not in Mixchamb.Chambers.Chamber.activities() ->
+        {:noreply, socket}
+
+      chamber.activity == activity ->
+        {:noreply, socket}
+
+      true ->
+        case Chambers.set_activity(chamber, activity) do
+          {:ok, _updated} ->
+            # The GenServer cast broadcasts {:activity_changed, _};
+            # every LV (including this one) refreshes state in
+            # handle_info below.
+            {:noreply, socket}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Couldn't switch activity.")}
+        end
+    end
+  end
+
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
     presences = Presence.list(presence_topic(socket.assigns.chamber_slug))
@@ -467,6 +500,18 @@ defmodule MixchambWeb.ChamberLive do
   def handle_info({:poker, _evt, _a, _b, _c}, socket) do
     {:noreply,
      assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
+  end
+
+  # Activity flipped by the host. Re-pull the chamber row so the
+  # local `activity` assign matches the DB, then reload the poker
+  # session (becomes a fresh session for poker, nil for music).
+  def handle_info({:activity_changed, _activity}, socket) do
+    chamber = Chambers.find_by_slug(socket.assigns.chamber_slug)
+
+    {:noreply,
+     socket
+     |> assign(:chamber, chamber)
+     |> assign(:poker_session, load_poker_session(chamber))}
   end
 
   # Broadcast by the LV that wrote the title change. Everyone else
@@ -584,6 +629,9 @@ defmodule MixchambWeb.ChamberLive do
   end
 
   ## Render helpers
+
+  defp activity_label("music"), do: "Music"
+  defp activity_label("poker"), do: "Poker"
 
   defp instrument_label(:drums), do: "Drums"
   defp instrument_label(:keyboard), do: "Keyboard"
@@ -772,6 +820,39 @@ defmodule MixchambWeb.ChamberLive do
                 {display_title(@chamber)}
               </h1>
             <% end %>
+          </div>
+
+          <%!-- Activity switcher. Host-only chip-strip to flip
+               between music and poker mid-session. Hidden on the
+               singleton chaos chamber (it's music-locked by design;
+               its creator_user_id is NULL so @is_host is already
+               false). The server cast clears the PokerSession on
+               music and allocates a fresh one on poker, then
+               broadcasts :activity_changed for every connected
+               client. --%>
+          <div :if={@is_host} class="flex flex-wrap items-center gap-2">
+            <span class="text-xs uppercase tracking-wider text-muted-foreground mr-1">
+              Activity
+            </span>
+            <button
+              :for={a <- Mixchamb.Chambers.Chamber.activities()}
+              phx-click="set_activity"
+              phx-value-activity={a}
+              data-confirm={
+                if a != @chamber.activity and a == "music" and @poker_session != nil and
+                     map_size(@poker_session.votes) > 0,
+                   do: "Switching to music will drop the current poker votes. Continue?"
+              }
+              class={[
+                "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
+                @chamber.activity == a &&
+                  "bg-primary/15 text-primary border-primary/40",
+                @chamber.activity != a &&
+                  "bg-card hover:bg-accent text-muted-foreground border-input"
+              ]}
+            >
+              {activity_label(a)}
+            </button>
           </div>
 
           <%!-- Chamber kind. Creator gets a chip-strip to switch

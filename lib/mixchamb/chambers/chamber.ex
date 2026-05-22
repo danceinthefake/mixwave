@@ -81,6 +81,14 @@ defmodule Mixchamb.Chambers.Chamber do
   end
 
   @doc false
+  def activity_changeset(chamber, attrs) do
+    chamber
+    |> cast(attrs, [:activity])
+    |> validate_required([:activity])
+    |> validate_inclusion(:activity, @activities)
+  end
+
+  @doc false
   def recording_changeset(chamber, attrs) do
     chamber
     |> cast(attrs, [:is_recording])
