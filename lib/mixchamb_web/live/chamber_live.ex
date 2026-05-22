@@ -797,7 +797,12 @@ defmodule MixchambWeb.ChamberLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} banner={assigns[:banner]} draining?={assigns[:draining?] || false}>
+    <Layouts.app
+      flash={@flash}
+      banner={assigns[:banner]}
+      draining?={assigns[:draining?] || false}
+      width={:wide}
+    >
       <%!-- Break out of Layouts.app's max-w-3xl + py-10. The chamber
            uses the full available width as a stage; the dock floats
            at the bottom of the viewport. --%>
