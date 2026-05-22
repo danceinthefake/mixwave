@@ -112,36 +112,42 @@ User journeys after the pivot:
 Second round of decisions on top of §3's framing. All seven of the
 original open questions are now answered.
 
-1. **Schema split — `chambers.kind` stays for visibility; new
-   `chambers.activity` column for which tool.** Option B from the
-   draft. Two concepts, two columns; one migration. `kind`
-   remains `"chaos"` / `"secret"`. `activity` is a new string
-   field (`"music"` / `"poker"` / future activities), default
-   `"music"` for back-compat with existing rows.
+1. **Schema change — add a new `chambers.activity` column.**
+   *(Corrected from an earlier draft that said this was an
+   "Option B" split of `chambers.kind` — `kind` was never a
+   visibility field; see §5a below.)* The `activity` column is
+   a new string (`"music"` / `"poker"` / future activities) with
+   default `"music"` for back-compat. One migration. The
+   existing `kind` column is untouched and stays a music-only
+   reverb-preset field.
 
-2. **Per-activity visibility constraints — chaos is music-only;
-   every other activity is `secret` only.** The public
-   always-on chaos chamber is a music-specific concept (drop
-   in, jam with strangers). A public always-on planning-poker
-   chamber doesn't make sense — poker happens with named
-   colleagues. Enforce this in two places:
-   - **Create-chamber UI**: the visibility options surfaced
-     depend on the selected activity. Picking *poker* shows only
-     "secret chamber"; picking *music* shows chaos + secret.
-   - **Server-side validation**: in `Mixchamb.Chambers` create
-     path, reject `activity ≠ "music"` + `kind = "chaos"`
-     combinations.
-   The existing chaos chamber stays as the singleton
-   `slug = "chaos"`, `kind = "chaos"`, `activity = "music"`.
-   It cannot switch activity (the host dropdown is hidden for it),
-   protecting public users from being dropped into a poker game
-   they didn't sign up for.
+2. **Per-activity visibility — chaos is music-only; every other
+   activity is link-only ("secret").** The chaos chamber is a
+   music-specific concept (singleton public room; drop in, jam
+   with strangers). A public always-on poker chamber doesn't
+   make sense — poker happens with named colleagues. Enforce in
+   two places:
+   - **Create-chamber UI**: only music chambers can be created
+     as the chaos chamber (and the chaos chamber already exists
+     as a singleton, so in practice every user-created chamber
+     is link-only regardless of activity). The activity picker
+     for new chambers doesn't expose a "create a chaos poker
+     chamber" option.
+   - **Activity-switch on the existing chaos chamber is
+     blocked**: when a chamber row has `slug = "chaos"` AND
+     `creator_user_id IS NULL` (the system-chamber marker),
+     the host dropdown is hidden and `Mixchamb.Chambers` rejects
+     any attempt to change its activity. Protects walk-in users
+     from being dropped into a poker game they didn't sign up
+     for.
 
 3. **Host-only dropdown for switching activity.** The MVP
-   control is a `<select>` visible only to the chamber creator,
-   listing the activities valid for the current chamber's `kind`.
-   Switching flips `chamber.activity` and broadcasts to all
-   participants; their Vue island re-renders.
+   control is a `<select>` visible only to the chamber creator
+   on user-created chambers, listing the available activities.
+   The chaos chamber (system row) renders no dropdown — its
+   activity is locked to `"music"`. Switching flips
+   `chamber.activity` and broadcasts to all participants; their
+   Vue island re-renders.
 
 4. **Creator-is-host for MVP.** No multi-host, no role grants,
    no admin override beyond what's already in `/admin`. Matches
@@ -171,17 +177,38 @@ original open questions are now answered.
    touched (likely needs `email` + a way to track the chosen
    auth method).
 
+## 5a. Schema correction (logged here so the history is honest)
+
+An earlier pass of this doc claimed that `chambers.kind` already
+carried the visibility model (`"chaos"` / `"secret"`) and proposed
+splitting it into separate `kind` + `activity` columns. That was
+wrong. The actual landscape today:
+
+| Concept | Where it lives | Notes |
+|---|---|---|
+| **Chaos vs link-only** (visibility) | `slug == "chaos"` + `creator_user_id IS NULL` | Convention, no schema field. The Chaos Chamber is a singleton system row; every user-created chamber has an unguessable slug, which is what makes it "secret". |
+| **Reverb preset** (audio character) | `chambers.kind` (string) | `vacuum`, `anechoic`, `room`, `live`, `hall`, `cathedral`, `plate`, `spring`, `echo`. Music-only; meaningless for non-music activities. |
+| **Activity** *(new in v4)* | `chambers.activity` (string, default `"music"`) | Added by this migration. |
+
+Implication: §5.1 simplifies to *"add the `activity` column;
+leave `kind` alone."* The constraint in §5.2 (chaos = music
+only) is enforced in application code at the singleton row, not
+as a schema-level relationship between `kind` and `activity`.
+
 ## 6. v4 MVP scope (planning poker)
 
 Smallest thing that earns "we used it in real sprint planning":
 
 - **Schema migration** — add `activity` column to `chambers`
   (string, default `"music"`, enum-ish: `"music"` / `"poker"`).
-  `kind` is left alone; visibility stays its own axis.
-- **Create-chamber form** — activity picker first; visibility
-  options (`secret` / `chaos`) filtered by activity. Picking
-  *poker* shows only `secret`. Server-side validates the same
-  rule in `Mixchamb.Chambers.create_chamber/1`.
+  `kind` (the reverb preset) is left alone; it stays a
+  music-only field.
+- **Create-chamber form** — activity picker first. The chaos
+  chamber is a pre-seeded singleton (no UI creates one), so
+  every user-created chamber is link-only by default; activity
+  picker just chooses `"music"` or `"poker"`. Server-side
+  validates that activity-switch on the singleton chaos chamber
+  is rejected.
 - **Chamber.vue routing** — branch on `chamber.activity`: render
   existing instrument shell when `"music"`, render new
   `PokerBoard.vue` when `"poker"`. Music FX bus / volume slider
@@ -197,10 +224,10 @@ Smallest thing that earns "we used it in real sprint planning":
     next ticket.
 - **Host controls** — visible only to the chamber creator: deal /
   reveal / clear / next-round buttons, plus a "switch activity"
-  dropdown. The dropdown lists only activities valid for this
-  chamber's `kind` — so the chaos chamber's host has no dropdown
-  (it's music-locked), and a secret chamber's host sees `music` ↔
-  `poker`.
+  dropdown. The chaos chamber (singleton system row,
+  `creator_user_id IS NULL`) has no host and no dropdown — it's
+  music-locked. Every user-created chamber's host sees the full
+  set: `music` ↔ `poker`.
 - **No persistence** beyond chamber lifetime. Votes live in
   `Chambers.Server`'s state; cleared on re-vote or chamber close.
   No ticket history, no Jira integration.
