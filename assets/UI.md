@@ -288,7 +288,8 @@ When both appear together (header pattern), set the wordmark in `font-display fo
 ### Don'ts
 
 - Don't recolor the gradient. If you need a different colour, use `logo-mono.svg` and let `currentColor` carry the brand.
-- Don't apply shadow, glow, outline, or any post-process — the bricks already carry the gradient; effects on top read as noise.
+- Don't apply post-process effects **to the mark itself** — no CSS filters, no `box-shadow` on the `<img>`, no `drop-shadow` SVG filter, no `outline`. The bricks carry the gradient; layering filters on top reads as noise.
+- *Background* halos behind the mark are allowed on hero surfaces (e.g., the landing-page `.brand-glow` radial bloom behind the hero logo). They sit on a lower stacking layer; the mark itself is untouched. Use sparingly — at most one hero per page.
 - Don't rebuild the M out of different tile counts or layouts to "fit" a new context. The 7-course, 23-tile composition is fixed.
 - Don't crop or distort. The viewBox is square; if you need a wordmark-only layout, use plain `font-display` text instead.
 - Don't try to animate individual bricks. The mark is meant to read as one object.
