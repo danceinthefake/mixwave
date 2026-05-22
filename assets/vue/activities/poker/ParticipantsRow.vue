@@ -44,7 +44,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
         v-for="p in participants"
         :key="p.user_id"
         :class="[
-          'flex flex-col items-center gap-1 min-w-16',
+          'flex flex-col items-center gap-1.5 min-w-24',
           p.user_id === current_user_id && 'opacity-100',
         ]"
       >
@@ -64,13 +64,13 @@ const votedCount = computed(() => props.voted_user_ids.length)
         >
           <div class="card-face card-back" aria-hidden="true"></div>
           <div class="card-face card-front" aria-hidden="true">
-            <span v-if="status === 'revealed'" class="font-bold font-display text-lg">
+            <span v-if="status === 'revealed'" class="font-bold font-display text-3xl">
               {{ voteValue(p.user_id) ?? "—" }}
             </span>
           </div>
         </div>
         <span
-          class="text-[11px] text-foreground truncate max-w-20 text-center"
+          class="text-xs text-foreground truncate max-w-24 text-center"
           :title="displayName(p)"
         >
           {{ displayName(p) }}
@@ -84,15 +84,16 @@ const votedCount = computed(() => props.voted_user_ids.length)
 </template>
 
 <style scoped>
-/* Card silhouette: 48x64 rounded rect, flips on reveal via
-   transform: rotateY(180deg). The "back" face is a gradient
-   placeholder; the "front" face carries the numeric/string vote. */
+/* Card silhouette: 80x112 rounded rect (5:7 playing-card
+   proportions), flips on reveal via transform: rotateY(180deg).
+   The "back" face is a gradient placeholder; the "front" face
+   carries the numeric/string vote. */
 .card-silhouette {
   position: relative;
-  width: 2.5rem;
-  height: 3.5rem;
-  border-radius: 0.5rem;
-  perspective: 600px;
+  width: 5rem;
+  height: 7rem;
+  border-radius: 0.625rem;
+  perspective: 900px;
   transform-style: preserve-3d;
   transition: transform 400ms cubic-bezier(0.4, 0.2, 0.2, 1);
 }
@@ -101,11 +102,11 @@ const votedCount = computed(() => props.voted_user_ids.length)
   background: repeating-linear-gradient(
     45deg,
     var(--muted) 0,
-    var(--muted) 4px,
-    var(--card) 4px,
-    var(--card) 8px
+    var(--muted) 6px,
+    var(--card) 6px,
+    var(--card) 12px
   );
-  border: 1px dashed var(--border);
+  border: 1.5px dashed var(--border);
   opacity: 0.5;
 }
 
@@ -117,7 +118,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
 }
 
 .card-silhouette.is-voted {
-  border: 1px solid var(--primary);
+  border: 1.5px solid var(--primary);
 }
 
 .card-silhouette.is-revealed {
@@ -127,7 +128,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
 .card-face {
   position: absolute;
   inset: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.625rem;
   backface-visibility: hidden;
   display: flex;
   align-items: center;
