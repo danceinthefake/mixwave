@@ -1022,38 +1022,47 @@ defmodule MixchambWeb.ChamberLive do
                is still in its 30-minute grace window — disappears
                the moment somebody else joins (chamber.activated_at
                flips). Other users coming in via the link never see
-               it. --%>
-          <div
+               it.
+
+               Collapsed by default (<details> without `open`) so
+               the chamber chrome stays calm while the host is
+               still setting things up; one click on the header row
+               expands to reveal the URL + copy button. --%>
+          <details
             :if={show_invite_banner?(@chamber, @current_user)}
-            class="rounded-xl border bg-card/80 backdrop-blur-sm p-4 sm:p-5 space-y-3"
+            class="group rounded-xl border bg-card/80 backdrop-blur-sm"
           >
-            <div class="flex items-start gap-3">
-              <.icon name="hero-link-mini" class="size-5 mt-0.5 text-muted-foreground" />
-              <div class="space-y-1 flex-1">
-                <h3 class="text-sm font-semibold tracking-tight font-display">
-                  Share this chamber
-                </h3>
-                <p class="text-xs text-muted-foreground">
-                  Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
-                </p>
+            <summary class="flex items-center gap-3 p-4 sm:p-5 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+              <.icon name="hero-link-mini" class="size-5 text-muted-foreground" />
+              <h3 class="flex-1 text-sm font-semibold tracking-tight font-display">
+                Share this chamber
+              </h3>
+              <.icon
+                name="hero-chevron-down-mini"
+                class="size-4 text-muted-foreground transition-transform group-open:rotate-180"
+              />
+            </summary>
+            <div class="px-4 sm:px-5 pb-4 sm:pb-5 space-y-3">
+              <p class="text-xs text-muted-foreground">
+                Anyone with the link can join. The chamber closes on its own if nobody else shows up within 30 minutes.
+              </p>
+              <div class="flex items-center gap-2">
+                <code class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground">
+                  {chamber_url(@chamber)}
+                </code>
+                <button
+                  type="button"
+                  id="chamber-copy-link"
+                  phx-hook="CopyToClipboard"
+                  phx-update="ignore"
+                  data-copy-url={chamber_url(@chamber)}
+                  class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  Copy link
+                </button>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <code class="flex-1 truncate rounded-md bg-muted px-3 py-2 text-xs font-mono text-foreground">
-                {chamber_url(@chamber)}
-              </code>
-              <button
-                type="button"
-                id="chamber-copy-link"
-                phx-hook="CopyToClipboard"
-                phx-update="ignore"
-                data-copy-url={chamber_url(@chamber)}
-                class="rounded-md border bg-card hover:bg-accent px-3 py-2 text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
-              >
-                Copy link
-              </button>
-            </div>
-          </div>
+          </details>
 
           <%!-- One live_vue island for the whole chamber. Vue handles
                the v-if swap between pads internally — see Chamber.vue
