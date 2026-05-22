@@ -195,49 +195,98 @@ leave `kind` alone."* The constraint in §5.2 (chaos = music
 only) is enforced in application code at the singleton row, not
 as a schema-level relationship between `kind` and `activity`.
 
-## 6. v4 MVP scope (planning poker)
+## 6. v4 MVP scope (planning poker) — shipped 2026-05-23
 
-Smallest thing that earns "we used it in real sprint planning":
+The 7-step build laid out in the working doc landed end-to-end.
+What follows is the durable record of design decisions; the
+code under `lib/mixchamb/chambers/poker_session.ex`,
+`lib/mixchamb/chambers/server.ex`,
+`lib/mixchamb_web/live/chamber_live.ex`, and
+`assets/vue/activities/poker/` is the implementation of truth.
 
-- **Schema migration** — add `activity` column to `chambers`
-  (string, default `"music"`, enum-ish: `"music"` / `"poker"`).
-  `kind` (the reverb preset) is left alone; it stays a
-  music-only field.
-- **Create-chamber form** — activity picker first. The chaos
-  chamber is a pre-seeded singleton (no UI creates one), so
-  every user-created chamber is link-only by default; activity
-  picker just chooses `"music"` or `"poker"`. Server-side
-  validates that activity-switch on the singleton chaos chamber
-  is rejected.
-- **Chamber.vue routing** — branch on `chamber.activity`: render
-  existing instrument shell when `"music"`, render new
-  `PokerBoard.vue` when `"poker"`. Music FX bus / volume slider
-  / instrument dock only mount when activity is `"music"`.
-- **`PokerBoard.vue`** — three states:
-  - **Voting** — each participant sees the card deck (Fibonacci-ish:
-    `1, 2, 3, 5, 8, 13, 21, ?, ☕`), picks a card, sees a "voted"
-    indicator next to other participants' names without seeing
-    their values.
-  - **Reveal** — host clicks "reveal," everyone's cards turn face
-    up simultaneously, distribution chart, average/median.
-  - **Re-vote / next** — host can re-open voting (resets) or start
-    next ticket.
-- **Host controls** — visible only to the chamber creator: deal /
-  reveal / clear / next-round buttons, plus a "switch activity"
-  dropdown. The chaos chamber (singleton system row,
-  `creator_user_id IS NULL`) has no host and no dropdown — it's
-  music-locked. Every user-created chamber's host sees the full
-  set: `music` ↔ `poker`.
-- **No persistence** beyond chamber lifetime. Votes live in
-  `Chambers.Server`'s state; cleared on re-vote or chamber close.
-  No ticket history, no Jira integration.
-- **No login.** Anonymous users only; the existing
-  noun-adj-NN identity carries straight over.
-- **No sequencing.** One activity per chamber session for now.
+### 6.1 Decks
 
-Estimated build: ~3–5 days end-to-end for someone who knows the
-codebase. Vue island shape mirrors the existing instrument-pad
-pattern, so a lot of structure is copy-with-edits.
+Four decks ship; host picks one at chamber creation and can
+switch only while `votes == %{}`:
+
+| Deck (atom) | Values | Numeric stats? |
+|---|---|---|
+| `:fibonacci` (default) | `1, 2, 3, 5, 8, 13, 21, ?, ☕` | avg + median |
+| `:modified_fibonacci` | `0, ½, 1, 2, 3, 5, 8, 13, 20, 40, 100, ?, ☕` | avg + median |
+| `:tshirt` | `XS, S, M, L, XL, ?` | mode only |
+| `:pow2` | `1, 2, 4, 8, 16, 32, ?, ☕` | avg + median |
+
+Mid-vote deck switches are server-rejected (would orphan
+already-cast values).
+
+### 6.2 State machine
+
+Two persistent statuses on `PokerSession.status`: `:voting` and
+`:revealed`. The "next round" phase is a transition action, not
+a status — it clears votes and increments `round`. "Re-vote"
+is a soft reset that clears votes but keeps `round`.
+
+### 6.3 Broadcasts (all on `chamber:<slug>`)
+
+| Event | Payload | Trigger |
+|---|---|---|
+| `{:poker, :vote_cast, user_id}` | user id only — values stay private until reveal | participant votes (or changes vote) |
+| `{:poker, :vote_withdrawn, user_id}` | user id | participant un-picks |
+| `{:poker, :revealed, votes}` | `%{user_id => value}` | host clicks reveal |
+| `{:poker, :cleared, round, story, deck}` | new round + story + deck | host clicks next-round OR re-vote |
+| `{:poker, :story_changed, story}` | new story | host inline-edits the title |
+| `{:poker, :deck_changed, deck}` | new deck atom | host switches deck while votes empty |
+
+LV clients receive these and re-pull the authoritative session
+via `Chambers.Server.poker_state/1` rather than diffing against
+a local copy.
+
+### 6.4 Vote privacy
+
+`PokerSession.votes` holds `%{user_id => value}` on the server.
+The LV's `poker_view/2` filters: during `:voting`, only the
+caller's own vote value is sent to the browser; other voters
+appear as user-ids in `voted_user_ids` only. On `:revealed`,
+all values are exposed.
+
+### 6.5 Vue component split
+
+```
+assets/vue/activities/poker/
+├── PokerBoard.vue        # top-level; composes the 5 below
+├── StoryHeader.vue       # inline-editable story + round number
+├── CardDeck.vue          # the deck the user picks from
+├── ParticipantsRow.vue   # avatars + card silhouettes (flip on reveal)
+├── RevealPanel.vue       # distribution + stats
+└── HostControls.vue      # reveal / re-vote / next-round / deck dropdown
+```
+
+Folder convention mirrors `assets/vue/instruments/`; next
+activity goes under `assets/vue/activities/<name>/`.
+
+### 6.6 Edge cases handled
+
+| Case | Handling |
+|---|---|
+| Late joiner during `:voting` | Can vote; their card joins the tally |
+| Late joiner during `:revealed` | Sees the reveal; can't add a vote until next-round |
+| Leaver mid-vote | Vote dropped via the LV's existing presence path on disconnect |
+| Host leaves | Session freezes for MVP (no host transfer; multi-host comes later) |
+| Re-vote with zero votes pre-reveal | No-op |
+| Reveal with zero votes | Allowed — empty distribution shown |
+| Two votes from same user during `:voting` | Latest value wins; `:vote_cast` re-broadcast |
+| Voting attempt during `:revealed` | Rejected at PokerSession layer |
+
+### 6.7 Constraints kept
+
+- **No persistence** beyond chamber lifetime — `PokerSession`
+  lives in `Chambers.Server`'s state; dies with the chamber.
+- **No login.** Anonymous users only.
+- **No sequencing.** One activity per chamber session.
+  Activity-switch UI is deferred (see §7).
+
+Final estimate vs reality: planned ~3–4 days, shipped in two
+focused sessions across 2026-05-22/23.
 
 ## 7. Path forward
 
