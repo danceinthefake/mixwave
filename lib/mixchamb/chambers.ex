@@ -27,14 +27,18 @@ defmodule Mixchamb.Chambers do
   alias Mixchamb.Repo
 
   @doc """
-  Creates a new chamber owned by `creator_user_id`. The slug is
-  generated automatically.
+  Creates a new chamber owned by `creator_user_id`, running the
+  given `activity` (default `"music"`). The slug is generated
+  automatically. `activity` must be one of `Chamber.activities/0`
+  — currently `"music"` or `"poker"`.
   """
-  def create_chamber(creator_user_id) when is_binary(creator_user_id) do
+  def create_chamber(creator_user_id, activity \\ "music")
+      when is_binary(creator_user_id) and is_binary(activity) do
     %Chamber{}
     |> Chamber.creation_changeset(%{
       slug: generate_slug(),
-      creator_user_id: creator_user_id
+      creator_user_id: creator_user_id,
+      activity: activity
     })
     |> Repo.insert()
     |> tap(fn
@@ -42,7 +46,12 @@ defmodule Mixchamb.Chambers do
         :telemetry.execute(
           [:mixchamb, :chamber, :created],
           %{count: 1},
-          %{slug: chamber.slug, kind: chamber.kind, system: false}
+          %{
+            slug: chamber.slug,
+            kind: chamber.kind,
+            activity: chamber.activity,
+            system: false
+          }
         )
 
       _ ->

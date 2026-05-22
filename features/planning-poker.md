@@ -165,13 +165,13 @@ matches the established pattern.
 All seven sections locked as of 2026-05-22. The implementation
 order I'd recommend:
 
-1. **Migration** — add `activity` string column to `chambers`,
+1. ✅ **Migration** — add `activity` string column to `chambers`,
    default `"music"`. (10 min.)
-2. **`PokerSession` struct + `Chambers.Server` integration** —
+2. ✅ **`PokerSession` struct + `Chambers.Server` integration** —
    handle the new messages (`:vote`, `:reveal`, `:next_round`,
    `:set_story`, `:set_deck`) and broadcast the six events.
    (Half-day.)
-3. **Create-chamber form** — activity picker, deck picker
+3. ✅ **Create-chamber form** — activity picker, deck picker
    (visible only when activity = poker). Every user-created
    chamber is link-only by default; the chaos chamber is a
    pre-seeded singleton and never created through this form.
