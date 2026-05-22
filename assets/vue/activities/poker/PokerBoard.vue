@@ -55,6 +55,20 @@ const live = useLiveVue()
 // don't crash sub-components dereferencing `session.deck`.
 const session = computed(() => props.poker_session)
 
+// True when the chamber is fresh and lonely — the host is alone,
+// no votes have been cast, no story set. Renders an inline hint
+// to share the link rather than staring at an empty player row
+// in silence.
+const isWaitingForTeam = computed(() => {
+  if (!session.value) return false
+  return (
+    props.poker_participants.length <= 1 &&
+    session.value.voted_user_ids.length === 0 &&
+    session.value.status === "voting" &&
+    !session.value.story
+  )
+})
+
 function castVote(card: string) {
   if (!session.value || session.value.status !== "voting") return
   // Tapping the same card again withdraws — feels less awkward
@@ -113,6 +127,17 @@ function setDeck(deck: DeckId) {
       :votes="session.votes"
       :current_user_id="current_user_id"
     />
+
+    <!-- Inline waiting-for-team hint. Renders only when the host is
+         alone in a fresh chamber so it doesn't compete with a board
+         that already has players or votes in it. Drops itself as
+         soon as the team arrives. -->
+    <p
+      v-if="isWaitingForTeam"
+      class="text-sm text-muted-foreground italic"
+    >
+      Waiting for the team. Share the link to start.
+    </p>
 
     <CardDeck
       v-if="session.status === 'voting'"

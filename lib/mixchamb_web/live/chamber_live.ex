@@ -881,7 +881,7 @@ defmodule MixchambWeb.ChamberLive do
                 "px-3 py-1 text-xs rounded-md border transition-colors cursor-pointer",
                 @chamber.activity == a && activity_chip_active_class(a),
                 @chamber.activity != a &&
-                  "bg-card hover:bg-accent text-muted-foreground border-input"
+                  "bg-card hover:bg-accent text-foreground border-border"
               ]}
             >
               {activity_label(a)}
@@ -913,7 +913,7 @@ defmodule MixchambWeb.ChamberLive do
                   @chamber.kind == kind &&
                     "bg-primary/15 text-primary border-primary/40",
                   @chamber.kind != kind &&
-                    "bg-card hover:bg-accent text-muted-foreground border-input"
+                    "bg-card hover:bg-accent text-foreground border-border"
                 ]}
               >
                 {chamber_kind_label(kind)}
@@ -964,7 +964,7 @@ defmodule MixchambWeb.ChamberLive do
                 @chamber.is_recording &&
                   "bg-red-500/15 text-red-500 border-red-500/40 hover:bg-red-500/20",
                 !@chamber.is_recording &&
-                  "bg-card hover:bg-accent text-muted-foreground border-input"
+                  "bg-card hover:bg-accent text-foreground border-border"
               ]}
               title={
                 if @chamber.is_recording,

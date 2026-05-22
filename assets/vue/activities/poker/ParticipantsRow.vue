@@ -70,7 +70,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
           </div>
         </div>
         <span
-          class="text-xs text-foreground truncate max-w-24 text-center"
+          class="text-sm text-foreground truncate max-w-24 text-center"
           :title="displayName(p)"
         >
           {{ displayName(p) }}

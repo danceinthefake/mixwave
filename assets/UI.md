@@ -152,6 +152,20 @@ REMOTE_FLASH_DELTA_MS = 80
 
 Each pad's `flash()` and `flashRemote()` should clear the highlight after `FLASH_MS.{tier}` and `FLASH_MS.{tier} + REMOTE_FLASH_DELTA_MS` respectively. Don't pick a new number — pick the right tier.
 
+### Hover vocabulary
+
+One language per surface type so hover affordances feel consistent across the app, not improvised per component:
+
+| Surface | Hover treatment |
+| --- | --- |
+| **Primary button** (filled, `bg-primary`) — Reveal, Next round, Create chamber, Copy link if it ever flips to primary | `hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all`. The lift + shadow are the "engageable" tell; the opacity nudge is the colour feedback |
+| **Secondary button** (outlined, `bg-card`) — Re-vote, Copy link, Cancel | `hover:bg-accent transition-colors`. Stays flat — secondary actions shouldn't compete with primary lift |
+| **Chip / toggle** — Activity, Kind, Style strips | `hover:bg-accent transition-colors`. Same as secondary button; chips are conceptually a toggle row, not a button stack |
+| **Card** (landing entry cards) — `bg-card` with content | `hover:bg-accent transition-colors`. If the card has a trailing arrow / chevron, also `group-hover:translate-x-0.5` on the icon |
+| **Pad button** (drum / chord / piano key) | No hover treatment — these are touch-first surfaces with explicit press / active states. See *Controls › Pad button* below |
+
+`transition-all` is fine for primary buttons because the hover state changes opacity + translate + shadow at once and they should land together. Everywhere else `transition-colors` is enough — keeps the GPU off most of the time.
+
 ---
 
 ## Layout primitives

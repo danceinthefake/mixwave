@@ -18,6 +18,10 @@ defineEmits<{ pick: [card: string] }>()
     <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
       Pick a card
     </p>
+    <!-- Cards take 5:7 playing-card proportions at 56x80 — half
+         the scale of the ParticipantsRow silhouette. Same object
+         type, two scales: deck pick is the same kind of card the
+         player flips to reveal. -->
     <div class="flex flex-wrap gap-2">
       <button
         v-for="card in cards"
@@ -26,10 +30,10 @@ defineEmits<{ pick: [card: string] }>()
         @click="$emit('pick', card)"
         :aria-pressed="card === selected"
         :class="[
-          'pad-touch touch-manipulation min-h-12 min-w-12 px-3 py-2 rounded-lg text-base font-bold font-display border transition-all cursor-pointer',
+          'pad-touch touch-manipulation w-14 h-20 rounded-md text-xl font-bold font-display border flex items-center justify-center transition-all cursor-pointer',
           card === selected
-            ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105'
-            : 'bg-card hover:bg-accent text-foreground border-input',
+            ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105 -translate-y-0.5'
+            : 'bg-card hover:bg-accent text-foreground border-border',
         ]"
       >
         {{ card }}

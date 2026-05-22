@@ -39,7 +39,7 @@ const deckLabels: Record<DeckId, string> = {
           v-if="status === 'voting'"
           type="button"
           @click="$emit('reveal')"
-          class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer font-medium"
+          class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium"
         >
           Reveal
         </button>
@@ -55,7 +55,7 @@ const deckLabels: Record<DeckId, string> = {
           <button
             type="button"
             @click="$emit('next-round')"
-            class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer font-medium"
+            class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium"
             title="Move on to the next story (round number advances)"
           >
             Next round
