@@ -1,16 +1,19 @@
-# Planning-poker MVP — implementation details
+# Planning poker — feature spec
 
-Working surface for the implementation-level decisions on the
-v4 planning-poker MVP. The strategic decisions (schema split,
-visibility constraint, creator-is-host, ephemeral state, etc.)
-are locked in `../BRAINSTORM-v4.md` §§3 + 5. This doc covers the
-"decide while building" details listed at the end of v4's §6.
+Shipped 2026-05-23 as the second activity in a mixchamb chamber
+(the first is music). This doc is the per-section reference for
+what planning poker is, how it behaves, and which decisions are
+locked. The architectural framing — why activity is a column on
+`chambers` rather than its own row, how chaos-vs-secret stayed a
+convention, the creator-is-host MVP scope — lives in
+`../BRAINSTORM-v4.md` §§3 + 5 + 6.
 
-**Status legend per section:** _Pending_ (proposed, awaiting
-sign-off), _Locked_ (decided; ready to code against).
+Code map: `lib/mixchamb/chambers/poker_session.ex`,
+`lib/mixchamb/chambers/server.ex` (poker_* casts),
+`lib/mixchamb_web/live/chamber_live.ex` (poker_* events +
+broadcasts), `assets/vue/activities/poker/` (6-file Vue split).
 
-Once every section is _Locked_, fold the resolutions into
-`../BRAINSTORM-v4.md` §6 and delete this doc.
+All sections below are **Locked**.
 
 ---
 
