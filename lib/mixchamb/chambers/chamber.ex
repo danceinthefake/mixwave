@@ -52,9 +52,10 @@ defmodule Mixchamb.Chambers.Chamber do
   @doc false
   def creation_changeset(chamber, attrs) do
     chamber
-    |> cast(attrs, [:slug, :creator_user_id, :kind])
+    |> cast(attrs, [:slug, :creator_user_id, :kind, :activity])
     |> validate_required([:slug, :creator_user_id])
     |> validate_inclusion(:kind, @kinds)
+    |> validate_inclusion(:activity, @activities)
     |> unique_constraint(:slug)
   end
 
