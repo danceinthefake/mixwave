@@ -97,6 +97,101 @@ defmodule Mixchamb.Chambers.ServerTest do
     end
   end
 
+  describe "host management" do
+    setup %{chamber: chamber} = ctx do
+      {:ok, _pid} = Server.ensure_started(chamber.slug, chamber.id)
+      {:ok, other} = Accounts.create_anonymous_user()
+      {:ok, third} = Accounts.create_anonymous_user()
+      Map.merge(ctx, %{other: other, third: third})
+    end
+
+    test "creator starts as the sole host", %{chamber: chamber, user: creator} do
+      assert Server.hosts(chamber.slug) == [creator.id]
+    end
+
+    test "creator can promote another participant", %{
+      chamber: chamber,
+      user: creator,
+      other: other
+    } do
+      :ok = Phoenix.PubSub.subscribe(Mixchamb.PubSub, Mixchamb.Chambers.topic(chamber.slug))
+      Server.promote_host(chamber.slug, creator.id, other.id)
+      assert_receive {:hosts_changed, hosts}, 500
+      assert Enum.sort(hosts) == Enum.sort([creator.id, other.id])
+      assert Enum.sort(Server.hosts(chamber.slug)) == Enum.sort([creator.id, other.id])
+    end
+
+    test "non-creator can't promote anyone", %{
+      chamber: chamber,
+      other: other,
+      third: third
+    } do
+      Server.promote_host(chamber.slug, other.id, third.id)
+      # Wait a beat to be sure no broadcast fired.
+      :timer.sleep(50)
+      refute third.id in Server.hosts(chamber.slug)
+    end
+
+    test "promoting an existing host is a no-op", %{
+      chamber: chamber,
+      user: creator,
+      other: other
+    } do
+      Server.promote_host(chamber.slug, creator.id, other.id)
+      :timer.sleep(20)
+      hosts_before = Server.hosts(chamber.slug)
+      Server.promote_host(chamber.slug, creator.id, other.id)
+      :timer.sleep(20)
+      assert Enum.sort(Server.hosts(chamber.slug)) == Enum.sort(hosts_before)
+    end
+
+    test "creator can demote a co-host", %{
+      chamber: chamber,
+      user: creator,
+      other: other
+    } do
+      Server.promote_host(chamber.slug, creator.id, other.id)
+      :timer.sleep(20)
+      Server.demote_host(chamber.slug, creator.id, other.id)
+      :timer.sleep(20)
+      assert Server.hosts(chamber.slug) == [creator.id]
+    end
+
+    test "creator can't demote themselves", %{chamber: chamber, user: creator} do
+      Server.demote_host(chamber.slug, creator.id, creator.id)
+      :timer.sleep(50)
+      assert creator.id in Server.hosts(chamber.slug)
+    end
+
+    test "co-host can demote themselves", %{
+      chamber: chamber,
+      user: creator,
+      other: other
+    } do
+      Server.promote_host(chamber.slug, creator.id, other.id)
+      :timer.sleep(20)
+      Server.demote_host(chamber.slug, other.id, other.id)
+      :timer.sleep(20)
+      refute other.id in Server.hosts(chamber.slug)
+    end
+
+    test "co-host can't demote a different co-host", %{
+      chamber: chamber,
+      user: creator,
+      other: other,
+      third: third
+    } do
+      Server.promote_host(chamber.slug, creator.id, other.id)
+      Server.promote_host(chamber.slug, creator.id, third.id)
+      :timer.sleep(20)
+
+      Server.demote_host(chamber.slug, other.id, third.id)
+      :timer.sleep(50)
+      # third stays a host — non-creator can only demote self.
+      assert third.id in Server.hosts(chamber.slug)
+    end
+  end
+
   defp stop_chamber(slug) do
     case Registry.lookup(Mixchamb.Chambers.Registry, slug) do
       [{pid, _}] ->

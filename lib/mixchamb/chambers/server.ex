@@ -139,6 +139,27 @@ defmodule Mixchamb.Chambers.Server do
     do: GenServer.cast(via(slug), {:poker_set_queue, lines})
 
   @doc """
+  Promote `target_user_id` to a co-host. Rejected when
+  `requester_user_id` isn't the chamber creator. Idempotent —
+  promoting someone who's already a host is a no-op.
+  """
+  def promote_host(slug, requester_user_id, target_user_id)
+      when is_binary(requester_user_id) and is_binary(target_user_id),
+      do: GenServer.cast(via(slug), {:promote_host, requester_user_id, target_user_id})
+
+  @doc """
+  Demote a co-host back to participant. The creator can demote
+  anyone; a co-host can only demote themselves. The creator
+  themselves can never be demoted (they're the chamber's anchor).
+  """
+  def demote_host(slug, requester_user_id, target_user_id)
+      when is_binary(requester_user_id) and is_binary(target_user_id),
+      do: GenServer.cast(via(slug), {:demote_host, requester_user_id, target_user_id})
+
+  @doc "Synchronous snapshot of the current hosts list (creator + co-hosts)."
+  def hosts(slug), do: GenServer.call(via(slug), :hosts)
+
+  @doc """
   Synchronously read the current PokerSession (or `nil` if the
   chamber isn't in poker activity). Used by late joiners to
   rebuild their UI from the live state.
@@ -218,10 +239,10 @@ defmodule Mixchamb.Chambers.Server do
     # whose creator turned REC on (or whose activity is "poker")
     # rehydrates correctly when the GenServer is restarted by
     # the supervisor.
-    {is_recording, activity} =
+    {is_recording, activity, creator_user_id} =
       case state.chamber_id && Mixchamb.Chambers.find_by_id(state.chamber_id) do
-        %{is_recording: rec, activity: act} -> {rec, act}
-        _ -> {false, "music"}
+        %{is_recording: rec, activity: act, creator_user_id: cid} -> {rec, act, cid}
+        _ -> {false, "music", nil}
       end
 
     if is_recording do
@@ -237,6 +258,20 @@ defmodule Mixchamb.Chambers.Server do
         Mixchamb.Chambers.PokerSession.new()
       end
 
+    # Hosts: creator-plus-promoted set. Ephemeral by design —
+    # promotions die with the chamber, same as poker / music state
+    # (v4 §3.7). Creator is the single source of demote-immunity;
+    # they can promote/demote anyone else, co-hosts can demote
+    # themselves but can't add new hosts. nil creator_user_id only
+    # happens in test fixtures that skip the DB row — the resulting
+    # empty set degrades cleanly (no one is host, no one can do
+    # host actions, but the chamber doesn't crash).
+    hosts =
+      case creator_user_id do
+        nil -> MapSet.new()
+        id -> MapSet.new([id])
+      end
+
     state =
       Map.merge(state, %{
         events: [],
@@ -246,6 +281,8 @@ defmodule Mixchamb.Chambers.Server do
         is_recording: is_recording,
         to_persist: [],
         activity: activity,
+        creator_user_id: creator_user_id,
+        hosts: hosts,
         poker_session: poker_session
       })
 
@@ -427,6 +464,62 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:poker_set_deck, _}, state), do: {:noreply, state}
   def handle_cast({:poker_set_queue, _}, state), do: {:noreply, state}
 
+  # Host management. Authorisation is enforced here (not at the
+  # LV layer alone) so a hand-crafted phx push from a co-host's
+  # session can't sneak in a `promote_host` for themselves.
+  def handle_cast({:promote_host, requester_id, target_id}, state) do
+    cond do
+      # Only the creator can promote new hosts. Co-hosts can drive
+      # the session but can't extend the host set further.
+      requester_id != state.creator_user_id ->
+        {:noreply, state}
+
+      MapSet.member?(state.hosts, target_id) ->
+        {:noreply, state}
+
+      true ->
+        new_hosts = MapSet.put(state.hosts, target_id)
+
+        Phoenix.PubSub.broadcast(
+          Mixchamb.PubSub,
+          Mixchamb.Chambers.topic(state.slug),
+          {:hosts_changed, MapSet.to_list(new_hosts)}
+        )
+
+        {:noreply, %{state | hosts: new_hosts}}
+    end
+  end
+
+  def handle_cast({:demote_host, requester_id, target_id}, state) do
+    cond do
+      # Creator is the chamber's anchor — they can't be demoted by
+      # anyone, including themselves. Without this an absentminded
+      # creator click on their own row would lock the chamber out
+      # of every host action with no way back.
+      target_id == state.creator_user_id ->
+        {:noreply, state}
+
+      # Non-creators can only demote themselves. Co-host A demoting
+      # co-host B would be a "kick" we haven't designed for.
+      requester_id != state.creator_user_id and requester_id != target_id ->
+        {:noreply, state}
+
+      not MapSet.member?(state.hosts, target_id) ->
+        {:noreply, state}
+
+      true ->
+        new_hosts = MapSet.delete(state.hosts, target_id)
+
+        Phoenix.PubSub.broadcast(
+          Mixchamb.PubSub,
+          Mixchamb.Chambers.topic(state.slug),
+          {:hosts_changed, MapSet.to_list(new_hosts)}
+        )
+
+        {:noreply, %{state | hosts: new_hosts}}
+    end
+  end
+
   def handle_cast({:set_activity, activity}, state) do
     poker_session =
       case activity do
@@ -466,6 +559,10 @@ defmodule Mixchamb.Chambers.Server do
 
   def handle_call(:poker_state, _from, state) do
     {:reply, state.poker_session, state}
+  end
+
+  def handle_call(:hosts, _from, state) do
+    {:reply, MapSet.to_list(state.hosts), state}
   end
 
   @impl true

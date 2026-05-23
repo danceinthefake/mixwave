@@ -117,7 +117,30 @@ defmodule MixchambWeb.ChamberLive do
      # can't run away with the panel.
      |> assign(:recent_hits, [])
      |> assign(:poker_session, load_poker_session(chamber))
-     |> assign(:is_host, chamber.creator_user_id == user.id)}
+     |> assign_hosts(chamber, user)}
+  end
+
+  # Compute the host set + is_host flag from the chamber server's
+  # ephemeral state. Falls back to creator-only if the server hasn't
+  # initialised the hosts MapSet yet (very narrow startup race —
+  # `hosts/1` would crash on a nil state field otherwise). The
+  # creator is always implicitly in the set even on this fallback
+  # path, so the original-creator-as-host invariant survives any
+  # ordering quirk.
+  defp assign_hosts(socket, chamber, user) do
+    hosts =
+      try do
+        Mixchamb.Chambers.Server.hosts(chamber.slug)
+      catch
+        :exit, _ -> [chamber.creator_user_id]
+      end
+
+    hosts_set = MapSet.new(hosts)
+    is_host = MapSet.member?(hosts_set, user.id)
+
+    socket
+    |> assign(:hosts, hosts_set)
+    |> assign(:is_host, is_host)
   end
 
   # Pull the current PokerSession off the chamber's GenServer. Returns
@@ -449,6 +472,31 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  # Creator promotes another participant to co-host. Server enforces
+  # the creator-only rule independently; this LV-side check is the
+  # fast path so a misclick on a stale UI doesn't burn a roundtrip.
+  def handle_event("promote_host", %{"user_id" => target}, socket) when is_binary(target) do
+    Mixchamb.Chambers.Server.promote_host(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      target
+    )
+
+    {:noreply, socket}
+  end
+
+  # Demote: creator demotes anyone, co-host demotes self. Same dual
+  # enforcement: server authoritative, LV just routes the cast.
+  def handle_event("demote_host", %{"user_id" => target}, socket) when is_binary(target) do
+    Mixchamb.Chambers.Server.demote_host(
+      socket.assigns.chamber_slug,
+      socket.assigns.current_user.id,
+      target
+    )
+
+    {:noreply, socket}
+  end
+
   # Host-only activity switch (music ↔ poker). Chaos chamber stays
   # music-locked — it has no human creator and the picker isn't
   # rendered for anyone but the creator anyway, so this guard is
@@ -510,6 +558,20 @@ defmodule MixchambWeb.ChamberLive do
   def handle_info({:poker, _evt, _payload}, socket) do
     {:noreply,
      assign(socket, :poker_session, load_poker_session(socket.assigns.chamber))}
+  end
+
+  # Co-host promotion / demotion fans out to everyone in the chamber.
+  # Each client recomputes its own is_host flag — the host-only
+  # controls in the template will re-render accordingly within a
+  # single LV diff.
+  def handle_info({:hosts_changed, hosts}, socket) do
+    hosts_set = MapSet.new(hosts)
+    user_id = socket.assigns.current_user.id
+
+    {:noreply,
+     socket
+     |> assign(:hosts, hosts_set)
+     |> assign(:is_host, MapSet.member?(hosts_set, user_id))}
   end
 
   def handle_info({:poker, _evt, _a, _b, _c}, socket) do
@@ -1285,15 +1347,32 @@ defmodule MixchambWeb.ChamberLive do
               </span>
               <div class="flex-1 min-w-0">
                 <%!-- Primary line: the alias if set, else the
-                     auto-generated noun-adj-NN name. --%>
+                     auto-generated noun-adj-NN name. The host
+                     badge sits inline so the role is visible at
+                     the same glance as the name; "Creator" is a
+                     special-cased badge for the original creator
+                     (can't be demoted, can promote others), plain
+                     "Host" for co-hosts. --%>
                 <div class={[
-                  "truncate leading-tight",
+                  "flex items-baseline gap-1.5 leading-tight",
                   user_id == @current_user.id && "font-semibold text-foreground",
                   user_id != @current_user.id && "text-foreground"
                 ]}>
-                  {primary_name(meta)}
-                  <span :if={user_id == @current_user.id} class="text-muted-foreground font-normal">
+                  <span class="truncate min-w-0">{primary_name(meta)}</span>
+                  <span :if={user_id == @current_user.id} class="text-muted-foreground font-normal shrink-0">
                     (you)
+                  </span>
+                  <span
+                    :if={user_id == @chamber.creator_user_id}
+                    class="shrink-0 text-[9px] uppercase tracking-wider font-mono font-semibold px-1 rounded bg-primary/15 text-primary"
+                  >
+                    Creator
+                  </span>
+                  <span
+                    :if={user_id != @chamber.creator_user_id and MapSet.member?(@hosts, user_id)}
+                    class="shrink-0 text-[9px] uppercase tracking-wider font-mono font-semibold px-1 rounded bg-accent-poker/15 text-accent-poker"
+                  >
+                    Host
                   </span>
                 </div>
                 <%!-- Secondary line: the anon name whenever an
@@ -1305,6 +1384,54 @@ defmodule MixchambWeb.ChamberLive do
                   class="text-[11px] text-muted-foreground leading-tight truncate font-mono"
                 >
                   <span :if={alias_set?(meta)}>{meta.display_name}</span><span :if={alias_set?(meta) and @chamber.activity == "music"}> · </span><span :if={@chamber.activity == "music"}>{instrument_label(meta.instrument)}</span>
+                </div>
+                <%!-- Host management controls. Three exclusive
+                     cases: creator viewing someone else
+                     (Promote / Demote depending on host state),
+                     a co-host viewing themselves (Step down),
+                     and nobody else (no controls). Buttons stay
+                     out of the row's first line so the name +
+                     badge read cleanly above. --%>
+                <div
+                  :if={creator?(@chamber, @current_user) and user_id != @chamber.creator_user_id}
+                  class="mt-1"
+                >
+                  <button
+                    :if={MapSet.member?(@hosts, user_id)}
+                    type="button"
+                    phx-click="demote_host"
+                    phx-value-user_id={user_id}
+                    class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
+                  >
+                    Demote
+                  </button>
+                  <button
+                    :if={not MapSet.member?(@hosts, user_id)}
+                    type="button"
+                    phx-click="promote_host"
+                    phx-value-user_id={user_id}
+                    class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
+                    title="Make this player a co-host. They can reveal / advance / set queue / switch activity."
+                  >
+                    Promote to host
+                  </button>
+                </div>
+                <div
+                  :if={
+                    user_id == @current_user.id and
+                      MapSet.member?(@hosts, user_id) and
+                      user_id != @chamber.creator_user_id
+                  }
+                  class="mt-1"
+                >
+                  <button
+                    type="button"
+                    phx-click="demote_host"
+                    phx-value-user_id={user_id}
+                    class="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline cursor-pointer"
+                  >
+                    Step down as host
+                  </button>
                 </div>
               </div>
             </li>

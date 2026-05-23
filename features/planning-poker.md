@@ -138,7 +138,7 @@ about state. The card silhouette implementation lives in
 | **Late joiner during `:voting`** | They can vote; their card joins the tally. |
 | **Late joiner during `:revealed`** | They see the reveal but can't add a vote (round is closed). The next-round broadcast catches them up if/when it fires. |
 | **Leaver mid-vote** | Their vote is dropped from the tally on `Presence` leave. The "voted" silhouette next to their name disappears with them. |
-| **Host leaves** | For MVP, session freezes. Host privilege does not transfer to anyone else. New chamber needed if creator never returns. (Multi-host comes later.) |
+| **Host leaves** | The chamber stays running; any **co-host** the creator promoted before leaving can keep driving (reveal / advance / set queue / switch activity). With no co-hosts promoted, the session freezes until the creator returns — multi-host is opt-in, not automatic transfer. See "Multi-host" in the polish iterations below. |
 | **Switch activity mid-session (poker → music)** | `PokerSession` state is cleared. Switching back recreates a fresh session at round 1. No persistence across switches. |
 | **Switch activity mid-music (music → poker)** | Existing music chamber state is left alone (just hidden); poker session initialises fresh. |
 | **Two votes from the same user (changes mind)** | Allowed during `:voting`. Latest value wins; broadcast `vote_cast` again. Disallowed during `:revealed`. |
@@ -220,9 +220,7 @@ Total estimate: **~3-4 working days**.
 After the locked sections above shipped, a polish pass added the
 following. Each is small enough to track as a bullet rather than
 its own locked section; documented here so future work can see
-what's in beyond the MVP without trawling git log. Multi-host
-(§6) remains deferred to v4.1+ — that's a scope change, not
-polish.
+what's in beyond the MVP without trawling git log.
 
 - **Consensus headline on reveal.** RevealPanel renders a
   one-glance verdict above the distribution bars: `Consensus: X`
@@ -318,6 +316,25 @@ polish.
   every client reloads its `poker_session` (fresh on poker, nil
   on music). Confirmed via 2-browser Playwright smoke. §7 above
   is updated.
+
+- **Multi-host (co-host promotion).** Section §6's "host privilege
+  does not transfer" rule is loosened: the creator can promote any
+  participant to a co-host who then gets every host-only action
+  (reveal / next round / set queue / set deck / set activity /
+  set kind / record). Hosts live in `Chambers.Server`'s ephemeral
+  state — a `MapSet` seeded with the creator's id at init, mutated
+  via two new casts (`:promote_host`, `:demote_host`) that
+  authorise against the creator id on the server side (LV check
+  is fast-path only). `:hosts_changed` broadcasts re-flow the
+  set to every client; `chamber_live.ex` recomputes `@is_host`
+  from `MapSet.member?(@hosts, current_user.id)` so the entire
+  host-gated UI flips in one diff. Creator can't be demoted, even
+  by themselves (chamber-anchor invariant); co-hosts can
+  self-demote ("Step down as host") but can't promote anyone
+  else (no daisy-chain). State dies with the chamber, same as
+  poker + music — consistent with v4 §3.7. Two new badges in the
+  presence aside (`Creator` pink, `Host` cyan) plus inline
+  promote/demote links per row.
 
 - **Pre-loaded story queue.** `PokerSession.queue: [String.t()]`
   holds a backlog the host loads via a textarea in HostControls
