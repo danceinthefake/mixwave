@@ -810,16 +810,14 @@ defmodule MixchambWeb.ChamberLive do
            home-indicator gesture area. `env(safe-area-inset-bottom)`
            is 0 on devices without a notch / home bar. --%>
       <div class="-mx-4 sm:-mx-6 lg:-mx-8 -my-10 px-4 sm:px-6 lg:px-8 pt-4 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-        <%!-- Two-column flex on lg+: chamber stage on the left,
-             presence aside sticky on the right, both centered as a
-             unit inside max-w-5xl. Below lg the aside is hidden
-             and the content takes full width. Pre-rebuild the
-             aside was `position: fixed right-4` which floated on
-             top of the right viewport edge regardless of where
-             the content sat — caused the content to look "shifted
-             left" on wide screens. --%>
-        <div class="mx-auto max-w-5xl lg:flex lg:gap-6 lg:items-start">
-          <div class="flex-1 min-w-0 space-y-4">
+        <%!-- Chamber stage centered in max-w-5xl. The presence
+             aside is detached entirely — it floats over the
+             chamber as a draggable panel (see the <aside> after
+             this block). Layouts.app gets `width={:wide}` so the
+             5xl actually applies; without the override the parent
+             clamps the chamber to max-w-3xl. --%>
+        <div class="mx-auto max-w-5xl">
+          <div class="space-y-4">
           <%!-- Leave-chamber back link. Small + subtle so it
                doesn't compete with the controls; navigates back
                to the landing page. --%>
@@ -1107,14 +1105,26 @@ defmodule MixchambWeb.ChamberLive do
           />
           </div>
 
-      <%!-- Always-visible jammer panel — sticky on lg+ so it stays
-           in view as the chamber scrolls. Hidden below lg because
-           the chamber pads need the horizontal room on tablet /
-           mobile; the dock's presence summary at the bottom is the
-           fallback there. `top-24` clears the 60-ish-px header. --%>
-      <aside class="hidden lg:block lg:sticky lg:top-24 w-56 shrink-0 z-30">
+      <%!-- Floating, user-positionable presence panel. Starts at
+           top-right (lg:fixed + lg:top-24 + lg:right-4) but the
+           `phx-hook="DraggablePanel"` lets the user grab the header
+           row and drag it anywhere; position is persisted to
+           localStorage so the chosen spot survives reloads.
+           Hidden below lg because the chamber pads need the
+           horizontal room on tablet / mobile; the dock's presence
+           summary at the bottom is the fallback there. --%>
+      <aside
+        id="chamber-presence-panel"
+        phx-hook="DraggablePanel"
+        data-storage-key="mixchamb:chamber-presence-panel"
+        class="hidden lg:block lg:fixed lg:top-24 lg:right-4 w-56 z-30"
+      >
         <div class="rounded-xl border bg-card/80 backdrop-blur-md shadow-lg">
-          <div class="flex items-center justify-between px-3 py-2 border-b">
+          <div
+            data-drag-handle
+            class="flex items-center justify-between px-3 py-2 border-b cursor-grab select-none touch-none [&.is-dragging]:cursor-grabbing"
+            title="Drag to reposition"
+          >
             <span class="text-xs font-semibold uppercase tracking-wider font-display">
               {presence_heading(@chamber.activity)}
             </span>

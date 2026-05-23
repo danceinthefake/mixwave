@@ -86,11 +86,122 @@ async function copyText(text) {
   return ok
 }
 
+// Drag handle for floating panels. Listens for pointerdown on a
+// child `[data-drag-handle]` element, then translates the panel via
+// inline `left` / `top` so the position survives LV diffs (which
+// only touch the children, not the root element's style attribute).
+// Position is persisted in localStorage per `data-storage-key` so
+// the user's choice survives reloads.
+//
+// Clamps the panel to the viewport on every move + on window
+// resize, so a saved position can't strand the panel off-screen
+// after a smaller monitor swap.
+//
+// Pointer events cover mouse + touch with one code path; the
+// hook does nothing if there's no `[data-drag-handle]` (panel
+// stays at its CSS-defined position).
+const DraggablePanel = {
+  mounted() {
+    const el = this.el
+    const handle = el.querySelector("[data-drag-handle]")
+    if (!handle) return
+
+    const storageKey = el.dataset.storageKey || `mixchamb:panel:${el.id}`
+
+    const clamp = (left, top) => ({
+      left: Math.max(8, Math.min(window.innerWidth - el.offsetWidth - 8, left)),
+      top: Math.max(8, Math.min(window.innerHeight - el.offsetHeight - 8, top)),
+    })
+
+    const setPosition = (left, top) => {
+      const c = clamp(left, top)
+      el.style.left = `${c.left}px`
+      el.style.top = `${c.top}px`
+      el.style.right = "auto"
+      el.style.bottom = "auto"
+    }
+
+    // Restore the saved position if it parses.
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null")
+      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        setPosition(saved.left, saved.top)
+      }
+    } catch {
+      /* corrupt JSON / disabled storage — let CSS default win */
+    }
+
+    let drag = null
+
+    const onPointerDown = (e) => {
+      // Don't initiate drag from a button / input / form field —
+      // the handle is the bar around them, not them.
+      if (e.target.closest("button, input, textarea, select, a, [contenteditable]")) {
+        return
+      }
+      const rect = el.getBoundingClientRect()
+      drag = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startLeft: rect.left,
+        startTop: rect.top,
+      }
+      handle.setPointerCapture(e.pointerId)
+      handle.classList.add("is-dragging")
+      e.preventDefault()
+    }
+
+    const onPointerMove = (e) => {
+      if (!drag) return
+      setPosition(drag.startLeft + (e.clientX - drag.startX), drag.startTop + (e.clientY - drag.startY))
+    }
+
+    const onPointerUp = () => {
+      if (!drag) return
+      drag = null
+      handle.classList.remove("is-dragging")
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({
+          left: parseFloat(el.style.left),
+          top: parseFloat(el.style.top),
+        }))
+      } catch {
+        /* localStorage quota / private mode — drag still worked
+           for the session, just won't persist */
+      }
+    }
+
+    const onResize = () => {
+      // Only re-clamp if the user has positioned the panel.
+      // Otherwise leave CSS defaults alone.
+      if (!el.style.left) return
+      setPosition(parseFloat(el.style.left), parseFloat(el.style.top))
+    }
+
+    handle.addEventListener("pointerdown", onPointerDown)
+    handle.addEventListener("pointermove", onPointerMove)
+    handle.addEventListener("pointerup", onPointerUp)
+    handle.addEventListener("pointercancel", onPointerUp)
+    window.addEventListener("resize", onResize)
+
+    this.cleanup = () => {
+      handle.removeEventListener("pointerdown", onPointerDown)
+      handle.removeEventListener("pointermove", onPointerMove)
+      handle.removeEventListener("pointerup", onPointerUp)
+      handle.removeEventListener("pointercancel", onPointerUp)
+      window.removeEventListener("resize", onResize)
+    }
+  },
+  destroyed() {
+    this.cleanup?.()
+  },
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, ...getHooks(liveVueApp), CopyToClipboard},
+  hooks: {...colocatedHooks, ...getHooks(liveVueApp), CopyToClipboard, DraggablePanel},
 })
 
 // Show progress bar on live navigation and form submits
