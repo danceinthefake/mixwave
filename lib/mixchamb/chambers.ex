@@ -23,7 +23,7 @@ defmodule Mixchamb.Chambers do
 
   import Ecto.Query
 
-  alias Mixchamb.Chambers.{Chamber, ChamberEvent, Server}
+  alias Mixchamb.Chambers.{Chamber, ChamberEvent, ChamberVisit, Server}
   alias Mixchamb.Repo
 
   @doc """
@@ -136,6 +136,62 @@ defmodule Mixchamb.Chambers do
     chamber
     |> Chamber.kind_changeset(%{kind: kind})
     |> Repo.update()
+  end
+
+  @doc """
+  Upserts a `(user, chamber)` row in `chamber_visits` with
+  `last_visited_at` set to now. Idempotent — called on every
+  ChamberLive mount; the unique index on `(user_id, chamber_id)`
+  collapses repeated visits into a single row whose timestamp
+  rolls forward. Used by the landing page's "Resume" section.
+
+  Returns `:ok` regardless of result. The visit-tracking path
+  must never block or fail a chamber mount, so we swallow errors
+  (a stale FK, etc.) and just log them upstream if needed.
+  """
+  def touch_visit(user_id, chamber_id)
+      when is_binary(user_id) and is_binary(chamber_id) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    %ChamberVisit{}
+    |> ChamberVisit.changeset(%{
+      user_id: user_id,
+      chamber_id: chamber_id,
+      last_visited_at: now
+    })
+    |> Repo.insert(
+      # Conflict target matches the unique index. Only the
+      # timestamp bumps on a conflict — user_id and chamber_id
+      # don't change, by definition.
+      on_conflict: [set: [last_visited_at: now]],
+      conflict_target: [:user_id, :chamber_id]
+    )
+    |> case do
+      {:ok, _} -> :ok
+      {:error, _} -> :ok
+    end
+  end
+
+  @doc """
+  Returns the `limit` most-recently-visited chambers for a user,
+  newest-first. Joined with `chambers` so callers get the full
+  chamber row plus the visit timestamp.
+
+  Returns `[{chamber, last_visited_at}, ...]`. Stale visits get
+  cleaned via the FK cascade on chamber + user deletion, so
+  this is naturally bounded by chamber lifetime — no extra
+  filtering needed.
+  """
+  def recent_visits(user_id, limit \\ 5) when is_binary(user_id) do
+    from(v in ChamberVisit,
+      where: v.user_id == ^user_id,
+      join: c in Chamber,
+      on: c.id == v.chamber_id,
+      order_by: [desc: v.last_visited_at],
+      limit: ^limit,
+      select: {c, v.last_visited_at}
+    )
+    |> Repo.all()
   end
 
   @doc """

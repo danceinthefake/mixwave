@@ -11,7 +11,15 @@ defmodule MixchambWeb.LandingLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    user = socket.assigns.current_user
+
+    recent_visits =
+      case user do
+        %{id: id} when is_binary(id) -> Chambers.recent_visits(id, 5)
+        _ -> []
+      end
+
+    {:ok, assign(socket, :recent_visits, recent_visits)}
   end
 
   @impl true
@@ -166,9 +174,65 @@ defmodule MixchambWeb.LandingLive do
               </div>
             </button>
           </div>
+
+          <%!-- Resume-where-you-left-off. Renders only when the
+               user has live visits — the FK cascade clears rows
+               when the chamber is reaped (30-min idle) or the user
+               is reaped (24-h idle), so the list never shows
+               zombie chambers. Hidden entirely on a clean first
+               visit so the picker stays the focus. --%>
+          <div :if={@recent_visits != []} class="space-y-3">
+            <h3 class="text-xs uppercase tracking-wider text-muted-foreground font-display text-center">
+              Resume where you left off
+            </h3>
+            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <li :for={{chamber, last_visited_at} <- @recent_visits}>
+                <.link
+                  navigate={~p"/chamber/#{chamber.slug}"}
+                  class="block rounded-xl border bg-card/60 hover:bg-accent hover:-translate-y-px transition-all px-3 py-2.5 group"
+                >
+                  <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span class={[
+                      "size-1.5 rounded-full shrink-0",
+                      chamber.activity == "music" && "bg-primary",
+                      chamber.activity == "poker" && "bg-accent-poker"
+                    ]}>
+                    </span>
+                    <span class="uppercase tracking-wider">
+                      {recent_activity_label(chamber.activity)}
+                    </span>
+                    <span class="ml-auto tabular-nums">
+                      {recent_time_ago(last_visited_at)}
+                    </span>
+                  </div>
+                  <div class="mt-0.5 font-semibold font-display truncate text-foreground">
+                    {chamber.title || "Untitled chamber"}
+                  </div>
+                </.link>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </Layouts.app>
     """
+  end
+
+  # Tiny display helpers — kept private and local to the landing
+  # since they're not used anywhere else and inlining keeps the
+  # template tight.
+  defp recent_activity_label("music"), do: "Music"
+  defp recent_activity_label("poker"), do: "Poker"
+  defp recent_activity_label(other), do: String.capitalize(other)
+
+  defp recent_time_ago(%DateTime{} = dt) do
+    seconds = DateTime.utc_now() |> DateTime.diff(dt, :second)
+
+    cond do
+      seconds < 60 -> "just now"
+      seconds < 3600 -> "#{div(seconds, 60)}m ago"
+      seconds < 86_400 -> "#{div(seconds, 3600)}h ago"
+      true -> "#{div(seconds, 86_400)}d ago"
+    end
   end
 end
