@@ -205,6 +205,49 @@ class="fixed inset-0 z-50 backdrop-blur-md bg-background/80 cursor-pointer"
 
 Wrap with `<Transition>` for a fade in / out. The whole overlay is the click target; the visible button is just an affordance.
 
+### Draggable panel (Phoenix Hook)
+
+A reusable primitive for any panel the user should be able to reposition. The hook is generic — not chamber-specific — and lives in `assets/js/app.js` as `DraggablePanel`. Currently used by the chamber's presence aside; reach for it any time a floating panel benefits from user-chosen placement.
+
+```heex
+<div
+  id="some-floating-panel"
+  phx-hook="DraggablePanel"
+  data-storage-key="mixchamb:some-panel"
+  class="fixed top-24 right-4 w-56 z-30"
+>
+  <div
+    data-drag-handle
+    class="cursor-grab select-none touch-none [&.is-dragging]:cursor-grabbing"
+  >
+    <%!-- header / handle visual --%>
+  </div>
+  <%!-- panel content (LV diffs of children won't break drag state) --%>
+</div>
+```
+
+**Contract**
+
+| Bit | Role | Required? |
+| --- | --- | --- |
+| `phx-hook="DraggablePanel"` | wires the hook | yes |
+| `id` | LV requires it on every hook-bearing element | yes |
+| Child with `[data-drag-handle]` | the grab surface | yes — without it the hook bails silently |
+| `data-storage-key` | localStorage key for persisted position | optional; falls back to `mixchamb:panel:${id}` |
+| Initial CSS position (`fixed top-… right-…`) | where the panel sits before any drag | yes — hook only writes `left` / `top` after the first drag |
+
+**Inherited behaviour**
+
+- Pointer events cover mouse + touch with one code path. `setPointerCapture` on the handle keeps the drag alive when the cursor leaves the handle.
+- Pointer-downs on a `button`, `input`, `textarea`, `select`, `a`, or `[contenteditable]` *inside* the handle don't initiate drag — those keep their normal click behaviour.
+- The `is-dragging` class is toggled on the handle while a drag is in flight; the `[&.is-dragging]:cursor-grabbing` selector flips the cursor.
+- Position is clamped 8 px inside each viewport edge on every move and on window resize, so a saved position can't strand the panel off-screen after a monitor swap.
+- Position persists to localStorage; the panel restores its last spot on reload.
+
+**Out of scope**
+
+No snap-to-grid, no min/max position beyond viewport clamp, no keyboard reposition, no multi-element drag groups. If a panel needs any of that, add it to the hook rather than building a one-off.
+
 ---
 
 ## Controls
