@@ -97,6 +97,98 @@ defmodule Mixchamb.Chambers.ServerTest do
     end
   end
 
+  describe "poker casts" do
+    setup %{chamber: chamber} do
+      # Start the GenServer first, THEN switch activity so the
+      # in-process state actually allocates a PokerSession.
+      {:ok, _pid} = Server.ensure_started(chamber.slug, chamber.id)
+      Server.set_activity(chamber.slug, "poker")
+      :timer.sleep(20)
+      :ok
+    end
+
+    test "poker_vote stores the vote", %{chamber: chamber, user: user} do
+      Server.poker_vote(chamber.slug, user.id, "5")
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug).votes[user.id] == "5"
+    end
+
+    test "poker_withdraw_vote drops the vote", %{chamber: chamber, user: user} do
+      Server.poker_vote(chamber.slug, user.id, "5")
+      Server.poker_withdraw_vote(chamber.slug, user.id)
+      :timer.sleep(20)
+      refute Map.has_key?(Server.poker_state(chamber.slug).votes, user.id)
+    end
+
+    test "poker_reveal flips status", %{chamber: chamber} do
+      Server.poker_reveal(chamber.slug)
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug).status == :revealed
+    end
+
+    test "poker_revote clears votes + returns to voting", %{chamber: chamber, user: user} do
+      Server.poker_vote(chamber.slug, user.id, "5")
+      Server.poker_reveal(chamber.slug)
+      :timer.sleep(20)
+
+      Server.poker_revote(chamber.slug)
+      :timer.sleep(20)
+
+      session = Server.poker_state(chamber.slug)
+      assert session.status == :voting
+      assert session.votes == %{}
+    end
+
+    test "poker_next_round bumps the round counter", %{chamber: chamber} do
+      Server.poker_next_round(chamber.slug)
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug).round == 2
+    end
+
+    test "poker_set_story updates the story", %{chamber: chamber} do
+      Server.poker_set_story(chamber.slug, "Migrate auth")
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug).story == "Migrate auth"
+    end
+
+    test "poker_set_deck switches deck when no votes", %{chamber: chamber} do
+      Server.poker_set_deck(chamber.slug, :tshirt)
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug).deck == :tshirt
+    end
+
+    test "poker_set_queue replaces the queue", %{chamber: chamber} do
+      Server.poker_set_queue(chamber.slug, ["one", "two"])
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug).queue == ["one", "two"]
+    end
+  end
+
+  describe "set_activity cast" do
+    test "music → poker allocates a fresh PokerSession + broadcasts",
+         %{chamber: chamber} do
+      :ok = Phoenix.PubSub.subscribe(Mixchamb.PubSub, Mixchamb.Chambers.topic(chamber.slug))
+
+      {:ok, _pid} = Server.ensure_started(chamber.slug, chamber.id)
+      assert is_nil(Server.poker_state(chamber.slug))
+
+      Server.set_activity(chamber.slug, "poker")
+      assert_receive {:activity_changed, "poker"}, 500
+      assert %Mixchamb.Chambers.PokerSession{} = Server.poker_state(chamber.slug)
+    end
+
+    test "poker → music drops the PokerSession", %{chamber: chamber} do
+      {:ok, _pid} = Server.ensure_started(chamber.slug, chamber.id)
+      Server.set_activity(chamber.slug, "poker")
+      :timer.sleep(20)
+      assert Server.poker_state(chamber.slug)
+
+      Server.set_activity(chamber.slug, "music")
+      :timer.sleep(20)
+      assert is_nil(Server.poker_state(chamber.slug))
+    end
+  end
+
   describe "host management" do
     setup %{chamber: chamber} = ctx do
       {:ok, _pid} = Server.ensure_started(chamber.slug, chamber.id)

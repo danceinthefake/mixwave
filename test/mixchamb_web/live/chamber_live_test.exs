@@ -236,4 +236,265 @@ defmodule MixchambWeb.ChamberLiveTest do
       50 -> acc
     end
   end
+
+  describe "switch_instrument" do
+    test "creator switching instrument updates the LV state + persists last_instrument",
+         %{conn: conn, chamber: chamber, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      # Default mount lands on drums (or last_instrument); push the
+      # switch directly so we don't have to wait for the cooldown.
+      render_hook(view, "switch_instrument", %{"to" => "keyboard"})
+
+      # User row's last_instrument now reflects the new pick.
+      assert %{last_instrument: "keyboard"} = Mixchamb.Accounts.get_anonymous_user(user.id)
+    end
+
+  end
+
+  describe "set_activity" do
+    test "creator can flip music ↔ poker", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "set_activity", %{"activity" => "poker"})
+      assert Chambers.find_by_slug(chamber.slug).activity == "poker"
+
+      render_hook(view, "set_activity", %{"activity" => "music"})
+      assert Chambers.find_by_slug(chamber.slug).activity == "music"
+    end
+
+    test "non-creator cannot flip activity", %{conn: conn, chamber: chamber} do
+      {:ok, other} = Accounts.create_anonymous_user()
+      conn = Plug.Test.init_test_session(conn, %{"user_id" => other.id})
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "set_activity", %{"activity" => "poker"})
+      assert Chambers.find_by_slug(chamber.slug).activity == "music"
+    end
+
+    test "switching to the same activity is a no-op", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "set_activity", %{"activity" => "music"})
+      assert Chambers.find_by_slug(chamber.slug).activity == "music"
+    end
+
+    test "unknown activity is rejected", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+      render_hook(view, "set_activity", %{"activity" => "icebreaker"})
+      assert Chambers.find_by_slug(chamber.slug).activity == "music"
+    end
+  end
+
+  describe "set_kind" do
+    test "creator changes the chamber kind", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+      render_hook(view, "set_kind", %{"kind" => "anechoic"})
+      assert Chambers.find_by_slug(chamber.slug).kind == "anechoic"
+    end
+
+    test "non-creator (anonymous user, not admin) can't change kind",
+         %{conn: conn, chamber: chamber} do
+      {:ok, other} = Accounts.create_anonymous_user()
+      conn = Plug.Test.init_test_session(conn, %{"user_id" => other.id})
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "set_kind", %{"kind" => "anechoic"})
+      # Default kind stays.
+      assert Chambers.find_by_slug(chamber.slug).kind == "room"
+    end
+  end
+
+  describe "poker events (creator-host)" do
+    setup %{conn: conn, user: user} do
+      {:ok, chamber} = Chambers.create_chamber(user.id, "poker")
+      {:ok, _pid} = Mixchamb.Chambers.Server.ensure_started(chamber.slug, chamber.id)
+
+      on_exit(fn ->
+        case Registry.lookup(Mixchamb.Chambers.Registry, chamber.slug) do
+          [{pid, _}] -> DynamicSupervisor.terminate_child(Mixchamb.Chambers.Supervisor, pid)
+          _ -> :ok
+        end
+      end)
+
+      %{conn: conn, chamber: chamber, user: user}
+    end
+
+    test "poker_vote casts the vote via the GenServer", %{conn: conn, chamber: chamber, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_vote", %{"card" => "5"})
+      :timer.sleep(50)
+
+      session = Mixchamb.Chambers.Server.poker_state(chamber.slug)
+      assert session.votes[user.id] == "5"
+    end
+
+    test "poker_withdraw_vote clears the user's vote",
+         %{conn: conn, chamber: chamber, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_vote", %{"card" => "5"})
+      :timer.sleep(50)
+      render_hook(view, "poker_withdraw_vote", %{})
+      :timer.sleep(50)
+
+      session = Mixchamb.Chambers.Server.poker_state(chamber.slug)
+      assert is_nil(session.votes[user.id])
+    end
+
+    test "poker_reveal flips status to :revealed", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_reveal", %{})
+      :timer.sleep(50)
+
+      assert Mixchamb.Chambers.Server.poker_state(chamber.slug).status == :revealed
+    end
+
+    test "poker_next_round advances the round counter", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_next_round", %{})
+      :timer.sleep(50)
+
+      assert Mixchamb.Chambers.Server.poker_state(chamber.slug).round == 2
+    end
+
+    test "poker_set_story updates the story", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_set_story", %{"story" => "Migrate auth"})
+      :timer.sleep(50)
+
+      assert Mixchamb.Chambers.Server.poker_state(chamber.slug).story == "Migrate auth"
+    end
+
+    test "poker_set_deck switches the deck", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_set_deck", %{"deck" => "tshirt"})
+      :timer.sleep(50)
+
+      assert Mixchamb.Chambers.Server.poker_state(chamber.slug).deck == :tshirt
+    end
+
+    test "poker_set_queue replaces the queue", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      render_hook(view, "poker_set_queue", %{"queue" => ["one", "two", "three"]})
+      :timer.sleep(50)
+
+      assert Mixchamb.Chambers.Server.poker_state(chamber.slug).queue == ["one", "two", "three"]
+    end
+  end
+
+  describe "host promotion" do
+    setup %{conn: conn, user: user, chamber: chamber} do
+      {:ok, _pid} = Mixchamb.Chambers.Server.ensure_started(chamber.slug, chamber.id)
+      {:ok, other} = Accounts.create_anonymous_user()
+
+      on_exit(fn ->
+        case Registry.lookup(Mixchamb.Chambers.Registry, chamber.slug) do
+          [{pid, _}] -> DynamicSupervisor.terminate_child(Mixchamb.Chambers.Supervisor, pid)
+          _ -> :ok
+        end
+      end)
+
+      %{conn: conn, user: user, chamber: chamber, other: other}
+    end
+
+    test "creator promotes another user → hosts set grows", %{
+      conn: conn,
+      chamber: chamber,
+      user: user,
+      other: other
+    } do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+      render_hook(view, "promote_host", %{"user_id" => other.id})
+      :timer.sleep(50)
+
+      assert Enum.sort(Mixchamb.Chambers.Server.hosts(chamber.slug)) ==
+               Enum.sort([user.id, other.id])
+    end
+
+    test "creator demotes a co-host → hosts set shrinks", %{
+      conn: conn,
+      chamber: chamber,
+      user: user,
+      other: other
+    } do
+      Mixchamb.Chambers.Server.promote_host(chamber.slug, user.id, other.id)
+      :timer.sleep(50)
+
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+      render_hook(view, "demote_host", %{"user_id" => other.id})
+      :timer.sleep(50)
+
+      assert Mixchamb.Chambers.Server.hosts(chamber.slug) == [user.id]
+    end
+  end
+
+  describe "toggle_presence_sheet" do
+    test "flips the presence_sheet_open assign", %{conn: conn, chamber: chamber} do
+      {:ok, view, html_before} = live(conn, ~p"/chamber/#{chamber.slug}")
+      refute html_before =~ ~s|role="dialog" aria-label="Players panel"|
+
+      html_after = render_hook(view, "toggle_presence_sheet", %{})
+      assert html_after =~ ~s|role="dialog" aria-label="Players panel"|
+    end
+  end
+
+  describe "recent-hits feed broadcast" do
+    test "incoming :chamber_note populates the feed with a row",
+         %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      # Push a note from "another user" so it shows as not-self.
+      Phoenix.PubSub.broadcast(
+        Mixchamb.PubSub,
+        Chambers.topic(chamber.slug),
+        {:chamber_note,
+         %{
+           kind: :note,
+           payload: %{
+             "user_id" => "other-user-id",
+             "instrument" => "drums",
+             "note" => "kick",
+             "label" => "Kick",
+             "display_name" => "stranger-39"
+           }
+         }}
+      )
+
+      :timer.sleep(50)
+      html = render(view)
+      assert html =~ "stranger-39"
+      assert html =~ "Kick"
+    end
+
+    test "release-phase notes are skipped (no feed row)", %{conn: conn, chamber: chamber} do
+      {:ok, view, _html} = live(conn, ~p"/chamber/#{chamber.slug}")
+
+      Phoenix.PubSub.broadcast(
+        Mixchamb.PubSub,
+        Chambers.topic(chamber.slug),
+        {:chamber_note,
+         %{
+           kind: :note,
+           payload: %{
+             "user_id" => "other-user-id",
+             "instrument" => "guitar",
+             "chord" => "C",
+             "phase" => "release",
+             "display_name" => "no-feed-row"
+           }
+         }}
+      )
+
+      :timer.sleep(50)
+      refute render(view) =~ "no-feed-row"
+    end
+  end
+
 end

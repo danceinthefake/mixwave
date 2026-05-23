@@ -53,4 +53,45 @@ defmodule MixchambWeb.LandingLiveTest do
       assert %Mixchamb.Chambers.Chamber{activity: "poker"} = Chambers.find_by_slug(slug)
     end
   end
+
+  describe "Resume where you left off" do
+    test "no Resume section for a fresh visitor with no visit history", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+      refute html =~ "Resume where you left off"
+    end
+
+    test "renders one row per recent visit, newest-first", %{conn: conn} do
+      # current_user is created by the EnsureAnonUser plug on the conn.
+      conn = get(conn, ~p"/")
+      user = conn.assigns.current_user
+
+      {:ok, music} = Chambers.create_chamber(user.id, "music")
+      {:ok, poker} = Chambers.create_chamber(user.id, "poker")
+
+      :ok = Chambers.touch_visit(user.id, music.id)
+      :timer.sleep(1100)
+      :ok = Chambers.touch_visit(user.id, poker.id)
+
+      {:ok, _view, html} = live(conn, ~p"/")
+      assert html =~ "Resume where you left off"
+      # Both chambers' slugs appear in the rendered links.
+      assert html =~ music.slug
+      assert html =~ poker.slug
+      # Poker is the most-recent visit, should appear before music.
+      poker_idx = :binary.match(html, poker.slug) |> elem(0)
+      music_idx = :binary.match(html, music.slug) |> elem(0)
+      assert poker_idx < music_idx
+    end
+
+    test "labels each row with the matching activity", %{conn: conn} do
+      conn = get(conn, ~p"/")
+      user = conn.assigns.current_user
+
+      {:ok, chamber} = Chambers.create_chamber(user.id, "poker")
+      :ok = Chambers.touch_visit(user.id, chamber.id)
+
+      {:ok, _view, html} = live(conn, ~p"/")
+      assert html =~ "Poker"
+    end
+  end
 end

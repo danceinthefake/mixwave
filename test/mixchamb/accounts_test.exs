@@ -140,4 +140,24 @@ defmodule Mixchamb.AccountsTest do
       assert {:ok, %{alias: ^max}} = Accounts.set_alias(user, max)
     end
   end
+
+  describe "set_last_instrument/2" do
+    test "persists the chosen instrument string" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      assert {:ok, %{last_instrument: "keyboard"}} =
+               Accounts.set_last_instrument(user, "keyboard")
+    end
+
+    test "no-op when the value is already set to the same" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, user} = Accounts.set_last_instrument(user, "guitar")
+      assert {:ok, ^user} = Accounts.set_last_instrument(user, "guitar")
+    end
+
+    test "accepts nil to clear the field" do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, user} = Accounts.set_last_instrument(user, "guitar")
+      assert {:ok, %{last_instrument: nil}} = Accounts.set_last_instrument(user, nil)
+    end
+  end
 end
