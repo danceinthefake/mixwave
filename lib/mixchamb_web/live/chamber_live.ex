@@ -111,6 +111,11 @@ defmodule MixchambWeb.ChamberLive do
      # produce a negative result and reject every switch.
      |> assign(:last_switch_at, System.monotonic_time(:millisecond) - @switch_cooldown_ms)
      |> assign(:presences, presences)
+     # Recent-hits feed shown in the presence aside. Each entry:
+     # %{ref:, user_name:, label:, instrument:}. Self-pruned via
+     # {:expire_hit, ref} send_after; also capped at 5 so a drum roll
+     # can't run away with the panel.
+     |> assign(:recent_hits, [])
      |> assign(:poker_session, load_poker_session(chamber))
      |> assign(:is_host, chamber.creator_user_id == user.id)}
   end
@@ -526,17 +531,84 @@ defmodule MixchambWeb.ChamberLive do
 
   @impl true
   def handle_info({:chamber_note, event}, socket) do
-    # Filter self-events: the player's local audio already played
-    # immediately on tap, so we don't need to play it again from
-    # the network roundtrip. Only forward *other* users' hits.
     user_id = socket.assigns.current_user.id
 
+    # Append to the recent-hits feed shown in the presence aside,
+    # for every hit (self + others). Releases don't show — only the
+    # initial press counts as something the user "played".
+    socket =
+      case hit_label(event.payload) do
+        nil ->
+          socket
+
+        label ->
+          ref = System.unique_integer([:positive, :monotonic])
+          # Pre-resolve the display name on the server so the
+          # template doesn't have to reach back into @presences for
+          # remote users (who may not even be in the presence map
+          # yet during a join race).
+          hit = %{
+            ref: ref,
+            user_name: hit_user_name(event.payload),
+            label: label,
+            instrument: hit_instrument_atom(event.payload),
+            is_self: event.payload["user_id"] == user_id
+          }
+
+          Process.send_after(self(), {:expire_hit, ref}, 3500)
+          assign(socket, :recent_hits, Enum.take([hit | socket.assigns.recent_hits], 5))
+      end
+
+    # Self-events skip the remote-play path: the player's local audio
+    # already fired immediately on tap, so re-playing from the network
+    # roundtrip would double-strike.
     if event.payload["user_id"] != user_id do
       {:noreply, push_event(socket, "play_remote_note", event.payload)}
     else
       {:noreply, socket}
     end
   end
+
+  @impl true
+  def handle_info({:expire_hit, ref}, socket) do
+    {:noreply,
+     assign(
+       socket,
+       :recent_hits,
+       Enum.reject(socket.assigns.recent_hits, &(&1.ref == ref))
+     )}
+  end
+
+  # Pull a human label out of the note payload. Each instrument
+  # family puts the "what was played" value under a different key,
+  # and pad release events have no label of their own (the press
+  # already showed up). Drums and kendang send an explicit `label`
+  # since their `note` field is a sample ID (e.g. `crash`) rather
+  # than a displayable name (`Crash 1`).
+  defp hit_label(%{"phase" => "release"}), do: nil
+  defp hit_label(%{"label" => l}) when is_binary(l) and l != "", do: l
+  defp hit_label(%{"chord" => c}) when is_binary(c), do: c
+  defp hit_label(%{"note" => n}) when is_binary(n), do: n
+  defp hit_label(%{"pad" => p}) when is_binary(p), do: p
+  defp hit_label(_), do: nil
+
+  defp hit_user_name(%{"alias" => a}) when is_binary(a) and a != "", do: a
+  defp hit_user_name(%{"display_name" => n}) when is_binary(n), do: n
+  defp hit_user_name(_), do: "Someone"
+
+  # Map the instrument string from a network payload back to one of
+  # @instruments. Unknown values collapse to :drums for the dot
+  # colour — the label still renders correctly either way.
+  defp hit_instrument_atom(%{"instrument" => i}) when is_binary(i) do
+    try do
+      atom = String.to_existing_atom(i)
+      if atom in @instruments, do: atom, else: :drums
+    rescue
+      ArgumentError -> :drums
+    end
+  end
+
+  defp hit_instrument_atom(_), do: :drums
 
   defp presence_topic(slug) when is_binary(slug), do: "chamber:#{slug}:presence"
 
@@ -1138,6 +1210,34 @@ defmodule MixchambWeb.ChamberLive do
               {map_size(@presences)}
             </span>
           </div>
+          <%!-- Inline alias editor for the current user. Submits on
+               Enter or blur; empty input clears the alias. Sits at
+               the top so "your identity" is the first thing in the
+               panel; the user list below shows everyone else
+               relative to that. --%>
+          <form
+            phx-submit="set_alias"
+            phx-change="set_alias"
+            class="border-b p-2"
+            id="alias-editor"
+            phx-update="ignore"
+          >
+            <label class="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
+              Your alias
+            </label>
+            <input
+              type="text"
+              name="alias"
+              value={@current_user.alias || ""}
+              maxlength="32"
+              placeholder="Set a nickname…"
+              phx-debounce="600"
+              class="w-full bg-transparent border border-input rounded-md px-2 py-1 text-xs outline-none focus:border-primary/60"
+            />
+            <p class="text-[10px] text-muted-foreground mt-1 px-1">
+              Shown above {@current_user.display_name}. Empty to clear.
+            </p>
+          </form>
           <ul class="max-h-[60vh] overflow-y-auto py-1">
             <li
               :for={{user_id, %{metas: [meta | _]}} <- @presences}
@@ -1178,32 +1278,38 @@ defmodule MixchambWeb.ChamberLive do
               </div>
             </li>
           </ul>
-          <%!-- Inline alias editor for the current user. Submits on
-               Enter or blur; empty input clears the alias. Lives at
-               the bottom of the panel so it's always reachable. --%>
-          <form
-            phx-submit="set_alias"
-            phx-change="set_alias"
-            class="border-t p-2"
-            id="alias-editor"
-            phx-update="ignore"
+          <%!-- Recent-hits feed. Each row shows who played what,
+               fades out via the `hit-life` keyframe in app.css, then
+               server-side pruning removes it on the same timer.
+               Music-only — poker activity has no hits to show. --%>
+          <div
+            :if={@chamber.activity == "music" and @recent_hits != []}
+            class="border-t px-2 py-1.5 space-y-0.5"
+            aria-live="polite"
+            aria-label="Recent plays"
           >
-            <label class="block text-[10px] uppercase tracking-wider text-muted-foreground mb-1 px-1">
-              Your alias
-            </label>
-            <input
-              type="text"
-              name="alias"
-              value={@current_user.alias || ""}
-              maxlength="32"
-              placeholder="Set a nickname…"
-              phx-debounce="600"
-              class="w-full bg-transparent border border-input rounded-md px-2 py-1 text-xs outline-none focus:border-primary/60"
-            />
-            <p class="text-[10px] text-muted-foreground mt-1 px-1">
-              Shown above {@current_user.display_name}. Empty to clear.
-            </p>
-          </form>
+            <div
+              :for={hit <- @recent_hits}
+              id={"hit-#{hit.ref}"}
+              class="recent-hit flex items-center gap-1.5 text-[11px] leading-tight px-1 py-0.5 rounded font-mono"
+            >
+              <span
+                aria-hidden="true"
+                class="size-1.5 rounded-full shrink-0"
+                style={"background-color: " <> accent_var(hit.instrument)}
+              >
+              </span>
+              <span class={[
+                "truncate min-w-0",
+                hit.is_self && "text-foreground font-semibold",
+                !hit.is_self && "text-muted-foreground"
+              ]}>
+                {hit.user_name}
+              </span>
+              <span class="text-muted-foreground shrink-0">·</span>
+              <span class="truncate min-w-0 text-foreground">{hit.label}</span>
+            </div>
+          </div>
         </div>
       </aside>
         </div>

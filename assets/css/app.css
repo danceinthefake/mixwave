@@ -388,6 +388,20 @@
       kill-flash-bar 1.5s ease-out forwards;
   }
 
+  /* Recent-hits feed in the presence aside. Each row animates in,
+     holds, then fades out over its 3.5s life. Server-side pruning
+     fires on the same timer so the DOM removal lines up with the
+     end of the fade. */
+  @keyframes hit-life {
+    0%   { opacity: 0; transform: translateY(-2px); }
+    8%   { opacity: 1; transform: translateY(0); }
+    72%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .recent-hit {
+    animation: hit-life 3.5s ease-out forwards;
+  }
+
   /* Applied to every pad's hit button (drum, keyboard, guitar,
      bass, synth, suling, kendang). Disables iOS gesture cruft:
      long-press callout, blue tap-highlight overlay, accidental

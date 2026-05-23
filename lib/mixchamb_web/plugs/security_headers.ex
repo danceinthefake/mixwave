@@ -76,8 +76,9 @@ defmodule MixchambWeb.Plugs.SecurityHeaders do
       "img-src 'self' #{vite} #{live_debugger} data: blob:",
       # Loose connect-src in dev to cover Vite WS HMR + live_reload
       # WS + live_debugger WS + any future devtool. Tightened in
-      # prod below.
-      "connect-src 'self' #{vite} #{live_debugger} ws: wss: #{@sample_cdns}",
+      # prod below. `blob:` is required because Tone.js wraps sample
+      # buffers as object URLs and fetches them via fetch().
+      "connect-src 'self' #{vite} #{live_debugger} ws: wss: blob: #{@sample_cdns}",
       "worker-src 'self' #{vite} blob:",
       "frame-ancestors 'none'",
       "form-action 'self'",
@@ -100,7 +101,7 @@ defmodule MixchambWeb.Plugs.SecurityHeaders do
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       "img-src 'self' data:",
-      "connect-src 'self' #{@sample_cdns}",
+      "connect-src 'self' blob: #{@sample_cdns}",
       "worker-src 'self' blob:",
       "frame-ancestors 'none'",
       "form-action 'self'",

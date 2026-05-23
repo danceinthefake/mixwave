@@ -231,6 +231,7 @@ async function hit(pad: Pad) {
     instrument: "drums",
     style: style.value,
     note: pad.drum,
+    label: pad.label,
   })
 }
 
