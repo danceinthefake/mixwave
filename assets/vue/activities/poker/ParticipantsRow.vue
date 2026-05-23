@@ -32,6 +32,41 @@ function displayName(p: Participant): string {
 }
 
 const votedCount = computed(() => props.voted_user_ids.length)
+
+// "Waiting on …" nudge. Shows during :voting once at least one
+// person has voted, listing whoever's left. Names up to three;
+// past that, a count keeps the hint from sprawling. Self renders
+// as "you" so the user can tell when they're the holdup —
+// otherwise their own alias would appear and read like a stranger
+// in the third person.
+const waitingHint = computed<string | null>(() => {
+  if (props.status !== "voting") return null
+  if (votedCount.value === 0) return null
+  const nonVoters = props.participants.filter((p) => !hasVoted(p.user_id))
+  if (nonVoters.length === 0) return null
+
+  const names = nonVoters.map((p) =>
+    p.user_id === props.current_user_id ? "you" : displayName(p),
+  )
+  if (names.length === 1) return `Waiting on ${names[0]}`
+  if (names.length === 2) return `Waiting on ${names[0]} and ${names[1]}`
+  if (names.length === 3) return `Waiting on ${names[0]}, ${names[1]}, and ${names[2]}`
+  return `Waiting on ${names.length} players`
+})
+
+// True for an unvoted silhouette once someone else has voted —
+// drops its opacity harder than the baseline empty state so the
+// eye reads "explicitly missing" rather than "round hasn't really
+// started yet". Returns false at round start (nobody's behind
+// when nobody's voted) and during :revealed (the conversation
+// has moved on).
+function isOverdue(userId: string): boolean {
+  return (
+    props.status === "voting" &&
+    votedCount.value > 0 &&
+    !hasVoted(userId)
+  )
+}
 </script>
 
 <template>
@@ -46,6 +81,16 @@ const votedCount = computed(() => props.voted_user_ids.length)
       </p>
       <p class="text-xs text-muted-foreground tabular-nums">
         {{ votedCount }} / {{ participants.length }} voted
+      </p>
+      <!-- Nudge appears only once at least one vote is in and at
+           least one teammate hasn't. Stays a small italic hint
+           rather than a banner — it's a gentle pointer, not a
+           call-out. -->
+      <p
+        v-if="waitingHint"
+        class="text-xs italic text-muted-foreground/90 pt-0.5"
+      >
+        {{ waitingHint }}
       </p>
     </div>
     <ul class="flex flex-wrap gap-3 justify-center">
@@ -62,6 +107,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
             'card-silhouette',
             hasVoted(p.user_id) ? 'is-voted' : 'is-empty',
             flipped && hasVoted(p.user_id) && 'is-revealed',
+            isOverdue(p.user_id) && 'is-overdue',
           ]"
           :aria-label="
             !hasVoted(p.user_id)
@@ -117,6 +163,16 @@ const votedCount = computed(() => props.voted_user_ids.length)
   );
   border: 2.5px dashed var(--muted-foreground);
   opacity: 0.7;
+  transition: opacity 200ms ease-out;
+}
+
+/* Empty silhouette while at least one teammate HAS voted — dims
+   harder so the eye reads "explicitly missing" rather than "round
+   hasn't really started yet". Pairs with the "Waiting on …" hint
+   above the row. Layered onto .is-empty (which already styled
+   the dashed hatched look). */
+.card-silhouette.is-empty.is-overdue {
+  opacity: 0.4;
 }
 
 /* When empty, hide the back/front faces so the parent's dashed
