@@ -48,7 +48,7 @@ function cancel() {
 </script>
 
 <template>
-  <div class="space-y-1">
+  <div class="space-y-1 text-center">
     <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
       Round {{ round }}
     </p>
@@ -60,7 +60,7 @@ function cancel() {
         @keydown.escape.prevent="cancel"
         autofocus
         placeholder="What are we estimating?"
-        class="w-full text-2xl font-bold tracking-tight font-display bg-transparent border-b border-input focus:border-primary outline-none py-1"
+        class="w-full text-2xl font-bold tracking-tight font-display bg-transparent border-b border-input focus:border-primary outline-none py-1 text-center"
       />
     </template>
     <template v-else>
@@ -68,7 +68,7 @@ function cancel() {
         @click="startEdit"
         :class="[
           'text-2xl font-bold tracking-tight font-display',
-          is_host && 'cursor-text hover:bg-accent/50 rounded -mx-1 px-1 transition-colors',
+          is_host && 'cursor-text hover:bg-accent/50 rounded -mx-1 px-1 transition-colors inline-block',
           !story && 'text-muted-foreground',
         ]"
         :title="is_host ? 'Click to edit' : undefined"

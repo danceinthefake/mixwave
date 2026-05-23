@@ -15,14 +15,15 @@ defineEmits<{ pick: [card: string] }>()
 
 <template>
   <div class="space-y-2">
-    <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
+    <p class="text-xs uppercase tracking-wider text-muted-foreground font-display text-center">
       Pick a card
     </p>
     <!-- Cards take 5:7 playing-card proportions at 56x80 — half
          the scale of the ParticipantsRow silhouette. Same object
          type, two scales: deck pick is the same kind of card the
-         player flips to reveal. -->
-    <div class="flex flex-wrap gap-2">
+         player flips to reveal. Centered to match the section's
+         label + the silhouettes row above. -->
+    <div class="flex flex-wrap gap-2 justify-center">
       <button
         v-for="card in cards"
         :key="card"
@@ -39,7 +40,7 @@ defineEmits<{ pick: [card: string] }>()
         {{ card }}
       </button>
     </div>
-    <p v-if="selected" class="text-xs text-muted-foreground">
+    <p v-if="selected" class="text-xs text-muted-foreground text-center">
       Voted <span class="font-mono font-bold text-foreground">{{ selected }}</span> ·
       tap again to withdraw.
     </p>

@@ -134,7 +134,7 @@ function setDeck(deck: DeckId) {
          soon as the team arrives. -->
     <p
       v-if="isWaitingForTeam"
-      class="text-sm text-muted-foreground italic"
+      class="text-sm text-muted-foreground italic text-center"
     >
       Waiting for the team. Share the link to start.
     </p>

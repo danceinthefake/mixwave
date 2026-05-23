@@ -31,7 +31,11 @@ const votedCount = computed(() => props.voted_user_ids.length)
 
 <template>
   <div class="space-y-2">
-    <div class="flex items-baseline justify-between">
+    <!-- Label + voted count stacked + centered. The flex row with
+         justify-between was anchored to the section's left and right
+         edges; centered stack puts the label at the head of a
+         centered column with the silhouettes below. -->
+    <div class="text-center space-y-0.5">
       <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">
         Players
       </p>
@@ -39,7 +43,7 @@ const votedCount = computed(() => props.voted_user_ids.length)
         {{ votedCount }} / {{ participants.length }} voted
       </p>
     </div>
-    <ul class="flex flex-wrap gap-3">
+    <ul class="flex flex-wrap gap-3 justify-center">
       <li
         v-for="p in participants"
         :key="p.user_id"
