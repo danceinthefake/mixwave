@@ -321,8 +321,10 @@ defmodule Mixchamb.Chambers do
   Deletes idle chambers in two passes:
 
     * **Activated chambers** (someone other than the creator
-      joined): swept when `last_activity_at < cutoff` (the
-      sweeper passes `cutoff = now - 24h`).
+      joined): swept when `last_activity_at < cutoff` — the
+      long-tail fallback for rooms that genuinely sat idle for
+      hours. Pairs with `delete_ghost_chambers/2` which catches
+      the same rooms much earlier when their GenServer has died.
     * **Unactivated chambers**: swept when their row is older
       than the #{@grace_period_minutes}-minute grace window.
       The chamber's GenServer normally deletes these via its
@@ -348,6 +350,52 @@ defmodule Mixchamb.Chambers do
       |> Repo.delete_all()
 
     count
+  end
+
+  @doc """
+  Deletes "ghost" chambers — activated chambers whose
+  `last_activity_at` is past `ghost_cutoff` AND whose per-slug
+  GenServer is no longer in `running_slugs`. Targets the BEAM-
+  restart leftovers: once the GenServer dies, all in-memory state
+  (poker session, recording buffer, host set) is lost. The DB row
+  is just a tombstone — re-entering the chamber via its URL spawns
+  a fresh GenServer with default state per v4 §3.7, so deleting
+  earlier keeps the admin list honest about what's actually live.
+
+  Caller passes `running_slugs` (a MapSet of currently-running
+  chamber slugs from `list_running/0`) so the function stays
+  side-effect free besides the delete itself — easier to test
+  without standing up real GenServers.
+
+  System chambers (`creator_user_id` is NULL) are exempt for the
+  same reason as in `delete_idle_since/1`.
+
+  Returns the number of rows deleted.
+  """
+  def delete_ghost_chambers(%DateTime{} = ghost_cutoff, %MapSet{} = running_slugs) do
+    candidates =
+      from(c in Chamber,
+        where: not is_nil(c.creator_user_id),
+        where: not is_nil(c.activated_at),
+        where: c.last_activity_at < ^ghost_cutoff,
+        select: %{id: c.id, slug: c.slug}
+      )
+      |> Repo.all()
+
+    ghost_ids =
+      candidates
+      |> Enum.reject(fn %{slug: slug} -> MapSet.member?(running_slugs, slug) end)
+      |> Enum.map(& &1.id)
+
+    if ghost_ids == [] do
+      0
+    else
+      {count, _} =
+        from(c in Chamber, where: c.id in ^ghost_ids)
+        |> Repo.delete_all()
+
+      count
+    end
   end
 
   ## Realtime audio fan-out

@@ -247,6 +247,103 @@ defmodule Mixchamb.ChambersTest do
     end
   end
 
+  describe "delete_ghost_chambers/2" do
+    test "reaps activated chambers past ghost_cutoff that aren't in running_slugs",
+         %{user: user} do
+      ghost_cutoff =
+        DateTime.utc_now() |> DateTime.add(-30, :minute) |> DateTime.truncate(:second)
+
+      past_ghost =
+        DateTime.utc_now() |> DateTime.add(-60, :minute) |> DateTime.truncate(:second)
+
+      {:ok, ghost} = Chambers.create_chamber(user.id)
+
+      # Activated (someone joined) + idle past the ghost threshold.
+      ghost
+      |> Ecto.Changeset.change(activated_at: past_ghost, last_activity_at: past_ghost)
+      |> Repo.update!()
+
+      # Empty running set: nothing's alive, ghost is a tombstone.
+      assert Chambers.delete_ghost_chambers(ghost_cutoff, MapSet.new()) == 1
+      assert is_nil(Chambers.find_by_id(ghost.id))
+    end
+
+    test "spares chambers whose GenServer is still running",
+         %{user: user} do
+      ghost_cutoff =
+        DateTime.utc_now() |> DateTime.add(-30, :minute) |> DateTime.truncate(:second)
+
+      past_ghost =
+        DateTime.utc_now() |> DateTime.add(-60, :minute) |> DateTime.truncate(:second)
+
+      {:ok, idle_but_live} = Chambers.create_chamber(user.id)
+
+      idle_but_live
+      |> Ecto.Changeset.change(activated_at: past_ghost, last_activity_at: past_ghost)
+      |> Repo.update!()
+
+      running = MapSet.new([idle_but_live.slug])
+      assert Chambers.delete_ghost_chambers(ghost_cutoff, running) == 0
+      refute is_nil(Chambers.find_by_id(idle_but_live.id))
+    end
+
+    test "spares chambers idle less than ghost_cutoff",
+         %{user: user} do
+      ghost_cutoff =
+        DateTime.utc_now() |> DateTime.add(-30, :minute) |> DateTime.truncate(:second)
+
+      fresh =
+        DateTime.utc_now() |> DateTime.add(-10, :minute) |> DateTime.truncate(:second)
+
+      {:ok, recently_active} = Chambers.create_chamber(user.id)
+
+      recently_active
+      |> Ecto.Changeset.change(activated_at: fresh, last_activity_at: fresh)
+      |> Repo.update!()
+
+      # Even with empty running set, fresh chambers stay.
+      assert Chambers.delete_ghost_chambers(ghost_cutoff, MapSet.new()) == 0
+      refute is_nil(Chambers.find_by_id(recently_active.id))
+    end
+
+    test "spares system chambers (creator_user_id is NULL) regardless of state" do
+      ghost_cutoff =
+        DateTime.utc_now() |> DateTime.add(-30, :minute) |> DateTime.truncate(:second)
+
+      ancient =
+        DateTime.utc_now() |> DateTime.add(-48, :hour) |> DateTime.truncate(:second)
+
+      {:ok, chaos} = Chambers.ensure_chaos_chamber()
+
+      chaos
+      |> Ecto.Changeset.change(activated_at: ancient, last_activity_at: ancient)
+      |> Repo.update!()
+
+      assert Chambers.delete_ghost_chambers(ghost_cutoff, MapSet.new()) == 0
+      refute is_nil(Chambers.find_by_id(chaos.id))
+    end
+
+    test "skips unactivated chambers (those are the grace-window path's job)",
+         %{user: user} do
+      ghost_cutoff =
+        DateTime.utc_now() |> DateTime.add(-30, :minute) |> DateTime.truncate(:second)
+
+      past_ghost =
+        DateTime.utc_now() |> DateTime.add(-60, :minute) |> DateTime.truncate(:second)
+
+      {:ok, unactivated_old} = Chambers.create_chamber(user.id)
+
+      # Old but never activated. `delete_ghost_chambers` only
+      # touches activated rows; the grace-window path catches this.
+      unactivated_old
+      |> Ecto.Changeset.change(inserted_at: past_ghost, last_activity_at: past_ghost)
+      |> Repo.update!()
+
+      assert Chambers.delete_ghost_chambers(ghost_cutoff, MapSet.new()) == 0
+      refute is_nil(Chambers.find_by_id(unactivated_old.id))
+    end
+  end
+
   describe "touch_activity/1" do
     test "bumps last_activity_at", %{user: user} do
       {:ok, chamber} = Chambers.create_chamber(user.id)

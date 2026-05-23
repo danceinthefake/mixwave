@@ -1,23 +1,37 @@
 defmodule Mixchamb.Chambers.Sweeper do
   @moduledoc """
-  Background sweeper that deletes activated chambers whose
-  `last_activity_at` is more than 24 hours old. Runs hourly under
-  the application supervisor.
+  Background sweeper that prunes idle and ghost chambers. Runs
+  every 10 minutes under the application supervisor.
+
+  Two paths each tick:
+
+    * **Stale** — activated chambers whose `last_activity_at` is
+      past the long threshold (#{4} hours). The conservative
+      fallback for rooms that sat idle for hours.
+    * **Ghost** — activated chambers whose `last_activity_at` is
+      past the short threshold (#{30} min) AND whose per-slug
+      GenServer is no longer in `Chambers.list_running/0`. The
+      tighter pass catches BEAM-restart leftovers: once the
+      GenServer dies, in-memory state is gone and the row is a
+      tombstone (re-entering yields a fresh session per v4 §3.7).
 
   Mirrors `Mixchamb.Accounts.Sweeper`'s shape so the supervision
   tree + ops view treat them the same.
 
   Non-activated chambers (still in the 30-minute grace window) are
   owned by their per-chamber GenServer and aren't touched here —
-  cleanup of those is the GenServer's responsibility.
+  cleanup of those is the GenServer's responsibility (with the
+  `delete_idle_since/1` fallback for rows whose GenServer died
+  before grace could fire).
   """
   use GenServer
   require Logger
 
   alias Mixchamb.Chambers
 
-  @sweep_interval :timer.hours(1)
-  @idle_threshold_hours 24
+  @sweep_interval :timer.minutes(10)
+  @idle_threshold_hours 4
+  @ghost_threshold_minutes 30
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -73,17 +87,36 @@ defmodule Mixchamb.Chambers.Sweeper do
   end
 
   defp do_sweep(state) do
-    cutoff =
-      DateTime.utc_now()
+    now = DateTime.utc_now()
+
+    stale_cutoff =
+      now
       |> DateTime.add(-@idle_threshold_hours * 3600, :second)
       |> DateTime.truncate(:second)
 
-    deleted = Chambers.delete_idle_since(cutoff)
+    ghost_cutoff =
+      now
+      |> DateTime.add(-@ghost_threshold_minutes * 60, :second)
+      |> DateTime.truncate(:second)
 
-    if deleted > 0 do
-      Logger.info("[chambers.sweeper] deleted #{deleted} idle chambers")
+    # Snapshot of slugs whose GenServer is alive right now.
+    # Anything past `ghost_cutoff` not in this set is a tombstone
+    # safe to drop.
+    running_slugs =
+      Chambers.list_running()
+      |> Enum.map(fn {slug, _pid} -> slug end)
+      |> MapSet.new()
+
+    stale = Chambers.delete_idle_since(stale_cutoff)
+    ghost = Chambers.delete_ghost_chambers(ghost_cutoff, running_slugs)
+    total = stale + ghost
+
+    if total > 0 do
+      Logger.info(
+        "[chambers.sweeper] deleted #{total} chambers (#{stale} stale + #{ghost} ghost)"
+      )
     end
 
-    %{state | last_run_at: DateTime.utc_now(), last_deleted: deleted}
+    %{state | last_run_at: now, last_deleted: total}
   end
 end
