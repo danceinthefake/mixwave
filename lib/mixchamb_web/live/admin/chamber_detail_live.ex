@@ -340,7 +340,11 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
                   {meta[:alias] || meta.display_name}
                 </div>
                 <div class="text-[11px] text-muted-foreground font-mono truncate">
-                  <span :if={meta[:alias]}>{meta.display_name}      · </span>
+                  <%!-- Trailing space inside the interpolation so the
+                       HEEx formatter has nothing to "pad" between the
+                       two expressions — keeps mix format stable
+                       across Elixir patch versions. --%>
+                  <span :if={meta[:alias]}>{meta.display_name <> " · "}</span>
                   {meta.instrument} · {user_id}
                 </div>
               </div>
