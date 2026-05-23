@@ -198,10 +198,14 @@ order I'd recommend:
    vote, reveal (avg/median/mode for numeric decks, mode-only
    for t-shirt), re-vote (Round 1 preserved), next-round
    (advances), deck switch (gated when votes exist on host,
-   non-hosts have no dropdown at all). The "switch activity
-   mid-session" part of the matrix is deferred — no UI for it
-   yet (set_activity GenServer cast exists, no button wires to
-   it). Track that in BRAINSTORM-v4.md if it's needed for the
-   first user-facing release.
+   non-hosts have no dropdown at all). Activity-switching UI is
+   shipped too: chamber_live.ex renders a host-only Activity
+   chip-strip; clicking flips `chamber.activity` via
+   `Chambers.set_activity/2`, broadcasts `:activity_changed`,
+   every client reloads its poker_session (fresh on poker, nil
+   on music). Confirmed via 2-browser Playwright smoke
+   (host + observer): music ↔ poker round-trip with PokerBoard
+   mount/unmount on both clients, instrument dock hidden under
+   poker, no console errors.
 
 Total estimate: **~3-4 working days**.
