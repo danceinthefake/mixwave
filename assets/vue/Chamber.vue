@@ -17,7 +17,7 @@
 // Vue, so the inner pad's onUnmounted properly fires on switch and
 // AbortController + stopAllX run as designed.
 
-import { onMounted, ref, watch } from "vue"
+import { computed, onMounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 // Named imports for tree-shake. See assets/vue/lib/audio.ts for
 // the full rationale.
@@ -172,6 +172,17 @@ async function enterChamber() {
   await ensureStarted()
   audioReady.value = true
 }
+
+// Headline copy on the audio gate. Music chambers get the
+// jamming-flavoured prompt; poker rooms get a poker-table
+// metaphor. Sub-line + button label are activity-neutral so
+// they don't need to branch. The gate itself isn't optional in
+// poker — the reveal chime needs an unlocked AudioContext too,
+// and a late joiner who never voted before the host hit Reveal
+// would otherwise miss the cue entirely.
+const gateHeading = computed(() =>
+  props.activity === "music" ? "Tap to start jamming" : "Tap to take a seat",
+)
 
 // Replay-last-30s. Vue requests a burst from LV; LV pushes back the
 // note buffer with offsets; we schedule each via setTimeout from
@@ -395,7 +406,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     leave-to-class="opacity-0 scale-95"
   >
     <div
-      v-if="props.activity === 'music' && !audioReady"
+      v-if="!audioReady"
       @click="enterChamber"
       class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-background/80 cursor-pointer select-none"
     >
@@ -414,7 +425,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
         </div>
         <div class="space-y-1">
           <h2 class="text-3xl font-bold tracking-tight font-display brand-gradient-text">
-            Tap to start jamming
+            {{ gateHeading }}
           </h2>
           <p class="text-sm text-muted-foreground">
             Browsers need a gesture before audio can play
