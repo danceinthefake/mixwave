@@ -136,6 +136,39 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
 
   ## Render helpers
 
+  # One presentation for every status field in the overview grid:
+  # a colored dot + a colored label. `tone` picks the colour pair;
+  # `pulse?` (default false) animates the dot — used for the
+  # "recording on" state since the live red-dot is the convention
+  # users expect from any REC indicator.
+  attr :tone, :atom, required: true, values: [:success, :warning, :muted, :danger]
+  attr :label, :string, required: true
+  attr :pulse?, :boolean, default: false
+
+  defp status_pill(assigns) do
+    ~H"""
+    <span class={["inline-flex items-center gap-1.5", status_pill_text_class(@tone)]}>
+      <span class={[
+        "size-2 rounded-full",
+        status_pill_dot_class(@tone),
+        @pulse? && "animate-pulse"
+      ]}>
+      </span>
+      {@label}
+    </span>
+    """
+  end
+
+  defp status_pill_text_class(:success), do: "text-emerald-600 dark:text-emerald-400"
+  defp status_pill_text_class(:warning), do: "text-amber-600 dark:text-amber-400"
+  defp status_pill_text_class(:muted), do: "text-muted-foreground"
+  defp status_pill_text_class(:danger), do: "text-red-500"
+
+  defp status_pill_dot_class(:success), do: "bg-emerald-500"
+  defp status_pill_dot_class(:warning), do: "bg-amber-500"
+  defp status_pill_dot_class(:muted), do: "bg-muted-foreground/50"
+  defp status_pill_dot_class(:danger), do: "bg-red-500"
+
   defp format_uptime(nil), do: "—"
 
   defp format_uptime(ms) when is_integer(ms) do
@@ -200,28 +233,32 @@ defmodule MixchambWeb.Admin.ChamberDetailLive do
             <dd>
               <%= cond do %>
                 <% @chamber.creator_user_id == nil -> %>
-                  <span class="text-amber-600 dark:text-amber-400">system</span>
+                  <.status_pill tone={:warning} label="system" />
                 <% @chamber.activated_at -> %>
-                  <span class="text-emerald-600 dark:text-emerald-400">active</span>
+                  <.status_pill tone={:success} label="active" />
                 <% true -> %>
-                  <span class="text-muted-foreground">grace</span>
+                  <.status_pill tone={:muted} label="grace" />
               <% end %>
             </dd>
           </div>
           <div>
             <dt class="text-[11px] uppercase tracking-wider text-muted-foreground">Recording</dt>
             <dd>
-              <span :if={@chamber.is_recording} class="inline-flex items-center gap-1.5 text-red-500">
-                <span class="size-2 rounded-full bg-red-500 animate-pulse"></span> on
-              </span>
-              <span :if={not @chamber.is_recording} class="text-muted-foreground">off</span>
+              <%= if @chamber.is_recording do %>
+                <.status_pill tone={:danger} label="on" pulse?={true} />
+              <% else %>
+                <.status_pill tone={:muted} label="off" />
+              <% end %>
             </dd>
           </div>
           <div>
             <dt class="text-[11px] uppercase tracking-wider text-muted-foreground">GenServer</dt>
             <dd>
-              <span :if={@server_info} class="text-emerald-600 dark:text-emerald-400">running</span>
-              <span :if={is_nil(@server_info)} class="text-muted-foreground">not started</span>
+              <%= if @server_info do %>
+                <.status_pill tone={:success} label="running" />
+              <% else %>
+                <.status_pill tone={:muted} label="not started" />
+              <% end %>
             </dd>
           </div>
 

@@ -38,6 +38,27 @@ defmodule MixchambWeb.Admin.RateLimitsLive do
   @impl true
   def handle_info(:tick, socket), do: {:noreply, assign(socket, build_assigns())}
 
+  @impl true
+  def handle_event("reset_bucket", %{"user_id" => user_id, "slug" => slug}, socket)
+      when is_binary(user_id) and is_binary(slug) do
+    # Mirror the key shape ChamberLive's `note` handler uses.
+    # Idempotent: a stale row that's already aged out of ETS is a
+    # no-op delete.
+    RateLimiter.reset_key({:note, user_id, slug})
+
+    Mixchamb.Audit.log_as(
+      socket.assigns.current_admin,
+      "reset_rate_limit_bucket",
+      "user:#{user_id}",
+      %{slug: slug}
+    )
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "Reset rate-limit bucket for user in #{slug}.")
+     |> assign(build_assigns())}
+  end
+
   defp build_assigns do
     drops = RateLimitDrops.snapshot()
     saturated = collect_saturated()
@@ -140,6 +161,7 @@ defmodule MixchambWeb.Admin.RateLimitsLive do
               <th class="px-4 py-2">Chamber</th>
               <th class="px-4 py-2 text-right">Count</th>
               <th class="px-4 py-2 text-right">Bucket</th>
+              <th class="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody class="divide-y">
@@ -160,6 +182,23 @@ defmodule MixchambWeb.Admin.RateLimitsLive do
               </td>
               <td class="px-4 py-2 text-right text-xs text-muted-foreground tabular-nums">
                 opened {time_ago_ms(row.window_start)}
+              </td>
+              <td class="px-4 py-2 text-right">
+                <%!-- Per-row reset. Mostly useful when a client
+                     ran out of control and you want to unblock
+                     them without restarting the BEAM. The audit
+                     event records the slug + user_id for
+                     after-the-fact review. --%>
+                <.button
+                  variant="outline"
+                  phx-click="reset_bucket"
+                  phx-value-user_id={row.user_id}
+                  phx-value-slug={row.slug}
+                  data-confirm={"Reset this user's rate-limit bucket for #{row.slug}? They'll be able to send notes again immediately."}
+                  class="text-xs"
+                >
+                  Reset
+                </.button>
               </td>
             </tr>
           </tbody>

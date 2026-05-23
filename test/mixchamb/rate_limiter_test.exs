@@ -55,5 +55,19 @@ defmodule Mixchamb.RateLimiterTest do
       assert RateLimiter.peek(:a) == nil
       assert RateLimiter.peek(:b) == nil
     end
+
+    test "reset_key/1 clears one bucket and leaves the others" do
+      RateLimiter.hit(:a, 5, 1_000, 100)
+      RateLimiter.hit(:b, 5, 1_000, 100)
+
+      :ok = RateLimiter.reset_key(:a)
+
+      assert RateLimiter.peek(:a) == nil
+      assert %{count: 1} = RateLimiter.peek(:b)
+    end
+
+    test "reset_key/1 is idempotent on a missing key" do
+      assert :ok = RateLimiter.reset_key(:never_existed)
+    end
   end
 end

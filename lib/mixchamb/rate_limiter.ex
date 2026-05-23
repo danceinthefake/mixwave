@@ -61,6 +61,17 @@ defmodule Mixchamb.RateLimiter do
   end
 
   @doc """
+  Drops a single bucket. Used by the admin UI to manually unblock
+  a user whose window counter is stuck at the cap — e.g. a stale
+  client that overshot, or a false-positive during a flood
+  investigation. Idempotent: deleting a missing key is a no-op.
+  """
+  def reset_key(key) do
+    :ets.delete(@table, key)
+    :ok
+  end
+
+  @doc """
   Returns the current bucket for `key`, or `nil` if no hit has been
   recorded yet. Mostly useful for tests and introspection.
   """
