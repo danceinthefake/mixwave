@@ -94,6 +94,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # `package.json` pulls live_vue / phoenix / phoenix_html /
+      # phoenix_live_view via `file:./deps/...`, which means those
+      # Elixir deps need to be on disk before `npm ci` can resolve
+      # the file: links. Set up BEAM + run `mix deps.get` first.
+      - name: Set up Elixir + OTP (for the file: deps)
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.5"
+          otp-version: "28.0.1"
+
+      - name: Cache mix deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-deps-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-deps-
+
+      - name: Fetch mix deps (live_vue + friends)
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
