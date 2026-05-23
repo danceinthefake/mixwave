@@ -37,8 +37,11 @@ later as a v4.1+ refinement.
 at the top of the board, editable by the host at any time during
 a round. `nil` story falls back to displaying "Round N" only.
 
-A pre-loaded story queue is real planning-tool territory and
-remains a v4.1+ feature, not MVP.
+~~A pre-loaded story queue is real planning-tool territory and
+remains a v4.1+ feature, not MVP.~~ Shipped as a polish iteration
+— see the "Pre-loaded story queue" entry below. The single-story
+field stays the live source of truth; the queue is just a
+backlog the host preloads and `next_round/2` drains.
 
 ## 3. Card deck — _Locked_
 
@@ -217,9 +220,9 @@ Total estimate: **~3-4 working days**.
 After the locked sections above shipped, a polish pass added the
 following. Each is small enough to track as a bullet rather than
 its own locked section; documented here so future work can see
-what's in beyond the MVP without trawling git log. Pre-loaded
-story queue (§2) and multi-host (§6) remain deferred to v4.1+ —
-those are scope changes, not polish.
+what's in beyond the MVP without trawling git log. Multi-host
+(§6) remains deferred to v4.1+ — that's a scope change, not
+polish.
 
 - **Consensus headline on reveal.** RevealPanel renders a
   one-glance verdict above the distribution bars: `Consensus: X`
@@ -315,3 +318,20 @@ those are scope changes, not polish.
   every client reloads its `poker_session` (fresh on poker, nil
   on music). Confirmed via 2-browser Playwright smoke. §7 above
   is updated.
+
+- **Pre-loaded story queue.** `PokerSession.queue: [String.t()]`
+  holds a backlog the host loads via a textarea in HostControls
+  (one story per line). `next_round/2` consumes the queue head
+  into `:story` when no explicit `:story` opt was passed, so the
+  free-form workflow still wins on inline edits — paste a
+  backlog, let it auto-drain; edit the title inline to override
+  for one round, queue stays untouched. New cast
+  `:poker_set_queue` + broadcast `{:poker, :queue_changed, _}`
+  replace the queue server-side (no append mode; pre-fill the
+  textarea with the current queue and edit to add/remove).
+  PokerSession trims blanks and caps at 50 lines so a stray
+  giant paste can't bloat ephemeral state. StoryHeader renders
+  an "Up next: X · N more queued" preview visible to everyone
+  (non-hosts benefit from seeing the pace); the textarea editor
+  is host-only inside HostControls. Section §2 above is updated
+  — the queue moved from "v4.1+ deferred" to "shipped".

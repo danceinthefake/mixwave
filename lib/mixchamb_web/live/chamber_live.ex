@@ -436,6 +436,19 @@ defmodule MixchambWeb.ChamberLive do
     {:noreply, socket}
   end
 
+  # Host pastes a backlog into the queue editor. Payload is a list
+  # of strings; PokerSession trims + caps. Non-host attempts are
+  # silently dropped to keep the surface idempotent — the UI hides
+  # the editor for non-hosts already, this is belt-and-braces for
+  # hand-crafted phx events.
+  def handle_event("poker_set_queue", %{"queue" => queue}, socket) when is_list(queue) do
+    if socket.assigns.is_host do
+      Mixchamb.Chambers.Server.poker_set_queue(socket.assigns.chamber_slug, queue)
+    end
+
+    {:noreply, socket}
+  end
+
   # Host-only activity switch (music ↔ poker). Chaos chamber stays
   # music-locked — it has no human creator and the picker isn't
   # rendered for anyone but the creator anyway, so this guard is
@@ -769,7 +782,8 @@ defmodule MixchambWeb.ChamberLive do
       my_vote: my_vote,
       voted_user_ids: voted_user_ids,
       votes: if(session.status == :revealed, do: session.votes, else: %{}),
-      history: Enum.map(session.history, &history_view/1)
+      history: Enum.map(session.history, &history_view/1),
+      queue: session.queue
     }
   end
 

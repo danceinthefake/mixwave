@@ -34,6 +34,7 @@ export type PokerSession = {
   voted_user_ids: string[]
   votes: Record<string, string>
   history: HistoryEntry[]
+  queue: string[]
 }
 
 export type Participant = {
@@ -146,6 +147,11 @@ function setDeck(deck: DeckId) {
   live.pushEvent("poker_set_deck", { deck })
 }
 
+function setQueue(queue: string[]) {
+  if (!props.is_host) return
+  live.pushEvent("poker_set_queue", { queue })
+}
+
 // ── Keyboard shortcuts ──────────────────────────────────────────────
 // Number keys 1-9 vote the card at that deck index (decks longer
 // than 9 fall through — `100` / `?` / `☕` in modified_fibonacci
@@ -219,6 +225,8 @@ onUnmounted(() => {
     <StoryHeader
       :story="session.story"
       :round="session.round"
+      :queue_length="session.queue.length"
+      :next_in_queue="session.queue[0] ?? null"
       :is_host="is_host"
       @update:story="setStory"
     />
@@ -264,11 +272,13 @@ onUnmounted(() => {
       v-if="is_host"
       :status="session.status"
       :deck="session.deck"
+      :queue="session.queue"
       :has_votes="session.voted_user_ids.length > 0"
       @reveal="reveal"
       @revote="revote"
       @next-round="nextRound()"
       @change-deck="setDeck"
+      @set-queue="setQueue"
     />
 
     <RoundHistory :history="session.history" />

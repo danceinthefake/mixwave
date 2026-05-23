@@ -132,6 +132,13 @@ defmodule Mixchamb.Chambers.Server do
     do: GenServer.cast(via(slug), {:poker_set_deck, deck})
 
   @doc """
+  Replace the pre-loaded story queue. `lines` is a list of raw
+  strings; blanks are trimmed out inside `PokerSession.set_queue/2`.
+  """
+  def poker_set_queue(slug, lines) when is_list(lines),
+    do: GenServer.cast(via(slug), {:poker_set_queue, lines})
+
+  @doc """
   Synchronously read the current PokerSession (or `nil` if the
   chamber isn't in poker activity). Used by late joiners to
   rebuild their UI from the live state.
@@ -396,6 +403,18 @@ defmodule Mixchamb.Chambers.Server do
     end
   end
 
+  def handle_cast({:poker_set_queue, lines}, %{poker_session: session} = state)
+      when not is_nil(session) do
+    case Mixchamb.Chambers.PokerSession.set_queue(session, lines) do
+      {:ok, updated} ->
+        broadcast_poker(state.slug, {:poker, :queue_changed, updated.queue})
+        {:noreply, %{state | poker_session: updated, dirty?: true}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
   # Cast-with-no-session fall-through: poker actions against a
   # music-mode chamber are silently dropped. Keeps the caller
   # simple (no need to check activity before casting).
@@ -406,6 +425,7 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:poker_next_round, _}, state), do: {:noreply, state}
   def handle_cast({:poker_set_story, _}, state), do: {:noreply, state}
   def handle_cast({:poker_set_deck, _}, state), do: {:noreply, state}
+  def handle_cast({:poker_set_queue, _}, state), do: {:noreply, state}
 
   def handle_cast({:set_activity, activity}, state) do
     poker_session =

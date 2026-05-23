@@ -40,7 +40,18 @@ defmodule Mixchamb.Chambers.PokerSession do
             # the deck so the verdict computation on the client side
             # still has the right card ordering even if the deck
             # was swapped between rounds.
-            history: []
+            history: [],
+            # Pre-loaded backlog the host wants to estimate in
+            # sequence. Head is consumed by `next_round/2` into
+            # `:story` whenever the queue is non-empty (and no
+            # explicit `:story` was passed). Empty queue → next_round
+            # behaves as before. Host edits via `set_queue/2`,
+            # which replaces the whole list; appending is "open the
+            # editor, paste-append, save" since the textarea on the
+            # client is pre-filled with the current contents.
+            queue: []
+
+  @max_queue_length 50
 
   @type history_entry :: %{
           round: pos_integer(),
@@ -55,7 +66,8 @@ defmodule Mixchamb.Chambers.PokerSession do
           story: String.t() | nil,
           votes: %{optional(String.t()) => String.t()},
           round: pos_integer(),
-          history: [history_entry()]
+          history: [history_entry()],
+          queue: [String.t()]
         }
 
   @doc "Fresh session at round 1 with the given deck."
@@ -109,7 +121,24 @@ defmodule Mixchamb.Chambers.PokerSession do
   Always succeeds (it's the host's "next" button).
   """
   def next_round(%__MODULE__{round: r} = s, opts \\ []) do
-    new_story = Keyword.get(opts, :story, s.story)
+    # Story precedence (highest first):
+    #   1. Explicit `:story` opt (host edited the title before
+    #      clicking Next round — that intent wins).
+    #   2. Queue head (preloaded backlog — pop it).
+    #   3. Existing `s.story` (carry over — current behavior).
+    {new_story, new_queue} =
+      cond do
+        Keyword.has_key?(opts, :story) ->
+          {Keyword.get(opts, :story), s.queue}
+
+        s.queue != [] ->
+          [head | rest] = s.queue
+          {head, rest}
+
+        true ->
+          {s.story, s.queue}
+      end
+
     # Push the just-finished round into history *only* if the team
     # actually engaged with it — at least one vote or a non-nil
     # story. A host who clicks Next Round on an empty placeholder
@@ -129,7 +158,8 @@ defmodule Mixchamb.Chambers.PokerSession do
          votes: %{},
          round: r + 1,
          story: new_story,
-         history: history
+         history: history,
+         queue: new_queue
      }}
   end
 
@@ -166,4 +196,28 @@ defmodule Mixchamb.Chambers.PokerSession do
     do: {:ok, %{s | deck: deck}}
 
   def set_deck(%__MODULE__{} = _s, _), do: {:error, :invalid_deck}
+
+  @doc """
+  Replace the pre-loaded story queue. `lines` is a list of raw
+  strings (e.g., from a textarea split on newlines); blanks are
+  trimmed out, contents are not deduplicated (a team might
+  intentionally re-estimate the same item), and the result is
+  capped at `@max_queue_length` so a stray paste of a 10k-line
+  CSV can't bloat ephemeral chamber state. No-op when the new
+  queue is identical to the current one.
+  """
+  def set_queue(%__MODULE__{} = s, lines) when is_list(lines) do
+    cleaned =
+      lines
+      |> Enum.map(&maybe_trim/1)
+      |> Enum.reject(&(&1 == nil or &1 == ""))
+      |> Enum.take(@max_queue_length)
+
+    if cleaned == s.queue, do: {:noop, s}, else: {:ok, %{s | queue: cleaned}}
+  end
+
+  def set_queue(%__MODULE__{} = _s, _), do: {:error, :invalid_queue}
+
+  defp maybe_trim(value) when is_binary(value), do: String.trim(value)
+  defp maybe_trim(_), do: nil
 end

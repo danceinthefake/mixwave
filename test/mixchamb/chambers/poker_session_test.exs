@@ -184,6 +184,61 @@ defmodule Mixchamb.Chambers.PokerSessionTest do
       assert {:ok, updated} = PokerSession.next_round(s)
       assert [%{round: 2, story: "Discussed offline", votes: %{}}] = updated.history
     end
+
+    test "pops the queue head into :story when no explicit :story opt is passed" do
+      s = %{PokerSession.new() | story: "Current", queue: ["Next one", "After that"]}
+      assert {:ok, updated} = PokerSession.next_round(s)
+      assert updated.story == "Next one"
+      assert updated.queue == ["After that"]
+    end
+
+    test "explicit :story opt wins over the queue head" do
+      s = %{PokerSession.new() | story: "Current", queue: ["Queued"]}
+      assert {:ok, updated} = PokerSession.next_round(s, story: "Override")
+      assert updated.story == "Override"
+      # Queue is left alone — the host's explicit edit said "use
+      # this, not the queue", so the queue head is still there to
+      # use next time.
+      assert updated.queue == ["Queued"]
+    end
+
+    test "carries over the current story when the queue is empty" do
+      s = %{PokerSession.new() | story: "Carry me", queue: []}
+      assert {:ok, updated} = PokerSession.next_round(s)
+      assert updated.story == "Carry me"
+    end
+  end
+
+  describe "set_queue/2" do
+    test "replaces the queue with the trimmed non-blank lines" do
+      s = PokerSession.new()
+      assert {:ok, updated} = PokerSession.set_queue(s, ["  one  ", "", "two", "   "])
+      assert updated.queue == ["one", "two"]
+    end
+
+    test "no-op when the queue is unchanged" do
+      s = %{PokerSession.new() | queue: ["already", "here"]}
+      assert {:noop, ^s} = PokerSession.set_queue(s, ["already", "here"])
+    end
+
+    test "preserves duplicates (intentional re-estimation)" do
+      s = PokerSession.new()
+      assert {:ok, updated} = PokerSession.set_queue(s, ["Story X", "Story X"])
+      assert updated.queue == ["Story X", "Story X"]
+    end
+
+    test "rejects non-list input" do
+      s = PokerSession.new()
+      assert {:error, :invalid_queue} = PokerSession.set_queue(s, "not a list")
+    end
+
+    test "caps the queue at the documented max" do
+      lines = Enum.map(1..80, &"Story #{&1}")
+      s = PokerSession.new()
+      assert {:ok, updated} = PokerSession.set_queue(s, lines)
+      assert length(updated.queue) == 50
+      assert hd(updated.queue) == "Story 1"
+    end
   end
 
   describe "set_story/2" do

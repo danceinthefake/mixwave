@@ -8,6 +8,12 @@ import { ref, watch } from "vue"
 const props = defineProps<{
   story: string | null
   round: number
+  // Preloaded backlog state. `queue_length` drives the "N more
+  // queued" chip below the title; `next_in_queue` is shown as a
+  // small "Up next" preview so the team can see what's coming
+  // before the host clicks Next round.
+  queue_length: number
+  next_in_queue: string | null
   is_host: boolean
 }>()
 
@@ -76,5 +82,20 @@ function cancel() {
         {{ story || "Click to set a story…" }}
       </h2>
     </template>
+    <!-- Queue preview. Only renders when there's a backlog loaded
+         — at empty queue the section disappears entirely to keep
+         the page calm for chambers using the free-form workflow.
+         Visible to everyone (not host-only): non-hosts benefit
+         from knowing the pace too. -->
+    <p
+      v-if="queue_length > 0 && next_in_queue"
+      class="text-xs text-muted-foreground"
+    >
+      Up next:
+      <span class="text-foreground">{{ next_in_queue }}</span>
+      <span v-if="queue_length > 1" class="text-muted-foreground/80">
+        · {{ queue_length - 1 }} more queued
+      </span>
+    </p>
   </div>
 </template>
