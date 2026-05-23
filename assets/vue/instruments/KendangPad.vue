@@ -65,7 +65,8 @@ async function hit(name: KendangSound) {
   await ensureStarted()
   play("kendang", style.value, name)
   flash(name)
-  live.pushEvent("note", { instrument: "kendang", style: style.value, note: name })
+  const label = pads.find((p) => p.name === name)?.label ?? name
+  live.pushEvent("note", { instrument: "kendang", style: style.value, note: name, label })
 }
 
 function selectStyle(id: KendangStyle) {
