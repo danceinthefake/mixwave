@@ -209,3 +209,109 @@ order I'd recommend:
    poker, no console errors.
 
 Total estimate: **~3-4 working days**.
+
+---
+
+## Polish iterations (post-v4 ship)
+
+After the locked sections above shipped, a polish pass added the
+following. Each is small enough to track as a bullet rather than
+its own locked section; documented here so future work can see
+what's in beyond the MVP without trawling git log. Pre-loaded
+story queue (§2) and multi-host (§6) remain deferred to v4.1+ —
+those are scope changes, not polish.
+
+- **Consensus headline on reveal.** RevealPanel renders a
+  one-glance verdict above the distribution bars: `Consensus: X`
+  (green / `text-success`), `Close call — X or Y` (foreground,
+  for adjacent values in the deck order), `Wide range — discuss`
+  (primary pink, for wider spreads). `?` and `☕` are stripped
+  from the spread check — they're meta-votes, not grades — but
+  surface in their own headlines when everyone picks them
+  (`Everyone wants clarification` / `Time for a break ☕`).
+  Verdict logic lives in `assets/vue/activities/poker/verdict.ts`
+  and is shared with the history panel below.
+
+- **Reveal moment.** The host's Reveal click no longer flips
+  cards instantly. PokerBoard.vue lags `flipped` behind
+  `status === "revealed"` by 800 ms; during the gap, an
+  ascending C5–E5–G5–C6 arpeggio plays via `playReveal()` in
+  `assets/vue/lib/audio.ts`, last note timed with the flip.
+  RevealPanel fades in 100 ms behind the cards (`<Transition>`
+  wrapper in PokerBoard.vue) so the verdict lands with the
+  flip rather than racing it. `prefers-reduced-motion` drops
+  the suspense — audio isn't motion, so the chime still plays.
+  Late joiners and post-reload mounts skip the suspense (they
+  missed the chime; flipping their cards instantly is the right
+  call).
+
+- **Round history panel.** `PokerSession.history` field, pushed
+  by `next_round/2` whenever the closing round had at least one
+  vote or a non-nil story. Re-vote does **not** push (the team
+  is redoing the same round). Each entry snapshots
+  `{round, story, deck, votes}` and prepends — newest-first.
+  `poker_view` shapes entries for the wire as
+  `{round, story, deck, cards, values}`, stripping user_ids
+  (history shows verdicts only, not per-user breakdowns) and
+  including each entry's deck-card-order snapshot so the
+  "close" verdict computes correctly even when the deck was
+  switched between rounds. Rendered as a collapsed `<details>`
+  disclosure below HostControls in `RoundHistory.vue`.
+
+- **Copy-as-text export.** Footer button inside the Past-rounds
+  disclosure builds a plain-text snapshot — one line per round,
+  oldest-first, format `Round N — Story — verdict` — and copies
+  to the clipboard. Verdict format expands slightly for export
+  (`5 or 8 (close call)` / `needs discussion`) since paste-
+  context isn't competing for row space. Clipboard helper is
+  inlined in `RoundHistory.vue` rather than reusing the LV-side
+  `CopyToClipboard` hook, which is tied to a `data-copy-url`
+  attribute and lives in Phoenix's DOM tree (this button sits in
+  a Vue island). Same secure-context preference + textarea
+  fallback in ~25 lines.
+
+- **"Waiting on …" nudge.** Once at least one vote is in,
+  ParticipantsRow shows a small italic hint above the silhouettes
+  listing whoever's left. Up to three names
+  (`Waiting on Alice, Beto, and Citra`); past that, switches to
+  a count (`Waiting on 4 players`). Self renders as `you` so the
+  laggard realises the room's waiting on them specifically —
+  otherwise their own alias would appear and read like a stranger
+  in the third person. Non-voter silhouettes that were already
+  `.is-empty` drop opacity 0.7 → 0.4 once someone else has voted
+  (`.is-overdue` modifier in `ParticipantsRow.vue`'s scoped CSS),
+  with a 200 ms fade so the dim arrives in step with the hint.
+
+- **Audio gate covers poker too.** `Chamber.vue`'s gate used to be
+  `activity === "music"` only, leaving a non-host who joined a
+  poker chamber and never voted before the host hit Reveal with
+  no chime — their AudioContext never got the gesture. Now the
+  gate renders for any activity; heading branches via a
+  `gateHeading` computed: `Tap to start jamming` for music,
+  `Tap to take a seat` for poker. Sub-line and button label are
+  activity-neutral. `audioReady` is per-mount, so dismissing the
+  gate once covers the chamber's lifetime regardless of activity
+  switches.
+
+- **Keyboard shortcuts.** PokerBoard registers a window keydown
+  listener (AbortController-cleaned on unmount, mirrors
+  `useInstrumentKeyboard`'s shape): `1`–`9` vote the card at
+  that deck index (during `:voting` only); `Esc` withdraws an
+  active vote; `R` reveals (host only, during `:voting`); `N`
+  advances to next round (host only, during `:revealed`); `E`
+  re-votes (host only, during `:revealed`). Skips fire when
+  typing in the story editor or alias input (via
+  `isTypingInForm` from `lib/utils`), when any modifier key is
+  held (don't steal browser shortcuts), and on auto-repeat
+  (no rapid-fire votes from a stuck key). `<kbd>` chips in
+  CardDeck (per card, sm+ viewports) and HostControls
+  (`R`/`N`/`E` inside each action button) handle discoverability.
+
+- **Activity-switching UI.** The §7 status note used to claim
+  the matrix entries for cross-activity switching were deferred.
+  In fact `chamber_live.ex` already renders a host-only Activity
+  chip-strip that flips `chamber.activity` via
+  `Chambers.set_activity/2`, broadcasts `:activity_changed`, and
+  every client reloads its `poker_session` (fresh on poker, nil
+  on music). Confirmed via 2-browser Playwright smoke. §7 above
+  is updated.
