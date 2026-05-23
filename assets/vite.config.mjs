@@ -45,5 +45,23 @@ export default defineConfig({
     tailwindcss(),
     vue(),
     liveVuePlugin()
-  ]
+  ],
+  // Vitest config. happy-dom is the lighter DOM stub (preferred
+  // over jsdom for component mounts that don't lean on quirky
+  // browser APIs). Coverage is v8-backed and only counts the
+  // Vue island sources — node_modules + tests are excluded so
+  // the report reflects our actual code, not dependency churn.
+  test: {
+    environment: "happy-dom",
+    include: ["vue/__tests__/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["vue/**/*.{ts,vue}"],
+      exclude: [
+        "vue/__tests__/**",
+        "vue/components/ui/**"
+      ],
+      reporter: ["text", "html"]
+    }
+  }
 });

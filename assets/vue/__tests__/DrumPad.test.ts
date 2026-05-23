@@ -54,6 +54,7 @@ describe("DrumPad", () => {
       instrument: "drums",
       style: "synth",
       note: "snare",
+      label: "Snare",
     })
   })
 

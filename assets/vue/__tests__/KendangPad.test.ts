@@ -67,6 +67,7 @@ describe("KendangPad", () => {
       instrument: "kendang",
       style: "synth",
       note: "tut",
+      label: "Tut",
     })
   })
 
