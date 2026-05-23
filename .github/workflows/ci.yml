@@ -98,7 +98,7 @@ jobs:
       # phoenix_live_view via `file:./deps/...`, which means those
       # Elixir deps need to be on disk before `npm ci` can resolve
       # the file: links. Set up BEAM + run `mix deps.get` first.
-      - name: Set up Elixir + OTP (for the file: deps)
+      - name: "Set up Elixir + OTP (for the file: deps)"
         uses: erlef/setup-beam@v1
         with:
           elixir-version: "1.19.5"
