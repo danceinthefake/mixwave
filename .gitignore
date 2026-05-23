@@ -2,8 +2,13 @@
 /_build/
 
 # Coverage artefacts (mix coveralls.* / vitest --coverage).
+# vitest writes to `<cwd>/coverage/` — that's the repo root when
+# `npm run test:coverage` runs from there, but `assets/coverage/`
+# when running vitest from inside the assets/ dir locally. Ignore
+# both anchored paths so neither slips in.
 /cover/
 /coverage/
+/assets/coverage/
 /_badges/
 
 # The directory Mix downloads your dependencies sources to.
