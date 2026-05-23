@@ -310,6 +310,78 @@ defmodule Mixchamb.ChambersTest do
     end
   end
 
+  describe "touch_visit/2 + recent_visits/2" do
+    setup do
+      {:ok, user} = Accounts.create_anonymous_user()
+      {:ok, c1} = Chambers.create_chamber(user.id, "music")
+      {:ok, c2} = Chambers.create_chamber(user.id, "poker")
+      %{visit_user: user, c1: c1, c2: c2}
+    end
+
+    test "touch_visit upserts a row + recent_visits returns it", %{
+      visit_user: user,
+      c1: c1
+    } do
+      :ok = Chambers.touch_visit(user.id, c1.id)
+
+      assert [{chamber, %DateTime{} = visited_at}] = Chambers.recent_visits(user.id, 5)
+      assert chamber.id == c1.id
+      assert DateTime.diff(DateTime.utc_now(), visited_at, :second) < 5
+    end
+
+    test "second touch on the same (user, chamber) bumps the timestamp, not the row count",
+         %{visit_user: user, c1: c1} do
+      :ok = Chambers.touch_visit(user.id, c1.id)
+      [{_, first}] = Chambers.recent_visits(user.id, 5)
+
+      :timer.sleep(1100)
+      :ok = Chambers.touch_visit(user.id, c1.id)
+
+      assert [{_, second}] = Chambers.recent_visits(user.id, 5)
+      assert DateTime.compare(second, first) == :gt
+    end
+
+    test "recent_visits orders newest-first across multiple chambers", %{
+      visit_user: user,
+      c1: c1,
+      c2: c2
+    } do
+      :ok = Chambers.touch_visit(user.id, c1.id)
+      :timer.sleep(1100)
+      :ok = Chambers.touch_visit(user.id, c2.id)
+
+      assert [{first, _}, {second, _}] = Chambers.recent_visits(user.id, 5)
+      assert first.id == c2.id
+      assert second.id == c1.id
+    end
+
+    test "respects the limit", %{visit_user: user, c1: c1, c2: c2} do
+      :ok = Chambers.touch_visit(user.id, c1.id)
+      :ok = Chambers.touch_visit(user.id, c2.id)
+
+      assert [{_, _}] = Chambers.recent_visits(user.id, 1)
+    end
+
+    test "visits cascade-delete when the chamber is removed", %{
+      visit_user: user,
+      c1: c1
+    } do
+      :ok = Chambers.touch_visit(user.id, c1.id)
+      assert length(Chambers.recent_visits(user.id, 5)) == 1
+
+      Mixchamb.Repo.delete!(c1)
+
+      assert Chambers.recent_visits(user.id, 5) == []
+    end
+
+    test "different users' visits don't leak", %{visit_user: user, c1: c1} do
+      {:ok, other} = Accounts.create_anonymous_user()
+
+      :ok = Chambers.touch_visit(user.id, c1.id)
+      assert Chambers.recent_visits(other.id, 5) == []
+    end
+  end
+
   defp stop_chamber(slug) do
     case Registry.lookup(Mixchamb.Chambers.Registry, slug) do
       [{pid, _}] ->

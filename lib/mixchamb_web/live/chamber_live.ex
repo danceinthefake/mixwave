@@ -57,6 +57,15 @@ defmodule MixchambWeb.ChamberLive do
     # to call on every mount — idempotent if one is already up.
     {:ok, _pid} = Mixchamb.Chambers.Server.ensure_started(slug, chamber.id)
 
+    # Record the visit so the user's next landing page shows this
+    # chamber under "Resume". Swallow errors — visit tracking
+    # mustn't block a chamber mount. Fire only on a connected
+    # socket so we don't double-write during the dead-mount pass
+    # (LV mounts twice: once stateless during HTTP, once over WS).
+    if connected?(socket) do
+      Chambers.touch_visit(user.id, chamber.id)
+    end
+
     if connected?(socket) do
       Chambers.subscribe(slug)
       Phoenix.PubSub.subscribe(Mixchamb.PubSub, presence_topic(slug))
