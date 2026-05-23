@@ -115,6 +115,36 @@ defmodule MixchambWeb.Admin.SweepersLive do
             <dt class="text-xs uppercase tracking-wider text-muted-foreground">Last deleted</dt>
             <dd class="text-right tabular-nums">{row.info.last_deleted}</dd>
 
+            <%!-- Per-path breakdown when the sweeper exposes it
+                 (currently only Chambers — two-path: stale + ghost).
+                 Indented + smaller text so they read as a sub-stat
+                 of "Last deleted" rather than as peers. --%>
+            <dt
+              :if={Map.has_key?(row.info, :last_stale_deleted)}
+              class="pl-3 text-[11px] text-muted-foreground/80"
+            >
+              stale (over {row.info.threshold_hours}h)
+            </dt>
+            <dd
+              :if={Map.has_key?(row.info, :last_stale_deleted)}
+              class="text-right text-[11px] text-muted-foreground/80 tabular-nums"
+            >
+              {row.info.last_stale_deleted}
+            </dd>
+
+            <dt
+              :if={Map.has_key?(row.info, :last_ghost_deleted)}
+              class="pl-3 text-[11px] text-muted-foreground/80"
+            >
+              ghost (over {row.info.ghost_threshold_minutes}m, no GenServer)
+            </dt>
+            <dd
+              :if={Map.has_key?(row.info, :last_ghost_deleted)}
+              class="text-right text-[11px] text-muted-foreground/80 tabular-nums"
+            >
+              {row.info.last_ghost_deleted}
+            </dd>
+
             <dt class="text-xs uppercase tracking-wider text-muted-foreground">Threshold</dt>
             <dd class="text-right tabular-nums">{row.info.threshold_hours}h</dd>
 

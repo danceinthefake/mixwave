@@ -56,7 +56,14 @@ defmodule Mixchamb.Chambers.Sweeper do
   @impl true
   def init(_opts) do
     schedule_sweep()
-    {:ok, %{last_run_at: nil, last_deleted: 0}}
+
+    {:ok,
+     %{
+       last_run_at: nil,
+       last_deleted: 0,
+       last_stale_deleted: 0,
+       last_ghost_deleted: 0
+     }}
   end
 
   @impl true
@@ -77,7 +84,10 @@ defmodule Mixchamb.Chambers.Sweeper do
      %{
        last_run_at: state.last_run_at,
        last_deleted: state.last_deleted,
+       last_stale_deleted: state.last_stale_deleted,
+       last_ghost_deleted: state.last_ghost_deleted,
        threshold_hours: @idle_threshold_hours,
+       ghost_threshold_minutes: @ghost_threshold_minutes,
        interval_ms: @sweep_interval
      }, state}
   end
@@ -117,6 +127,12 @@ defmodule Mixchamb.Chambers.Sweeper do
       )
     end
 
-    %{state | last_run_at: now, last_deleted: total}
+    %{
+      state
+      | last_run_at: now,
+        last_deleted: total,
+        last_stale_deleted: stale,
+        last_ghost_deleted: ghost
+    }
   end
 end
