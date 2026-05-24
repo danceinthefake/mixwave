@@ -76,6 +76,69 @@ describe("RetroBoard", () => {
     expect(columnNames.length).toBe(4)
   })
 
+  it("renders face-down placeholders for hidden cards during :brainstorm", () => {
+    const session = makeSession({
+      status: "brainstorm",
+      cards: [
+        {
+          id: "card-mine",
+          retro_column_id: "c1",
+          body: "my card",
+          author_user_id: "u1",
+          author_alias: "me",
+          vote_count: 0,
+        },
+        {
+          id: "card-theirs-1",
+          retro_column_id: "c1",
+          body: "their card 1",
+          author_user_id: "u2",
+          author_alias: "them",
+          vote_count: 0,
+        },
+        {
+          id: "card-theirs-2",
+          retro_column_id: "c1",
+          body: "their card 2",
+          author_user_id: "u3",
+          author_alias: "other",
+          vote_count: 0,
+        },
+      ],
+    })
+    const w = mount(RetroBoard, { props: { ...baseProps, session } })
+    // 1 real card (mine) + 2 face-down silhouettes (theirs)
+    const placeholders = w.findAll(
+      "[aria-label='Hidden card from another participant — reveals together']",
+    )
+    expect(placeholders.length).toBe(2)
+    expect(w.text()).toContain("my card")
+    expect(w.text()).not.toContain("their card 1")
+  })
+
+  it("no placeholders outside :brainstorm even when others have cards", () => {
+    const session = makeSession({
+      status: "reveal",
+      cards: [
+        {
+          id: "card-theirs",
+          retro_column_id: "c1",
+          body: "their card",
+          author_user_id: "u2",
+          author_alias: "them",
+          vote_count: 0,
+        },
+      ],
+    })
+    const w = mount(RetroBoard, { props: { ...baseProps, session } })
+    const placeholders = w.findAll(
+      "[aria-label='Hidden card from another participant — reveals together']",
+    )
+    expect(placeholders.length).toBe(0)
+    // their card is now visible
+    expect(w.text()).toContain("their card")
+  })
+
   it("hides others' cards during :brainstorm but counts them", () => {
     const session = makeSession({
       status: "brainstorm",

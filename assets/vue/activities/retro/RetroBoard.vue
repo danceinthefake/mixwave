@@ -113,6 +113,23 @@ const countsByColumnId = computed(() => {
   return counts
 })
 
+// During :brainstorm, the gap between everyone's cards and the
+// viewer's own cards. Rendered in each column as N face-down
+// silhouettes so participants can see at a glance that others
+// are contributing — mirrors poker's voted-but-unrevealed card
+// silhouettes. Empty/zero outside :brainstorm.
+const hiddenCountByColumnId = computed(() => {
+  const counts: Record<string, number> = {}
+  if (phase.value !== "brainstorm") return counts
+
+  for (const col of props.session?.columns ?? []) {
+    const total = (cardsByColumnId.value[col.id] ?? []).length
+    const visible = (visibleCardsByColumnId.value[col.id] ?? []).length
+    counts[col.id] = Math.max(0, total - visible)
+  }
+  return counts
+})
+
 const myVoteSet = computed(() => new Set(props.my_votes))
 const votesRemaining = computed(() => VOTE_CAP - myVoteSet.value.size)
 
@@ -171,6 +188,7 @@ function startSession() {
           :column="col"
           :cards="visibleCardsByColumnId[col.id] ?? []"
           :total_count="countsByColumnId[col.id] ?? 0"
+          :hidden_count="hiddenCountByColumnId[col.id] ?? 0"
           :phase="phase!"
           :is_host="is_host"
           :current_user_id="current_user_id"

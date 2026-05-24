@@ -13,6 +13,11 @@ const props = defineProps<{
   column: RetroColumnT
   cards: RetroCardT[]
   total_count: number
+  // Number of cards from other participants whose contents are
+  // hidden during :brainstorm. Rendered as face-down silhouettes
+  // so the room can see at a glance that others are contributing.
+  // Zero outside :brainstorm.
+  hidden_count: number
   phase: RetroPhase
   is_host: boolean
   current_user_id: string
@@ -61,8 +66,23 @@ function submit() {
         :is_host="is_host"
       />
 
+      <!-- Face-down "card-back" placeholders for cards others
+           have written but you can't see until :reveal. One per
+           hidden card. Brand gradient matches the poker
+           card-back silhouette (assets/vue/activities/poker/
+           ParticipantsRow.vue) so the visual language for
+           "hidden until reveal" is consistent across activities. -->
+      <div
+        v-for="n in hidden_count"
+        :key="`hidden-${n}`"
+        class="retro-card-back"
+        role="presentation"
+        aria-label="Hidden card from another participant — reveals together"
+        title="Someone added a card here — content reveals to everyone at the same time"
+      ></div>
+
       <p
-        v-if="phase === 'brainstorm' && cards.length === 0"
+        v-if="phase === 'brainstorm' && cards.length === 0 && hidden_count === 0"
         class="text-xs text-muted-foreground italic text-center py-4"
       >
         Nothing here yet.
@@ -99,3 +119,21 @@ function submit() {
     </form>
   </section>
 </template>
+
+<style scoped>
+/* Brand gradient back, matching poker's card-back (pink → cyan →
+   green diagonal). Sized to match a real RetroCard's typical
+   single-line content height so the layout barely shifts when
+   placeholders flip to real content at :reveal. The diagonal
+   angle is the same 135deg as the poker silhouette for visual
+   continuity across activities. */
+.retro-card-back {
+  border-radius: 0.5rem;
+  height: 4.5rem;
+  background: linear-gradient(135deg, #e94886 0%, #56d2e6 50%, #b5e651 100%);
+  border: 1px solid var(--primary);
+  /* A subtle inset shadow keeps the gradient from reading as a
+     flat sticker — feels like a physical card lying face-down. */
+  box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.15);
+}
+</style>
