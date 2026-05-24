@@ -57,6 +57,10 @@ const props = defineProps<{
   session: RetroSession | null
   tallies: Record<string, number>
   my_votes: string[]
+  // Host's currently-focused card during :discuss. nil = no focus.
+  // Surfaced as a ring + scale highlight on the matching card so
+  // the room knows which one is being talked about.
+  discussing_card_id: string | null
   current_user_id: string
   current_user_alias: string
   is_host: boolean
@@ -195,6 +199,7 @@ function startSession() {
           :tallies="tallies"
           :my_votes="myVoteSet"
           :votes_remaining="votesRemaining"
+          :discussing_card_id="discussing_card_id"
         />
       </div>
 

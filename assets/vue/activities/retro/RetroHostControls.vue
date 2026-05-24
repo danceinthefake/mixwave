@@ -36,9 +36,14 @@ const advanceLabel = computed(() => {
 })
 
 const advanceConfirm = computed(() => {
-  // Archive is destructive — ask first. Other transitions are
-  // soft and one-way but easy to read on the way.
-  return phase.value === "discuss" ? "Archive this retro? No more edits after." : null
+  // Archive is destructive — ask first. The wording firms up when
+  // there's nothing to archive, per spec §9's empty-session
+  // nudge: "No cards captured — are you sure?"
+  if (phase.value !== "discuss") return null
+  if (props.session.cards.length === 0) {
+    return "No cards captured in this retro. Archive an empty session anyway?"
+  }
+  return "Archive this retro? No more edits after."
 })
 
 const showVotingToggle = computed(() =>

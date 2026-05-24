@@ -34,6 +34,7 @@ const baseProps = {
   is_my_vote: false,
   votes_remaining: 3,
   is_host: false,
+  is_discussing: false,
 }
 
 describe("RetroCard", () => {
@@ -97,6 +98,37 @@ describe("RetroCard", () => {
 
     const reveal = mount(RetroCard, { props: { ...baseProps, phase: "reveal", is_mine: true } })
     expect(reveal.find("button[aria-label='Edit card']").exists()).toBe(false)
+  })
+
+  it("discussing card gets a highlight ring", () => {
+    const w = mount(RetroCard, {
+      props: { ...baseProps, phase: "discuss", is_discussing: true },
+    })
+    expect(w.find("article").classes()).toContain("ring-2")
+    expect(w.find("article").classes()).toContain("ring-accent-bass")
+  })
+
+  it("non-discussing card has no highlight ring", () => {
+    const w = mount(RetroCard, {
+      props: { ...baseProps, phase: "discuss", is_discussing: false },
+    })
+    expect(w.find("article").classes()).not.toContain("ring-2")
+  })
+
+  it("host click in :discuss pushes retro_set_discussing", async () => {
+    const w = mount(RetroCard, {
+      props: { ...baseProps, phase: "discuss", is_host: true },
+    })
+    await w.get("article").trigger("click")
+    expect(pushEventMock).toHaveBeenCalledWith("retro_set_discussing", { card_id: "card1" })
+  })
+
+  it("non-host click in :discuss does nothing", async () => {
+    const w = mount(RetroCard, {
+      props: { ...baseProps, phase: "discuss", is_host: false },
+    })
+    await w.get("article").trigger("click")
+    expect(pushEventMock).not.toHaveBeenCalled()
   })
 
   it("static count chip appears in :discuss when tally > 0", () => {

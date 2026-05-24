@@ -25,11 +25,56 @@ const draft = ref({
   due_date: "",
 })
 
+// Action being inline-edited (id or null). Local draft holds
+// the in-flight values; committing pushes a single
+// retro_update_action_item event for whichever fields changed.
+const editingId = ref<string | null>(null)
+const editDraft = ref({
+  body: "",
+  assignee_alias: "",
+  due_date: "",
+})
+
 const cardsById = computed(() => {
   const map: Record<string, RetroCard> = {}
   for (const c of props.session.cards) map[c.id] = c
   return map
 })
+
+function startEdit(action: RetroActionItem) {
+  if (readOnly.value) return
+  editingId.value = action.id
+  editDraft.value = {
+    body: action.body,
+    assignee_alias: action.assignee_alias ?? "",
+    due_date: action.due_date ?? "",
+  }
+}
+
+function commitEdit(action: RetroActionItem) {
+  const body = editDraft.value.body.trim()
+  if (!body) {
+    cancelEdit()
+    return
+  }
+  const payload: Record<string, unknown> = { action_id: action.id }
+  if (body !== action.body) payload.body = body
+  if (editDraft.value.assignee_alias.trim() !== (action.assignee_alias ?? "")) {
+    payload.assignee_alias = editDraft.value.assignee_alias.trim() || null
+  }
+  if (editDraft.value.due_date !== (action.due_date ?? "")) {
+    payload.due_date = editDraft.value.due_date || null
+  }
+  // No fields changed — just close edit mode without pushing.
+  if (Object.keys(payload).length > 1) {
+    live.pushEvent("retro_update_action_item", payload)
+  }
+  editingId.value = null
+}
+
+function cancelEdit() {
+  editingId.value = null
+}
 
 function submit() {
   const body = draft.value.body.trim()
@@ -123,12 +168,14 @@ function exportMarkdown() {
         <input
           type="checkbox"
           :checked="action.completed"
-          :disabled="readOnly"
+          :disabled="readOnly || editingId === action.id"
           :aria-label="`Mark ${action.body} as ${action.completed ? 'incomplete' : 'complete'}`"
           @change="toggleCompleted(action)"
           class="mt-0.5 size-4 rounded border-input"
         />
-        <div class="flex-1 space-y-1">
+
+        <!-- Display mode -->
+        <div v-if="editingId !== action.id" class="flex-1 space-y-1">
           <p
             class="text-sm leading-snug"
             :class="action.completed && 'line-through text-muted-foreground'"
@@ -148,15 +195,74 @@ function exportMarkdown() {
             </span>
           </div>
         </div>
-        <button
-          v-if="!readOnly"
-          type="button"
-          class="text-[11px] text-muted-foreground hover:text-destructive"
-          @click="deleteAction(action)"
-          :aria-label="`Delete action: ${action.body}`"
+
+        <!-- Edit mode -->
+        <div v-else class="flex-1 space-y-2">
+          <textarea
+            v-model="editDraft.body"
+            maxlength="280"
+            rows="2"
+            :aria-label="`Edit action body`"
+            class="w-full rounded-md border bg-card px-2 py-1.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
+            @keydown.enter.exact.prevent="commitEdit(action)"
+            @keydown.escape="cancelEdit"
+          ></textarea>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input
+              v-model="editDraft.assignee_alias"
+              type="text"
+              maxlength="80"
+              placeholder="Assignee (optional)"
+              aria-label="Edit assignee alias"
+              class="rounded-md border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
+            />
+            <input
+              v-model="editDraft.due_date"
+              type="date"
+              aria-label="Edit due date"
+              class="rounded-md border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
+            />
+          </div>
+          <div class="flex justify-end gap-2 text-[11px]">
+            <button
+              type="button"
+              class="hover:text-foreground text-muted-foreground"
+              @click="cancelEdit"
+            >
+              cancel
+            </button>
+            <button
+              type="button"
+              class="font-medium rounded-md bg-accent-bass text-background px-2 py-0.5 hover:bg-accent-bass/90"
+              @click="commitEdit(action)"
+            >
+              save
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit + delete affordances -->
+        <div
+          v-if="!readOnly && editingId !== action.id"
+          class="flex items-center gap-1.5"
         >
-          ×
-        </button>
+          <button
+            type="button"
+            class="text-[11px] text-muted-foreground hover:text-foreground"
+            @click="startEdit(action)"
+            :aria-label="`Edit action: ${action.body}`"
+          >
+            edit
+          </button>
+          <button
+            type="button"
+            class="text-[11px] text-muted-foreground hover:text-destructive"
+            @click="deleteAction(action)"
+            :aria-label="`Delete action: ${action.body}`"
+          >
+            ×
+          </button>
+        </div>
       </li>
     </ul>
 

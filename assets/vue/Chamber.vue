@@ -82,6 +82,10 @@ const props = defineProps<{
   // The current user's voted card_ids during :voting (list form
   // since LV serialises MapSet via Map.to_list).
   retro_my_votes?: string[]
+  // Host's currently-discussing card id during :discuss. nil
+  // when no card has the focus. Sourced from the GenServer
+  // ephemeral state.
+  retro_discussing_card_id?: string | null
   current_user_id?: string
   current_user_alias?: string
   is_host?: boolean
@@ -553,6 +557,7 @@ live.handleEvent("play_remote_note", async (payload: RemoteNote) => {
     :session="props.retro_session ?? null"
     :tallies="props.retro_tallies ?? {}"
     :my_votes="props.retro_my_votes ?? []"
+    :discussing_card_id="props.retro_discussing_card_id ?? null"
     :current_user_id="props.current_user_id ?? ''"
     :current_user_alias="props.current_user_alias ?? ''"
     :is_host="props.is_host ?? false"

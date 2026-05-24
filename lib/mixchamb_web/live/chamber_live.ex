@@ -148,8 +148,37 @@ defmodule MixchambWeb.ChamberLive do
      # phase exit. Same for my_votes (per-user vote set).
      |> assign(:retro_tallies, %{})
      |> assign(:retro_my_votes, MapSet.new())
-     |> assign_hosts(chamber, user)}
+     # Host's highlighted card during :discuss. Surfaces the
+     # discussing-card focus from the GenServer ephemeral state.
+     # nil when nothing focused. Reset on phase exit.
+     |> assign(:retro_discussing_card_id, nil)
+     |> assign_hosts(chamber, user)
+     # Seed all three ephemeral assigns from the GenServer for
+     # late joiners / refreshes — without this, joining a chamber
+     # mid-:voting shows 0/3 votes spent and no live tallies until
+     # the next vote event.
+     |> seed_retro_ephemeral(chamber, user)}
   end
+
+  # Pulls the live EphemeralState off the chamber GenServer and
+  # seeds retro_tallies / retro_my_votes / retro_discussing_card_id
+  # so a fresh mount (late joiner, refresh, server-side LV
+  # reconnect) sees the same in-flight state as everyone else.
+  # No-op outside retro activity or before a session is started.
+  defp seed_retro_ephemeral(socket, %{activity: "retro", slug: slug}, %{id: user_id}) do
+    case Mixchamb.Chambers.Server.retro_state(slug) do
+      nil ->
+        socket
+
+      %_{} = rs ->
+        socket
+        |> assign(:retro_tallies, Mixchamb.Retro.EphemeralState.tally(rs))
+        |> assign(:retro_my_votes, Map.get(rs.votes, user_id, MapSet.new()))
+        |> assign(:retro_discussing_card_id, rs.discussing_card_id)
+    end
+  end
+
+  defp seed_retro_ephemeral(socket, _, _), do: socket
 
   # Reads the user's stored last_instrument and normalises it back
   # to an atom against the @instruments allow-list. Returns :drums
@@ -859,12 +888,13 @@ defmodule MixchambWeb.ChamberLive do
     socket =
       socket
       |> assign(:retro_session, load_retro_session(chamber))
-      # Reset vote tallies + my-votes on every phase change. Entering
-      # :voting starts at zero; exiting :voting drops the now-stale
-      # ephemeral signals (the materialised counts come back on the
-      # reloaded session).
+      # Reset vote tallies + my-votes + discussing focus on every
+      # phase change. Entering :voting starts at zero; exiting
+      # :voting drops the now-stale ephemeral signals (the
+      # materialised counts come back on the reloaded session).
       |> assign(:retro_tallies, %{})
       |> assign(:retro_my_votes, MapSet.new())
+      |> assign(:retro_discussing_card_id, nil)
 
     # Archive transition produces a new row in past_retros — reload
     # the disclosure list. Other transitions don't touch that list.
@@ -904,6 +934,13 @@ defmodule MixchambWeb.ChamberLive do
      socket
      |> assign(:retro_tallies, tallies)
      |> assign(:retro_my_votes, my_votes)}
+  end
+
+  # Discussing-focus is ephemeral GenServer state, not in the
+  # session DB row — handle it before the catch-all so we don't
+  # incur a session reload for what's just a card-id swap.
+  def handle_info({:retro, :discussing, card_id_or_nil}, socket) do
+    {:noreply, assign(socket, :retro_discussing_card_id, card_id_or_nil)}
   end
 
   # Catch-all retro broadcasts (card/action add/edit/delete, title,
@@ -1696,6 +1733,7 @@ defmodule MixchambWeb.ChamberLive do
               retro_session={retro_view(@retro_session)}
               retro_tallies={@retro_tallies}
               retro_my_votes={MapSet.to_list(@retro_my_votes)}
+              retro_discussing_card_id={@retro_discussing_card_id}
               current_user_id={@current_user.id}
               current_user_alias={@current_user.alias || @current_user.display_name}
               is_host={@is_host}

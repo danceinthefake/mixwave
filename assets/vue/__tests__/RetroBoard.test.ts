@@ -37,6 +37,7 @@ const baseProps = {
   session: null as RetroSession | null,
   tallies: {},
   my_votes: [],
+  discussing_card_id: null,
   current_user_id: "u1",
   current_user_alias: "host-alias",
   is_host: true,

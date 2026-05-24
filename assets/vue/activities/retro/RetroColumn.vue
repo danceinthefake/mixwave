@@ -42,6 +42,9 @@ const props = defineProps<{
   tallies: Record<string, number>
   my_votes: Set<string>
   votes_remaining: number
+  // Currently-focused card id during :discuss; passed through to
+  // RetroCard so the highlight ring appears on the matching one.
+  discussing_card_id: string | null
 }>()
 
 const live = useLiveVue()
@@ -95,6 +98,7 @@ function submit() {
         :is_my_vote="my_votes.has(card.id)"
         :votes_remaining="votes_remaining"
         :is_host="is_host"
+        :is_discussing="card.id === discussing_card_id"
       />
 
       <!-- Face-down "card-back" placeholders for cards others

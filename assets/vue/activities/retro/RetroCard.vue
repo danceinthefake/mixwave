@@ -16,6 +16,9 @@ const props = defineProps<{
   is_my_vote: boolean
   votes_remaining: number
   is_host: boolean
+  // Visually highlight this card if it's the currently-focused
+  // discussion card (host-driven, broadcast to everyone).
+  is_discussing: boolean
 }>()
 
 const live = useLiveVue()
@@ -73,10 +76,12 @@ function focusForDiscussion() {
 
 <template>
   <article
-    class="rounded-lg border bg-card p-2.5 space-y-2 group"
+    class="rounded-lg border bg-card p-2.5 space-y-2 group transition-all"
     :class="{
       'border-accent-bass/40': is_mine && phase === 'brainstorm',
       'cursor-pointer hover:border-accent-bass/40': is_host && phase === 'discuss',
+      'ring-2 ring-accent-bass ring-offset-1 ring-offset-background border-accent-bass':
+        is_discussing,
     }"
     @click="phase === 'discuss' ? focusForDiscussion() : undefined"
   >
