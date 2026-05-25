@@ -487,7 +487,11 @@ without them.
 
 ## License
 
-Code under this repository is the author's own; the third-party
-packages above retain their own licenses (Apache-2.0, MIT,
-BSD-3-Clause, etc.) — see the `mix.lock` and `pnpm-lock.yaml`
-files for canonical resolutions.
+mixchamb is released under the [MIT License](./LICENSE) —
+permissive, attribution-only. You can fork, modify, self-host,
+embed, or sell derivative work; just keep the copyright notice
+in copies or substantial portions.
+
+Third-party packages retain their own licenses (Apache-2.0,
+MIT, BSD-3-Clause, etc.) — see `mix.lock` and the asset
+lockfiles for canonical resolutions.
