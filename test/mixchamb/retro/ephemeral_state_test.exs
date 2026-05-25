@@ -136,4 +136,31 @@ defmodule Mixchamb.Retro.EphemeralStateTest do
   test "vote_cap/0 is 3 (spec §5)" do
     assert EphemeralState.vote_cap() == 3
   end
+
+  describe "phase_from_string/1 + new/2 string input" do
+    test "atom path still works" do
+      s = EphemeralState.new("sess", :brainstorm)
+      assert s.phase == :brainstorm
+    end
+
+    test "string input routes through phase_from_string" do
+      for {str, atom} <- [
+            {"setup", :setup},
+            {"brainstorm", :brainstorm},
+            {"reveal", :reveal},
+            {"voting", :voting},
+            {"discuss", :discuss},
+            {"archived", :archived}
+          ] do
+        s = EphemeralState.new("sess", str)
+        assert s.phase == atom, "expected #{inspect(str)} → #{inspect(atom)}"
+      end
+    end
+
+    test "phase_from_string raises on unknown value" do
+      assert_raise KeyError, fn ->
+        EphemeralState.phase_from_string("nope")
+      end
+    end
+  end
 end

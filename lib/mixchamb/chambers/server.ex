@@ -376,10 +376,7 @@ defmodule Mixchamb.Chambers.Server do
             nil
 
           session ->
-            Mixchamb.Retro.EphemeralState.new(
-              session.id,
-              String.to_existing_atom(session.status)
-            )
+            Mixchamb.Retro.EphemeralState.new(session.id, session.status)
         end
       end
 
@@ -615,10 +612,7 @@ defmodule Mixchamb.Chambers.Server do
         case Mixchamb.Retro.start_session(state.chamber_id) do
           {:ok, session} ->
             retro_state =
-              Mixchamb.Retro.EphemeralState.new(
-                session.id,
-                String.to_existing_atom(session.status)
-              )
+              Mixchamb.Retro.EphemeralState.new(session.id, session.status)
 
             broadcast_retro(state.slug, {:retro, :session_started, session.id})
             {:noreply, %{state | retro_state: retro_state}}
@@ -748,7 +742,7 @@ defmodule Mixchamb.Chambers.Server do
 
         case Mixchamb.Retro.advance_phase(session) do
           {:ok, updated} ->
-            new_phase = String.to_existing_atom(updated.status)
+            new_phase = Mixchamb.Retro.EphemeralState.phase_from_string(updated.status)
             broadcast_retro(state.slug, {:retro, :phase_changed, new_phase})
 
             # On archive, drop the EphemeralState entirely — the
@@ -1028,10 +1022,7 @@ defmodule Mixchamb.Chambers.Server do
               nil
 
             session ->
-              Mixchamb.Retro.EphemeralState.new(
-                session.id,
-                String.to_existing_atom(session.status)
-              )
+              Mixchamb.Retro.EphemeralState.new(session.id, session.status)
           end
 
         _ ->

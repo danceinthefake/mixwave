@@ -29,15 +29,31 @@ defmodule Mixchamb.Retro.EphemeralState do
   @vote_cap 3
   def vote_cap, do: @vote_cap
 
-  # Pre-declare every phase atom so `String.to_existing_atom/1`
-  # in `Chambers.Server` (which converts the DB string back to an
-  # atom for EphemeralState.phase) always succeeds. Without this,
-  # atoms only referenced via type specs (e.g. :brainstorm,
-  # :reveal, :archived) wouldn't exist in the atom table until
-  # something else materialised them, and the first advance from
-  # :setup would crash the chamber GenServer.
-  @phases ~w(setup brainstorm reveal voting discuss archived)a
+  # Pre-declare every phase atom AND expose a string→atom helper.
+  # The literal atoms in @phase_atoms ensure they're in the atom
+  # table the moment this module is loaded; the helper means
+  # callers never have to reach for `String.to_existing_atom`,
+  # which would crash if EphemeralState happens not to be loaded
+  # yet on a given BEAM process path (the original bug — chamber
+  # GenServer init/1 ran before any code had forced
+  # EphemeralState into the VM).
+  @phase_atoms %{
+    "setup" => :setup,
+    "brainstorm" => :brainstorm,
+    "reveal" => :reveal,
+    "voting" => :voting,
+    "discuss" => :discuss,
+    "archived" => :archived
+  }
+  @phases Map.values(@phase_atoms)
   def phases, do: @phases
+
+  @doc """
+  Convert a DB-side phase string ("setup", "brainstorm", …) to its
+  atom. Raises on unknown values — callers always pass one of the
+  six known statuses persisted by `Mixchamb.Retro.RetroSession`.
+  """
+  def phase_from_string(phase) when is_binary(phase), do: Map.fetch!(@phase_atoms, phase)
 
   defstruct session_id: nil,
             phase: :setup,
@@ -51,10 +67,19 @@ defmodule Mixchamb.Retro.EphemeralState do
           discussing_card_id: binary() | nil
         }
 
-  @doc "Fresh state pointing at the given session, defaulting to :setup."
+  @doc """
+  Fresh state pointing at the given session. Phase may be either
+  an atom (one of `phases/0`) or the matching string from the DB
+  status field — the helper routes both to the same atom.
+  """
   def new(session_id, phase \\ :setup)
-      when is_binary(session_id) and is_atom(phase) do
+
+  def new(session_id, phase) when is_binary(session_id) and is_atom(phase) do
     %__MODULE__{session_id: session_id, phase: phase}
+  end
+
+  def new(session_id, phase) when is_binary(session_id) and is_binary(phase) do
+    %__MODULE__{session_id: session_id, phase: phase_from_string(phase)}
   end
 
   @doc """
