@@ -6,7 +6,7 @@
 //
 // See features/retrospective.md for the full design.
 
-import { computed } from "vue"
+import { computed, provide } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroSetup from "./RetroSetup.vue"
 import RetroColumn from "./RetroColumn.vue"
@@ -27,7 +27,14 @@ export type RetroCard = {
   retro_column_id: string
   body: string
   author_user_id: string | null
+  // Primary identity label snapshotted at create time:
+  // user.alias when set, else user.display_name. Always non-null.
   author_alias: string
+  // Underlying noun-adj-NN handle snapshotted at create time.
+  // Nullable for cards predating the column. When present and
+  // different from author_alias, rendered as the "· …" tail
+  // (matches poker reveal's two-piece pattern; spec §3).
+  author_display_name: string | null
   vote_count: number
 }
 
@@ -65,10 +72,22 @@ const props = defineProps<{
   // Surfaced as a ring + scale highlight on the matching card so
   // the room knows which one is being talked about.
   discussing_card_id: string | null
+  // Current chamber participants' alias_or_name strings. Provided
+  // to descendants via inject so RetroActionRow / RetroDiscussPanel
+  // can offer assignee autocomplete without prop-drilling.
+  participant_aliases: string[]
   current_user_id: string
   current_user_alias: string
   is_host: boolean
 }>()
+
+// Make the participant list available to any descendant (action
+// rows + the discuss panel's add form). Cheap to provide a
+// computed ref so descendants react when presence changes.
+provide(
+  "retro_participant_aliases",
+  computed(() => props.participant_aliases),
+)
 
 const live = useLiveVue()
 

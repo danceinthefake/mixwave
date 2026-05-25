@@ -116,7 +116,14 @@ function focusForDiscussion() {
     ></textarea>
 
     <div class="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-      <span class="truncate">{{ card.author_alias }}</span>
+      <span class="truncate">
+        {{ card.author_alias
+        }}<span
+          v-if="card.author_display_name && card.author_display_name !== card.author_alias"
+          class="text-muted-foreground/70"
+        >
+          · {{ card.author_display_name }}</span>
+      </span>
 
       <div class="flex items-center gap-1.5">
         <!-- Edit/delete (brainstorm + own card) -->

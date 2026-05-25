@@ -39,6 +39,7 @@ const baseProps = {
   tallies: {},
   my_votes: [],
   discussing_card_id: null,
+  participant_aliases: [],
   current_user_id: "u1",
   current_user_alias: "host-alias",
   is_host: true,
@@ -243,6 +244,22 @@ describe("RetroBoard", () => {
     // Header is now "Freeform action items" — actions tied to a
     // card render nested under the card itself (spec §6).
     expect(w.text().toLowerCase()).toContain("freeform action items")
+  })
+
+  it("provides participant_aliases as a datalist source during :discuss", () => {
+    const session = makeSession({ status: "discuss" })
+    const w = mount(RetroBoard, {
+      props: {
+        ...baseProps,
+        session,
+        participant_aliases: ["alex", "Brave Otter 12", "kim"],
+      },
+    })
+    // The freeform assignee input + the datalist with options
+    const datalist = w.find("datalist#retro-add-assignees")
+    expect(datalist.exists()).toBe(true)
+    const options = datalist.findAll("option").map((o) => o.attributes("value"))
+    expect(options).toEqual(["alex", "Brave Otter 12", "kim"])
   })
 
   it("sorts cards by vote_count desc in :discuss", () => {

@@ -5,9 +5,20 @@
 // actions. Centralising the row UI keeps the edit/toggle/delete
 // affordances consistent across both contexts.
 
-import { ref } from "vue"
+import { computed, inject, ref, type ComputedRef } from "vue"
 import { useLiveVue } from "live_vue"
 import type { RetroActionItem } from "./RetroBoard.vue"
+
+// Provided by RetroBoard so the assignee input can autocomplete
+// from current chamber presence without prop-drilling through
+// RetroColumn + RetroCard. Falls back to [] when the provider
+// isn't present (tests / standalone renders).
+const participantAliases =
+  inject<ComputedRef<string[]>>("retro_participant_aliases", computed(() => []))
+
+// Stable id per mounted row so multiple datalists don't collide
+// when more than one row is in edit mode.
+const datalistId = `retro-assignees-${Math.random().toString(36).slice(2, 10)}`
 
 const props = defineProps<{
   action: RetroActionItem
@@ -131,8 +142,12 @@ function deleteRow() {
           maxlength="80"
           placeholder="Assignee (optional)"
           aria-label="Edit assignee alias"
+          :list="datalistId"
           class="rounded-md border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
         />
+        <datalist :id="datalistId">
+          <option v-for="name in participantAliases" :key="name" :value="name" />
+        </datalist>
         <input
           v-model="editDraft.due_date"
           type="date"

@@ -6,10 +6,13 @@
 // "+Add action" form (which can still tie an action to a card
 // via the source-card dropdown).
 
-import { computed, ref } from "vue"
+import { computed, inject, ref, type ComputedRef } from "vue"
 import { useLiveVue } from "live_vue"
 import RetroActionRow from "./RetroActionRow.vue"
 import type { RetroSession, RetroActionItem } from "./RetroBoard.vue"
+
+const participantAliases =
+  inject<ComputedRef<string[]>>("retro_participant_aliases", computed(() => []))
 
 const props = defineProps<{
   session: RetroSession
@@ -135,8 +138,12 @@ function exportMarkdown() {
           maxlength="80"
           placeholder="Assignee (optional)"
           aria-label="Assignee alias"
+          list="retro-add-assignees"
           class="rounded-md border bg-card px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent-bass/40"
         />
+        <datalist id="retro-add-assignees">
+          <option v-for="name in participantAliases" :key="name" :value="name" />
+        </datalist>
         <input
           v-model="draft.due_date"
           type="date"

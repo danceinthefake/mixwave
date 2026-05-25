@@ -130,10 +130,10 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
       session = Retro.current_session(chamber.id) |> then(&Retro.load_session(&1.id))
       [col | _] = session.columns
 
-      Server.retro_add_card(chamber.slug, host.id, col.id, "Pairing helped", "host-alias")
+      Server.retro_add_card(chamber.slug, host.id, col.id, "Pairing helped", "host-alias", "host-display")
       assert_receive {:retro, :card_added, card1}, 500
 
-      Server.retro_add_card(chamber.slug, host.id, col.id, "Slow CI", "host-alias")
+      Server.retro_add_card(chamber.slug, host.id, col.id, "Slow CI", "host-alias", "host-display")
       assert_receive {:retro, :card_added, card2}, 500
 
       # Advance to :voting
@@ -231,7 +231,7 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
     end
 
     test "add + edit + delete by author", %{chamber: chamber, host: host, column: col} do
-      Server.retro_add_card(chamber.slug, host.id, col.id, "Pairing helped", "host-alias")
+      Server.retro_add_card(chamber.slug, host.id, col.id, "Pairing helped", "host-alias", "host-display")
       assert_receive {:retro, :card_added, card}, 500
       card_id = card.id
 
@@ -248,7 +248,7 @@ defmodule Mixchamb.Chambers.ServerRetroTest do
       other: other,
       column: col
     } do
-      Server.retro_add_card(chamber.slug, host.id, col.id, "x", "host-alias")
+      Server.retro_add_card(chamber.slug, host.id, col.id, "x", "host-alias", "host-display")
       assert_receive {:retro, :card_added, card}, 500
 
       Server.retro_update_card(chamber.slug, other.id, card.id, "evil edit")

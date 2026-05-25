@@ -676,14 +676,21 @@ defmodule MixchambWeb.ChamberLive do
       )
       when is_binary(column_id) and is_binary(body) do
     user = socket.assigns.current_user
-    alias_or_name = user.alias || user.display_name
+    # Snapshot both halves of the identity at card-create time
+    # (spec §3 + the "alias is additive on top of display_name"
+    # convention). When no alias is set, author_alias falls back
+    # to display_name so the card always has a non-nil primary
+    # label; author_display_name carries the noun-adj-NN handle
+    # separately for the two-piece render.
+    author_alias = user.alias || user.display_name
 
     Mixchamb.Chambers.Server.retro_add_card(
       socket.assigns.chamber_slug,
       user.id,
       column_id,
       body,
-      alias_or_name
+      author_alias,
+      user.display_name
     )
 
     {:noreply, socket}
@@ -1319,6 +1326,7 @@ defmodule MixchambWeb.ChamberLive do
             body: card.body,
             author_user_id: card.author_user_id,
             author_alias: card.author_alias,
+            author_display_name: card.author_display_name,
             vote_count: card.vote_count
           }
         end),
@@ -1336,6 +1344,20 @@ defmodule MixchambWeb.ChamberLive do
           }
         end)
     }
+  end
+
+  # Just the display labels (alias_or_name) for the current
+  # participants, used by retro's assignee-input autocomplete
+  # (spec §6). Sorted by joined_at for a stable order; deduped
+  # in case anyone joined twice from different tabs.
+  defp retro_participant_aliases(presences) do
+    presences
+    |> Enum.map(fn {_user_id, %{metas: [meta | _]}} ->
+      {meta.alias || meta.display_name, meta.joined_at}
+    end)
+    |> Enum.sort_by(fn {_label, joined_at} -> joined_at end)
+    |> Enum.map(fn {label, _} -> label end)
+    |> Enum.uniq()
   end
 
   # Trim the presence map down to the subset PokerBoard needs:
@@ -1748,6 +1770,7 @@ defmodule MixchambWeb.ChamberLive do
               retro_tallies={@retro_tallies}
               retro_my_votes={MapSet.to_list(@retro_my_votes)}
               retro_discussing_card_id={@retro_discussing_card_id}
+              retro_participant_aliases={retro_participant_aliases(@presences)}
               current_user_id={@current_user.id}
               current_user_alias={@current_user.alias || @current_user.display_name}
               is_host={@is_host}

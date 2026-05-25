@@ -176,14 +176,22 @@ defmodule Mixchamb.Chambers.Server do
   def retro_advance_phase(slug, user_id) when is_binary(user_id),
     do: GenServer.cast(via(slug), {:retro_advance_phase, user_id})
 
-  @doc "Add a brainstorm card. Anyone in the chamber."
-  def retro_add_card(slug, user_id, column_id, body, author_alias)
+  @doc """
+  Add a brainstorm card. Anyone in the chamber. Snapshots both
+  the alias (`user.alias`) and display_name (`user.display_name`)
+  separately so the card can render the same two-piece
+  `alias · display_name` pattern poker reveal uses (spec §3).
+  `author_alias` is required and falls back to the display_name
+  on the LV side when no alias is set; `author_display_name` is
+  nullable for cards predating this column.
+  """
+  def retro_add_card(slug, user_id, column_id, body, author_alias, author_display_name)
       when is_binary(user_id) and is_binary(column_id) and is_binary(body) and
-             is_binary(author_alias),
+             is_binary(author_alias) and is_binary(author_display_name),
       do:
         GenServer.cast(
           via(slug),
-          {:retro_add_card, user_id, column_id, body, author_alias}
+          {:retro_add_card, user_id, column_id, body, author_alias, author_display_name}
         )
 
   @doc "Edit your own card's body. Author-only, :brainstorm-only."
@@ -768,7 +776,7 @@ defmodule Mixchamb.Chambers.Server do
   end
 
   def handle_cast(
-        {:retro_add_card, user_id, column_id, body, author_alias},
+        {:retro_add_card, user_id, column_id, body, author_alias, author_display_name},
         %{retro_state: rs} = state
       )
       when not is_nil(rs) do
@@ -779,7 +787,8 @@ defmodule Mixchamb.Chambers.Server do
       case Mixchamb.Retro.add_card(session, column, %{
              body: body,
              author_user_id: user_id,
-             author_alias: author_alias
+             author_alias: author_alias,
+             author_display_name: author_display_name
            }) do
         {:ok, card} ->
           broadcast_retro(state.slug, {:retro, :card_added, card_to_wire(card)})
@@ -933,7 +942,7 @@ defmodule Mixchamb.Chambers.Server do
   def handle_cast({:retro_set_voting_enabled, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_rename_column, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_advance_phase, _}, state), do: {:noreply, state}
-  def handle_cast({:retro_add_card, _, _, _, _}, state), do: {:noreply, state}
+  def handle_cast({:retro_add_card, _, _, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_update_card, _, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_delete_card, _, _}, state), do: {:noreply, state}
   def handle_cast({:retro_vote, _, _}, state), do: {:noreply, state}
@@ -1204,6 +1213,7 @@ defmodule Mixchamb.Chambers.Server do
       body: card.body,
       author_user_id: card.author_user_id,
       author_alias: card.author_alias,
+      author_display_name: card.author_display_name,
       vote_count: card.vote_count
     }
   end

@@ -23,12 +23,14 @@ defmodule Mixchamb.Retro.RetroCard do
              :body,
              :author_user_id,
              :author_alias,
+             :author_display_name,
              :vote_count
            ]}
 
   schema "retro_cards" do
     field :body, :string
     field :author_alias, :string
+    field :author_display_name, :string
     field :vote_count, :integer, default: 0
 
     belongs_to :session, Mixchamb.Retro.RetroSession, foreign_key: :retro_session_id
@@ -46,7 +48,8 @@ defmodule Mixchamb.Retro.RetroCard do
       :retro_column_id,
       :body,
       :author_user_id,
-      :author_alias
+      :author_alias,
+      :author_display_name
     ])
     |> validate_required([:retro_session_id, :retro_column_id, :body, :author_alias])
     |> update_change(:body, &normalize_body/1)
