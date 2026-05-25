@@ -23,11 +23,11 @@ distributed engineering teams:
   _(shipped 2026-05-23; see `features/planning-poker.md`)_
 - **Standup** — round-robin updates, optional "yesterday / today /
   blockers" structure, history
-- **Retrospective** 🟡 — multi-column board (custom names; default
+- **Retrospective** ✅ — multi-column board (custom names; default
   Good / Bad / Start / Thanks), optional dot-voting, persisted
-  action items _(v1 partial 2026-05-25; spec at
-  `features/retrospective.md`; remaining spec-locked gaps + polish
-  list in §6a below)_
+  action items _(v1 shipped 2026-05-25; spec at
+  `features/retrospective.md`; §11 polish + real-world gaps
+  documented in §6a)_
 - **Icebreaker** — prompts, polls, would-you-rather, etc.
 - **Mini-game** — small synchronous games (Pictionary-style, trivia,
   Gartic Phone-ish)
@@ -293,7 +293,7 @@ activity goes under `assets/vue/activities/<name>/`.
 Final estimate vs reality: planned ~3–4 days, shipped in two
 focused sessions across 2026-05-22/23.
 
-## 6a. Activity #2 (retrospective) — v1 partial, shipped 2026-05-25
+## 6a. Activity #2 (retrospective) — v1 shipped 2026-05-25
 
 Same shape as the planning-poker landing: a 7-step build
 walked from migrations to Playwright smoke. Durable design
@@ -345,22 +345,26 @@ build pass, after seeing it run):
 4 fixed columns (no add/remove in v1), anonymous-user identity
 unchanged, no event sequencing yet.
 
-**Spec-locked gaps still open (block declaring v1 done):**
+**Spec-locked gaps — all closed before flipping to ✅:**
 
-1. **§6 — Action items not nested under source cards.** Spec
-   says actions tied to a card render under that card during
-   `:discuss`, with freeform actions in a separate panel.
-   Reality: all actions live in one flat list. Loses the
-   "this top-voted card → these actions" visual link.
-2. **§6 — No assignee autocomplete.** Spec says
-   `assignee_alias` autocompletes from current chamber Presence.
-   Reality: plain text input.
-3. **§3 — Author display drops half the identity.** Spec
-   matches poker's `alias · display_name` two-piece pattern;
-   reality snapshots `user.alias || user.display_name` into a
-   single string at card creation, so we only carry one of the
-   two. Conflicts with the persistent "alias is additive on top
-   of display_name" memory.
+1. ✅ **§6 — Action items nested under source cards.** Tied
+   actions render under their card in `RetroCard` during
+   `:discuss` / `:archived`; freeform actions live in
+   `RetroDiscussPanel`. Shared `RetroActionRow` keeps the
+   display + inline-edit UI consistent across both contexts.
+2. ✅ **§6 — Assignee autocomplete from presence.** Chamber
+   participants' alias_or_name strings provided via Vue
+   provide/inject from `RetroBoard`; assignee inputs reference
+   a `<datalist>` so the browser handles the typeahead. Works
+   for both the add form and inline edits, without enforcing
+   that the assignee is actually in the chamber.
+3. ✅ **§3 — Two-piece author display.** New
+   `author_display_name` column on `retro_cards` snapshots
+   `user.display_name` separately; cards render
+   `alias · display_name` when both exist and differ, just the
+   alias when they match (anonymous user without explicit
+   alias), just the alias when display_name is null (legacy
+   cards predating the column).
 
 **§11 polish backlog (spec-deferred — not required for v1):**
 
@@ -381,27 +385,30 @@ unchanged, no event sequencing yet.
 - Vote button toggle is "click to vote / click again to
   withdraw" with no visible hint
 
-Final estimate vs reality: planned ~6 working days, ~1
-focused session for v1-partial (9 commits, unpushed at time of
-writing). Gaps above stay open until closed; this entry will
-flip to ✅ when they do.
+Final estimate vs reality: planned ~6 working days, shipped in
+two focused sessions (one for v1, a second close-the-gaps pass
+after audit surfaced the three locked-section misses). §11
+polish items + the real-world gaps above remain on a v2
+backlog — they're not blocking the ✅ since the spec
+explicitly defers polish, and the real-world items surfaced
+only during build.
 
 ---
 
 ## 7. Path forward
 
-1. 🟡 **Activity #2 — retrospective (v1 partial).** Landed
-   2026-05-25 but with three spec-locked gaps still open (see
-   §6a). Picked novelty over frequency: poker covered the
-   "structured ceremony with discrete votes" pattern; retro
-   covers "free-form brainstorm → cluster → discuss → action
-   items," which exercises the same architecture differently
-   (persistent cards + actions vs. ephemeral poker votes) and
-   surfaces what's load-bearing in the shared shell. Spec at
-   `features/retrospective.md`. Will flip to ✅ once the
-   §6a gap list closes. Standup deferred — its "yesterday /
-   today / blockers" structure is closer in spirit to poker's
-   discrete-vote pattern, so we'd learn less by doing it next.
+1. ✅ **Activity #2 — retrospective.** Shipped 2026-05-25
+   (initial pass + close-the-spec-gaps pass after audit). Picked
+   novelty over frequency: poker covered the "structured
+   ceremony with discrete votes" pattern; retro covers
+   "free-form brainstorm → cluster → discuss → action items,"
+   which exercises the same architecture differently (persistent
+   cards + actions vs. ephemeral poker votes) and surfaced what's
+   load-bearing in the shared shell. Spec at
+   `features/retrospective.md`. Standup deferred — its
+   "yesterday / today / blockers" structure is closer in spirit
+   to poker's discrete-vote pattern, so we'd learn less by doing
+   it next.
 2. **Activity #3 — standup.** Now that the
    ephemeral-poker / persisted-retro split has been exercised,
    standup is the natural test of "structured round-robin
