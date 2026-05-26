@@ -147,7 +147,9 @@ describe("RetroCard", () => {
     expect(own.find("button[aria-label='Edit card']").exists()).toBe(true)
     expect(own.find("button[aria-label='Delete card']").exists()).toBe(true)
 
-    const theirs = mount(RetroCard, { props: { ...baseProps, phase: "brainstorm", is_mine: false } })
+    const theirs = mount(RetroCard, {
+      props: { ...baseProps, phase: "brainstorm", is_mine: false },
+    })
     expect(theirs.find("button[aria-label='Edit card']").exists()).toBe(false)
 
     const reveal = mount(RetroCard, { props: { ...baseProps, phase: "reveal", is_mine: true } })

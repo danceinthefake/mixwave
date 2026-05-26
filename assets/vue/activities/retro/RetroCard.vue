@@ -9,11 +9,7 @@ import { useLiveVue } from "live_vue"
 import { SmilePlus } from "lucide-vue-next"
 import RetroActionRow from "./RetroActionRow.vue"
 import RetroComments from "./RetroComments.vue"
-import type {
-  RetroCard as RetroCardT,
-  RetroActionItem,
-  RetroPhase,
-} from "./RetroBoard.vue"
+import type { RetroCard as RetroCardT, RetroActionItem, RetroPhase } from "./RetroBoard.vue"
 
 // emoji-picker-element is lazy-loaded the first time a picker
 // opens, so the ~50KB web-component bundle doesn't ship on
@@ -115,9 +111,7 @@ function toggleReaction(emoji: string) {
 }
 
 const showTiedActions = computed(
-  () =>
-    (props.phase === "discuss" || props.phase === "archived") &&
-    props.tied_actions.length > 0,
+  () => (props.phase === "discuss" || props.phase === "archived") && props.tied_actions.length > 0,
 )
 const readOnlyActions = computed(() => props.phase === "archived")
 
@@ -206,7 +200,8 @@ function focusForDiscussion() {
           v-if="card.author_display_name && card.author_display_name !== card.author_alias"
           class="text-muted-foreground/70"
         >
-          · {{ card.author_display_name }}</span>
+          · {{ card.author_display_name }}</span
+        >
       </span>
 
       <div class="flex items-center gap-1.5">
@@ -231,18 +226,8 @@ function focusForDiscussion() {
         </template>
 
         <template v-if="editing">
-          <button
-            type="button"
-            class="hover:text-foreground"
-            @click.stop="commitEdit"
-          >
-            save
-          </button>
-          <button
-            type="button"
-            class="hover:text-foreground"
-            @click.stop="cancelEdit"
-          >
+          <button type="button" class="hover:text-foreground" @click.stop="commitEdit">save</button>
+          <button type="button" class="hover:text-foreground" @click.stop="cancelEdit">
             cancel
           </button>
         </template>
@@ -330,10 +315,7 @@ function focusForDiscussion() {
         role="dialog"
         aria-label="Pick a reaction"
       >
-        <emoji-picker
-          class="retro-emoji-picker dark"
-          @emoji-click="onEmojiPicked"
-        ></emoji-picker>
+        <emoji-picker class="retro-emoji-picker dark" @emoji-click="onEmojiPicked"></emoji-picker>
       </div>
     </div>
 

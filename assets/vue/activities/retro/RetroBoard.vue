@@ -144,8 +144,7 @@ function stepperState(idx: number, stepPhase: RetroPhase) {
   // Voting is dimmed-and-skipped when voting_enabled is false —
   // still rendered for orientation (you can see the phase
   // exists, just not for this run) but de-emphasised.
-  const votingSkipped =
-    stepPhase === "voting" && !(props.session?.voting_enabled ?? false)
+  const votingSkipped = stepPhase === "voting" && !(props.session?.voting_enabled ?? false)
   if (idx === currentPhaseIndex.value) return "current"
   if (idx < currentPhaseIndex.value) return votingSkipped ? "skipped" : "done"
   return votingSkipped ? "skipped" : "upcoming"
@@ -273,7 +272,6 @@ async function copyPermalink() {
 async function copyLastArchivedPermalink() {
   await copyText(lastArchivedPermalink.value)
 }
-
 </script>
 
 <template>
@@ -299,8 +297,7 @@ async function copyLastArchivedPermalink() {
               :class="{
                 'bg-accent-bass text-background ring-2 ring-accent-bass/40 ring-offset-1 ring-offset-background':
                   stepperState(idx, step.phase) === 'current',
-                'bg-accent-bass/60 text-background':
-                  stepperState(idx, step.phase) === 'done',
+                'bg-accent-bass/60 text-background': stepperState(idx, step.phase) === 'done',
                 'border border-input bg-card text-muted-foreground':
                   stepperState(idx, step.phase) === 'upcoming',
                 'border border-dashed border-input bg-card text-muted-foreground/50':
@@ -343,45 +340,43 @@ async function copyLastArchivedPermalink() {
       </summary>
       <div class="px-4 pb-3 pt-1 text-xs text-muted-foreground space-y-2 leading-relaxed">
         <p>
-          A retro walks through 5 or 6 phases. The host advances; everyone else
-          writes, reacts, votes, and comments.
+          A retro walks through 5 or 6 phases. The host advances; everyone else writes, reacts,
+          votes, and comments.
         </p>
         <ol class="space-y-1.5 list-decimal pl-5">
           <li>
-            <span class="font-semibold text-foreground">Setup</span> — host renames
-            columns, decides whether to enable voting and "show all cards live."
-            Locked at the next click.
+            <span class="font-semibold text-foreground">Setup</span> — host renames columns, decides
+            whether to enable voting and "show all cards live." Locked at the next click.
           </li>
           <li>
-            <span class="font-semibold text-foreground">Brainstorm</span> — everyone
-            adds cards. By default each person sees only their own + face-down
-            placeholders for others'. Live-visible mode shows everything as it lands.
+            <span class="font-semibold text-foreground">Brainstorm</span> — everyone adds cards. By
+            default each person sees only their own + face-down placeholders for others'.
+            Live-visible mode shows everything as it lands.
           </li>
           <li>
-            <span class="font-semibold text-foreground">Reveal</span> — all cards
-            become visible. Read the room. React with emojis, comment to dig in.
+            <span class="font-semibold text-foreground">Reveal</span> — all cards become visible.
+            Read the room. React with emojis, comment to dig in.
           </li>
           <li>
             <span class="font-semibold text-foreground">Voting</span>
-            <span class="italic">(opt-in)</span> — each person spends 3 dots across
-            the cards. Useful when you have too many to discuss linearly (~15+).
+            <span class="italic">(opt-in)</span> — each person spends 3 dots across the cards.
+            Useful when you have too many to discuss linearly (~15+).
           </li>
           <li>
-            <span class="font-semibold text-foreground">Discuss</span> — cards sort
-            by vote count. Host can highlight a card as currently-discussing;
-            anyone adds action items (tied to a card or freeform).
+            <span class="font-semibold text-foreground">Discuss</span> — cards sort by vote count.
+            Host can highlight a card as currently-discussing; anyone adds action items (tied to a
+            card or freeform).
           </li>
           <li>
-            <span class="font-semibold text-foreground">Archived</span> — session
-            frozen. Permanent link survives the chamber being reaped. Start a new
-            retro in the same chamber when ready.
+            <span class="font-semibold text-foreground">Archived</span> — session frozen. Permanent
+            link survives the chamber being reaped. Start a new retro in the same chamber when
+            ready.
           </li>
         </ol>
         <p class="pt-1">
           <span class="font-semibold text-foreground">Tips:</span>
-          ≥15 cards → enable voting · small high-trust team → turn on
-          "show all live" in setup · creator can promote co-hosts (presence
-          panel) so anyone can advance the phase.
+          ≥15 cards → enable voting · small high-trust team → turn on "show all live" in setup ·
+          creator can promote co-hosts (presence panel) so anyone can advance the phase.
         </p>
       </div>
     </details>
@@ -415,7 +410,11 @@ async function copyLastArchivedPermalink() {
     <!-- No session yet -->
     <div v-if="!session && is_host" class="rounded-xl border bg-card p-6 space-y-3">
       <p class="text-sm text-muted-foreground">
-        {{ last_archived ? "Ready for the next retro?" : "No retro session running. Start one to begin." }}
+        {{
+          last_archived
+            ? "Ready for the next retro?"
+            : "No retro session running. Start one to begin."
+        }}
       </p>
       <button
         type="button"
@@ -434,11 +433,7 @@ async function copyLastArchivedPermalink() {
     </div>
 
     <!-- :setup — column-name + title editor -->
-    <RetroSetup
-      v-else-if="phase === 'setup'"
-      :session="session"
-      :is_host="is_host"
-    />
+    <RetroSetup v-else-if="phase === 'setup'" :session="session" :is_host="is_host" />
 
     <!-- :brainstorm / :reveal / :voting / :discuss / :archived — columns grid -->
     <div v-else class="space-y-4">
@@ -457,8 +452,7 @@ async function copyLastArchivedPermalink() {
         <div class="text-xs space-y-0.5 flex-1 min-w-0">
           <p class="font-semibold text-foreground">Retro archived · permanent link</p>
           <p class="text-muted-foreground">
-            Bookmark to revisit. The chamber will eventually be reaped;
-            this URL keeps working.
+            Bookmark to revisit. The chamber will eventually be reaped; this URL keeps working.
           </p>
         </div>
         <button
@@ -504,10 +498,6 @@ async function copyLastArchivedPermalink() {
       />
     </div>
 
-    <RetroHostControls
-      v-if="session && is_host"
-      :session="session"
-      :is_host="is_host"
-    />
+    <RetroHostControls v-if="session && is_host" :session="session" :is_host="is_host" />
   </div>
 </template>

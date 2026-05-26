@@ -87,13 +87,8 @@ function toggleVoting() {
     role="toolbar"
     aria-label="Retro host controls"
   >
-    <p
-      v-if="showVotingHint"
-      class="text-[11px] text-muted-foreground italic mr-auto"
-      role="status"
-    >
-      {{ session.cards.length }} cards — voting helps the team
-      pick what's worth discussing.
+    <p v-if="showVotingHint" class="text-[11px] text-muted-foreground italic mr-auto" role="status">
+      {{ session.cards.length }} cards — voting helps the team pick what's worth discussing.
     </p>
 
     <label

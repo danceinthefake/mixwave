@@ -80,15 +80,9 @@ const props = defineProps<{
 const live = useLiveVue()
 const draft = ref("")
 
-const tintClass = computed(
-  () => COLUMN_TINTS[props.column.position] ?? "bg-card/40",
-)
-const dotClass = computed(
-  () => COLUMN_HEADER_DOTS[props.column.position] ?? "bg-muted-foreground",
-)
-const closedCardBgClass = computed(
-  () => COLUMN_CLOSED_CARD_BG[props.column.position] ?? "bg-muted",
-)
+const tintClass = computed(() => COLUMN_TINTS[props.column.position] ?? "bg-card/40")
+const dotClass = computed(() => COLUMN_HEADER_DOTS[props.column.position] ?? "bg-muted-foreground")
+const closedCardBgClass = computed(() => COLUMN_CLOSED_CARD_BG[props.column.position] ?? "bg-muted")
 const closedCardBorderClass = computed(
   () => COLUMN_CLOSED_CARD_BORDER[props.column.position] ?? "border-input",
 )
@@ -108,16 +102,15 @@ function submit() {
   >
     <header class="flex items-center justify-between px-3 py-2.5 border-b">
       <div class="flex items-center gap-2">
-        <span
-          aria-hidden="true"
-          :class="['size-2 rounded-full shrink-0', dotClass]"
-        ></span>
+        <span aria-hidden="true" :class="['size-2 rounded-full shrink-0', dotClass]"></span>
         <h2 class="text-sm font-semibold font-display tracking-tight">{{ column.name }}</h2>
       </div>
       <span
         v-if="total_count > 0"
         class="text-xs text-muted-foreground tabular-nums"
-        :title="phase === 'brainstorm' ? 'Total cards (including others, hidden until reveal)' : 'Cards'"
+        :title="
+          phase === 'brainstorm' ? 'Total cards (including others, hidden until reveal)' : 'Cards'
+        "
       >
         {{ total_count }}
       </span>
@@ -178,9 +171,7 @@ function submit() {
         @keydown.enter.exact.prevent="submit"
       ></textarea>
       <div class="flex items-center justify-between pt-1.5 gap-2">
-        <span class="text-[10px] text-muted-foreground tabular-nums">
-          {{ draft.length }}/280
-        </span>
+        <span class="text-[10px] text-muted-foreground tabular-nums"> {{ draft.length }}/280 </span>
         <button
           type="submit"
           :disabled="!draft.trim()"

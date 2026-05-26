@@ -13,8 +13,10 @@ import type { RetroActionItem } from "./RetroBoard.vue"
 // from current chamber presence without prop-drilling through
 // RetroColumn + RetroCard. Falls back to [] when the provider
 // isn't present (tests / standalone renders).
-const participantAliases =
-  inject<ComputedRef<string[]>>("retro_participant_aliases", computed(() => []))
+const participantAliases = inject<ComputedRef<string[]>>(
+  "retro_participant_aliases",
+  computed(() => []),
+)
 
 // Stable id per mounted row so multiple datalists don't collide
 // when more than one row is in edit mode.
@@ -58,9 +60,7 @@ function commitEdit() {
   }
   const payload: Record<string, unknown> = { action_id: props.action.id }
   if (body !== props.action.body) payload.body = body
-  if (
-    editDraft.value.assignee_alias.trim() !== (props.action.assignee_alias ?? "")
-  ) {
+  if (editDraft.value.assignee_alias.trim() !== (props.action.assignee_alias ?? "")) {
     payload.assignee_alias = editDraft.value.assignee_alias.trim() || null
   }
   if (editDraft.value.due_date !== (props.action.due_date ?? "")) {
@@ -111,14 +111,9 @@ function deleteRow() {
         {{ action.body }}
       </p>
       <div class="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-        <span v-if="action.assignee_alias" class="font-medium">
-          @{{ action.assignee_alias }}
-        </span>
+        <span v-if="action.assignee_alias" class="font-medium"> @{{ action.assignee_alias }} </span>
         <span v-if="action.due_date">due {{ action.due_date }}</span>
-        <span
-          v-if="!hide_source_ref && source_card_body"
-          class="italic truncate max-w-xs"
-        >
+        <span v-if="!hide_source_ref && source_card_body" class="italic truncate max-w-xs">
           re: {{ source_card_body }}
         </span>
       </div>

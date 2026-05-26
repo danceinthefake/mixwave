@@ -90,19 +90,13 @@ function deleteComment(comment: RetroComment) {
     >
       <span aria-hidden="true">💬</span>
       <span>{{ comments.length }} {{ comments.length === 1 ? "comment" : "comments" }}</span>
-      <span class="transition-transform" :class="expanded && 'rotate-90'" aria-hidden="true">›</span>
+      <span class="transition-transform" :class="expanded && 'rotate-90'" aria-hidden="true"
+        >›</span
+      >
     </button>
 
-    <div
-      v-if="expanded"
-      :id="`comments-${card_id}`"
-      class="mt-2 space-y-2"
-      @click.stop
-    >
-      <p
-        v-if="comments.length === 0"
-        class="text-[11px] text-muted-foreground italic"
-      >
+    <div v-if="expanded" :id="`comments-${card_id}`" class="mt-2 space-y-2" @click.stop>
+      <p v-if="comments.length === 0" class="text-[11px] text-muted-foreground italic">
         No comments yet.
       </p>
 
@@ -133,7 +127,8 @@ function deleteComment(comment: RetroComment) {
                 "
                 class="text-muted-foreground/70"
               >
-                · {{ comment.author_display_name }}</span>
+                · {{ comment.author_display_name }}</span
+              >
             </span>
             <div
               v-if="!read_only && comment.author_user_id === current_user_id"
@@ -142,11 +137,7 @@ function deleteComment(comment: RetroComment) {
               <button type="button" class="hover:text-foreground" @click="startEdit(comment)">
                 edit
               </button>
-              <button
-                type="button"
-                class="hover:text-destructive"
-                @click="deleteComment(comment)"
-              >
+              <button type="button" class="hover:text-destructive" @click="deleteComment(comment)">
                 delete
               </button>
             </div>
@@ -164,7 +155,11 @@ function deleteComment(comment: RetroComment) {
             @keydown.escape="cancelEdit"
           ></textarea>
           <div class="flex justify-end gap-2 text-[10px]">
-            <button type="button" class="text-muted-foreground hover:text-foreground" @click="cancelEdit">
+            <button
+              type="button"
+              class="text-muted-foreground hover:text-foreground"
+              @click="cancelEdit"
+            >
               cancel
             </button>
             <button

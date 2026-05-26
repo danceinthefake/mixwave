@@ -28,9 +28,7 @@ const allSpent = computed(() => props.votes_remaining === 0)
         :class="n <= spent ? 'bg-accent-bass' : 'bg-muted'"
       ></span>
     </div>
-    <p class="text-sm font-medium tabular-nums">
-      {{ spent }}/{{ vote_cap }} votes spent
-    </p>
+    <p class="text-sm font-medium tabular-nums">{{ spent }}/{{ vote_cap }} votes spent</p>
     <p v-if="allSpent" class="text-xs text-muted-foreground italic ml-auto">
       Tap a vote chip again to withdraw and re-spend.
     </p>

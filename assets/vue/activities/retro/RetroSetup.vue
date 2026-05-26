@@ -30,9 +30,7 @@ const columnDrafts = ref<Record<string, string>>(
 watch(
   () => props.session.columns.map((c) => [c.id, c.name]).join("|"),
   () => {
-    columnDrafts.value = Object.fromEntries(
-      props.session.columns.map((c) => [c.id, c.name]),
-    )
+    columnDrafts.value = Object.fromEntries(props.session.columns.map((c) => [c.id, c.name]))
   },
 )
 
@@ -65,8 +63,8 @@ function toggleBrainstormVisible() {
 <template>
   <div class="space-y-6">
     <div v-if="!is_host" class="rounded-xl border bg-card p-6 text-sm text-muted-foreground italic">
-      The host is setting up the retro — column names and the title.
-      Hang tight; brainstorm will start soon.
+      The host is setting up the retro — column names and the title. Hang tight; brainstorm will
+      start soon.
     </div>
 
     <div v-if="is_host" class="space-y-4">
@@ -116,9 +114,7 @@ function toggleBrainstormVisible() {
 
       <!-- Brainstorm visibility toggle -->
       <div class="space-y-1.5">
-        <label
-          class="inline-flex items-center gap-2 text-sm select-none cursor-pointer"
-        >
+        <label class="inline-flex items-center gap-2 text-sm select-none cursor-pointer">
           <input
             type="checkbox"
             :checked="session.brainstorm_visible"
@@ -129,11 +125,9 @@ function toggleBrainstormVisible() {
           Show all cards live during brainstorm
         </label>
         <p class="text-xs text-muted-foreground">
-          Off (default): each person sees only their own cards
-          until reveal — reduces groupthink, takes a beat longer.
-          On: everyone sees everything as it's written — faster
-          and more collaborative for smaller, high-trust teams.
-          Locked once brainstorm starts.
+          Off (default): each person sees only their own cards until reveal — reduces groupthink,
+          takes a beat longer. On: everyone sees everything as it's written — faster and more
+          collaborative for smaller, high-trust teams. Locked once brainstorm starts.
         </p>
       </div>
     </div>

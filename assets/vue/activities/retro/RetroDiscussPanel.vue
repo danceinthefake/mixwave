@@ -11,8 +11,10 @@ import { useLiveVue } from "live_vue"
 import RetroActionRow from "./RetroActionRow.vue"
 import type { RetroSession, RetroActionItem } from "./RetroBoard.vue"
 
-const participantAliases =
-  inject<ComputedRef<string[]>>("retro_participant_aliases", computed(() => []))
+const participantAliases = inject<ComputedRef<string[]>>(
+  "retro_participant_aliases",
+  computed(() => []),
+)
 
 const props = defineProps<{
   session: RetroSession
