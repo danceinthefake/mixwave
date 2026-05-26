@@ -43,7 +43,16 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    vue(),
+    // isCustomElement lets <emoji-picker> (the web component
+    // from emoji-picker-element) render through Vue templates
+    // without "unknown element" warnings.
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag === "emoji-picker",
+        },
+      },
+    }),
     liveVuePlugin()
   ],
   // Vitest config. happy-dom is the lighter DOM stub (preferred

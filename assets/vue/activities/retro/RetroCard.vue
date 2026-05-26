@@ -6,6 +6,7 @@
 
 import { computed, ref } from "vue"
 import { useLiveVue } from "live_vue"
+import { SmilePlus } from "lucide-vue-next"
 import RetroActionRow from "./RetroActionRow.vue"
 import RetroComments from "./RetroComments.vue"
 import type {
@@ -14,10 +15,17 @@ import type {
   RetroPhase,
 } from "./RetroBoard.vue"
 
-// The same 6-emoji set RetroCardReaction validates on the
-// server. Order matches the schema's @emojis attribute so
-// counts always render in the same order across all clients.
-const REACTION_EMOJIS = ["👍", "❤️", "🎉", "😄", "😢", "🤔"] as const
+// emoji-picker-element is lazy-loaded the first time a picker
+// opens, so the ~50KB web-component bundle doesn't ship on
+// every chamber mount. Once registered, <emoji-picker> works
+// like any HTML element (Vite's isCustomElement config in
+// vite.config.mjs keeps Vue from warning).
+let emojiPickerLoaded = false
+async function ensureEmojiPicker() {
+  if (emojiPickerLoaded) return
+  await import("emoji-picker-element")
+  emojiPickerLoaded = true
+}
 
 const props = defineProps<{
   card: RetroCardT
@@ -54,33 +62,47 @@ const reactableNow = computed(() => {
 })
 
 // Group reactions by emoji and check if current user has each.
-// Only emojis with at least one reaction render in the strip;
-// the "+" picker exposes the full set so users can add
-// emojis nobody's used yet.
+// Only emojis that have been used render as chips; the picker
+// exposes the full Unicode emoji set so users can add any
+// reaction nobody's chosen yet.
 type ReactionSummary = {
   emoji: string
   count: number
   mine: boolean
+  firstAt: number
 }
 const reactionSummaries = computed<ReactionSummary[]>(() => {
   const byEmoji: Record<string, ReactionSummary> = {}
+  let idx = 0
   for (const r of props.card.reactions) {
-    const summary = byEmoji[r.emoji] || { emoji: r.emoji, count: 0, mine: false }
+    const summary = byEmoji[r.emoji] || {
+      emoji: r.emoji,
+      count: 0,
+      mine: false,
+      firstAt: idx,
+    }
     summary.count++
     if (r.user_id && r.user_id === props.current_user_id) summary.mine = true
     byEmoji[r.emoji] = summary
+    idx++
   }
-  // Sort by REACTION_EMOJIS order so chips stay in a stable
-  // left-to-right order across clients.
-  return REACTION_EMOJIS.filter((e) => byEmoji[e]).map((e) => byEmoji[e])
+  // Stable order: by first appearance, so chips don't jump
+  // around as more reactions land.
+  return Object.values(byEmoji).sort((a, b) => a.firstAt - b.firstAt)
 })
 
 const pickerOpen = ref(false)
-function togglePicker() {
+async function togglePicker() {
+  if (!pickerOpen.value) await ensureEmojiPicker()
   pickerOpen.value = !pickerOpen.value
 }
-function pickEmoji(emoji: string) {
-  toggleReaction(emoji)
+
+function onEmojiPicked(event: Event) {
+  // emoji-picker-element fires 'emoji-click' with detail.unicode
+  const detail = (event as CustomEvent<{ unicode?: string }>).detail
+  const unicode = detail?.unicode
+  if (!unicode) return
+  toggleReaction(unicode)
   pickerOpen.value = false
 }
 
@@ -292,30 +314,26 @@ function focusForDiscussion() {
         type="button"
         :aria-label="pickerOpen ? 'Close reaction picker' : 'Add reaction'"
         :aria-expanded="pickerOpen"
-        class="inline-flex items-center justify-center rounded-md border border-dashed border-input px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+        class="inline-flex items-center justify-center rounded-md border border-dashed border-input px-1.5 py-0.5 text-muted-foreground hover:text-foreground hover:bg-accent"
         @click="togglePicker"
       >
-        + 😊
+        <SmilePlus class="size-3.5" aria-hidden="true" />
       </button>
 
-      <!-- Picker popover — six emojis to pick from. Clicking
-           an emoji here toggles its reaction and closes. -->
+      <!-- Picker popover — full Unicode emoji set via the
+           emoji-picker-element web component (search +
+           categories + recents built in). Lazy-loaded the
+           first time the picker opens. -->
       <div
         v-if="pickerOpen"
-        class="absolute z-10 top-full mt-1 left-0 rounded-md border bg-card shadow-lg p-1 flex gap-0.5"
-        role="menu"
+        class="absolute z-20 top-full mt-1 left-0 rounded-md border bg-card shadow-lg overflow-hidden"
+        role="dialog"
+        aria-label="Pick a reaction"
       >
-        <button
-          v-for="emoji in REACTION_EMOJIS"
-          :key="`picker-${emoji}`"
-          type="button"
-          role="menuitem"
-          :aria-label="`Add ${emoji} reaction`"
-          class="rounded hover:bg-accent px-1.5 py-1 text-base"
-          @click="pickEmoji(emoji)"
-        >
-          {{ emoji }}
-        </button>
+        <emoji-picker
+          class="retro-emoji-picker dark"
+          @emoji-click="onEmojiPicked"
+        ></emoji-picker>
       </div>
     </div>
 
@@ -347,3 +365,18 @@ function focusForDiscussion() {
     </div>
   </article>
 </template>
+
+<style scoped>
+/* Size + theme the emoji-picker-element web component. The
+   component exposes CSS custom properties for the basics;
+   `:host(.dark)` styling already gives a dark palette, we just
+   trim the dimensions so the picker fits in a column without
+   overflowing. */
+.retro-emoji-picker {
+  --num-columns: 7;
+  --category-emoji-size: 1.1rem;
+  --emoji-size: 1.15rem;
+  width: 18rem;
+  height: 22rem;
+}
+</style>

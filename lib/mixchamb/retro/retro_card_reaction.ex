@@ -14,8 +14,13 @@ defmodule Mixchamb.Retro.RetroCardReaction do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
 
-  @emojis ~w(👍 ❤️ 🎉 😄 😢 🤔)
-  def emojis, do: @emojis
+  # Emoji is now free-form — the client uses emoji-picker-element
+  # to pick from the full Unicode set. We still validate by
+  # length to prevent abuse (most emoji glyphs are 1–8 bytes;
+  # ZWJ sequences like 👨‍👩‍👧‍👦 can reach ~25 bytes). 32 bytes
+  # is a generous ceiling that covers every emoji in
+  # CLDR / Unicode 16 without leaving room for non-emoji junk.
+  @max_emoji_bytes 32
 
   @derive {LiveVue.Encoder,
            only: [:id, :retro_card_id, :user_id, :emoji, :inserted_at]}
@@ -33,7 +38,7 @@ defmodule Mixchamb.Retro.RetroCardReaction do
     reaction
     |> cast(attrs, [:retro_card_id, :user_id, :emoji])
     |> validate_required([:retro_card_id, :user_id, :emoji])
-    |> validate_inclusion(:emoji, @emojis)
+    |> validate_length(:emoji, min: 1, max: @max_emoji_bytes, count: :bytes)
     |> put_change(:inserted_at, DateTime.utc_now() |> DateTime.truncate(:second))
     |> unique_constraint([:retro_card_id, :user_id, :emoji])
   end

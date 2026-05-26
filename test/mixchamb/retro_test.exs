@@ -399,8 +399,19 @@ defmodule Mixchamb.RetroTest do
       assert {:added, _} = Retro.toggle_reaction(card, user.id, "❤️", s)
     end
 
-    test "toggle_reaction rejects invalid emoji", %{session: s, card: card, user: user} do
-      assert {:error, :invalid_emoji} = Retro.toggle_reaction(card, user.id, "🚀", s)
+    test "toggle_reaction accepts any reasonable emoji", %{session: s, card: card, user: user} do
+      # Was previously gated to a fixed 6-emoji allow-list;
+      # now the client picker exposes the full Unicode set,
+      # so any non-empty short string passes the length check.
+      assert {:added, _} = Retro.toggle_reaction(card, user.id, "🚀", s)
+      assert {:added, _} = Retro.toggle_reaction(card, user.id, "🇮🇩", s)
+    end
+
+    test "toggle_reaction rejects empty or oversized emoji",
+         %{session: s, card: card, user: user} do
+      assert {:error, :invalid_emoji} = Retro.toggle_reaction(card, user.id, "", s)
+      assert {:error, :invalid_emoji} =
+               Retro.toggle_reaction(card, user.id, String.duplicate("a", 64), s)
     end
 
     test "toggle_reaction rejects during :brainstorm (hidden mode)", %{user: user} do

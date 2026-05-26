@@ -424,7 +424,7 @@ defmodule Mixchamb.Retro do
       not interactive?(session) ->
         {:error, :phase_locked}
 
-      emoji not in RetroCardReaction.emojis() ->
+      byte_size(emoji) == 0 or byte_size(emoji) > 32 ->
         {:error, :invalid_emoji}
 
       true ->
