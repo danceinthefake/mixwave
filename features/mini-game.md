@@ -370,12 +370,12 @@ re-debated each pass.
   step, missing submissions get a placeholder. `Mixchamb.MiniGame.GarticPhone`
   + `gartic_phone/GarticStage.vue` + a registry entry — no framework
   re-plumb, exactly as the registry promised.
-- **Lightweight games (the absorbed icebreaker).** Poll /
-  would-you-rather / "two truths and a lie": host poses a prompt +
-  2–6 choices, everyone answers, reveal the distribution. These are
-  the *easiest* registry additions — they're basically poker's
-  vote/reveal mechanic with free-text options, no canvas. A good
-  way to prove the registry with a cheap second + third game.
+- ✅ **Two Truths and a Lie** _(shipped 2026-05-27)_ — the absorbed
+  icebreaker bucket. Content-free: everyone writes two truths + a lie,
+  the room guesses which is the fib (+10 spot / +5 fool). The third
+  registry game; `Mixchamb.MiniGame.TwoTruths` + `two_truths/TwoTruthsStage.vue`
+  + a registry entry. Poll / would-you-rather remain easy future
+  additions in the same vote/reveal vein.
 - **Trivia.** Preset/host question sets with correct answers +
   timed rounds + a leaderboard. Moderate; another registry game.
 - ✅ **Audio cues** _(shipped)_. Correct-guess blip + time-up buzzer +
