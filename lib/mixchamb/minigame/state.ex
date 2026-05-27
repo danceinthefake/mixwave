@@ -126,7 +126,7 @@ defmodule Mixchamb.MiniGame.State do
       when is_list(player_ids) do
     players = Enum.uniq(player_ids)
 
-    if length(players) >= 2 do
+    if length(players) >= Registry.module(state.game).min_players() do
       seeded = %{
         state
         | players: players,
@@ -137,7 +137,7 @@ defmodule Mixchamb.MiniGame.State do
 
       {:ok, Registry.module(state.game).init(seeded)}
     else
-      {:error, :need_two_players}
+      {:error, :need_more_players}
     end
   end
 

@@ -10,6 +10,7 @@ import type { MiniGamePhase } from "./MiniGameBoard.vue"
 const props = defineProps<{
   phase: MiniGamePhase
   player_count: number
+  min_players: number
 }>()
 
 defineEmits<{
@@ -20,7 +21,7 @@ defineEmits<{
   end: []
 }>()
 
-const canStart = computed(() => props.player_count >= 2)
+const canStart = computed(() => props.player_count >= props.min_players)
 
 const primaryBtn =
   "px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 hover:-translate-y-px hover:shadow-md transition-all cursor-pointer font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"

@@ -39,6 +39,9 @@ defmodule Mixchamb.MiniGame.Pictionary do
   end
 
   @impl true
+  def min_players, do: 2
+
+  @impl true
   def sanitize_config(current, partial) when is_map(current) and is_map(partial) do
     current
     |> apply_config(partial, "word_pack", :word_pack, &valid_pack/1)
@@ -137,6 +140,7 @@ defmodule Mixchamb.MiniGame.Pictionary do
       },
       round: state.round,
       round_count: state.config[:round_count],
+      min_players: min_players(),
       players: state.players,
       drawer_id: state.drawer_id,
       is_drawer: is_drawer,

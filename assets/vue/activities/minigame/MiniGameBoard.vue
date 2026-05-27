@@ -125,6 +125,9 @@ const nameOf = computed(() => {
 
 const drawerName = computed(() => nameOf.value(pict.value?.drawer_id ?? null))
 
+// Fewest players the selected game needs to start (server-sourced).
+const minPlayers = computed(() => (state.value as any)?.min_players ?? 2)
+
 // Celebratory fanfare the moment any game ends.
 watch(phase, (next, prev) => {
   if (next === "gameover" && prev && prev !== "gameover") void playGameOver()
@@ -153,6 +156,7 @@ watch(phase, (next, prev) => {
         v-if="is_host"
         :phase="phase ?? 'lobby'"
         :player_count="participants.length"
+        :min_players="minPlayers"
         @start="live.pushEvent('minigame_start', {})"
         @skip="live.pushEvent('minigame_skip', {})"
         @next="live.pushEvent('minigame_next', {})"
@@ -167,6 +171,7 @@ watch(phase, (next, prev) => {
       :game="game ?? 'pictionary'"
       :config="(state as any).config"
       :player_count="participants.length"
+      :min_players="minPlayers"
       :is_host="is_host"
       @select-game="(g) => live.pushEvent('minigame_select_game', { game: g })"
       @set-config="(c) => live.pushEvent('minigame_set_config', { config: c })"

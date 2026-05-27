@@ -44,6 +44,12 @@ defmodule Mixchamb.MiniGame.GarticPhoneTest do
       assert is_integer(s.turn_deadline)
     end
 
+    test "needs at least 3 players (vs Pictionary's 2)" do
+      {:ok, s} = State.select_game(State.new(), "gartic_phone")
+      assert {:error, :need_more_players} = State.start(s, ~w(a b))
+      assert {:ok, %State{phase: :play}} = State.start(s, ~w(a b c))
+    end
+
     test "config clamps step_seconds" do
       {:ok, s} = State.select_game(State.new(), "gartic_phone")
       {:ok, s} = State.set_config(s, %{"step_seconds" => "90"})
@@ -119,17 +125,23 @@ defmodule Mixchamb.MiniGame.GarticPhoneTest do
     end
 
     test "album_next walks pages, then books, then ends" do
-      s = gartic(~w(a b)) |> all_submit("w0") |> all_submit("d1")
+      s = gartic(~w(a b c)) |> all_submit("w0") |> all_submit("d1") |> all_submit("w2")
       assert s.phase == :album
-      # 2 players → 2 steps/book, 2 books.
-      s = GarticPhone.advance(s)
-      assert s.game_state.album == %{book: 0, page: 1}
-      s = GarticPhone.advance(s)
-      assert s.game_state.album == %{book: 1, page: 0}
-      s = GarticPhone.advance(s)
-      assert s.game_state.album == %{book: 1, page: 1}
-      s = GarticPhone.advance(s)
-      assert s.phase == :gameover
+      assert s.game_state.album == %{book: 0, page: 0}
+
+      # 3 books × 3 pages → walk to the last page of the last book,
+      # then one more advance ends the game.
+      {seq, _final} =
+        Enum.map_reduce(1..9, s, fn _, acc ->
+          next = GarticPhone.advance(acc)
+          {{next.phase, next.game_state[:album]}, next}
+        end)
+
+      # Pages within book 0, then roll into the next book, … then over.
+      assert {:album, %{book: 0, page: 2}} in seq
+      assert {:album, %{book: 1, page: 0}} in seq
+      assert {:album, %{book: 2, page: 2}} in seq
+      assert List.last(seq) |> elem(0) == :gameover
     end
   end
 
@@ -154,7 +166,7 @@ defmodule Mixchamb.MiniGame.GarticPhoneTest do
     end
 
     test "text is trimmed + length-capped; drawings stroke-capped" do
-      s = gartic(~w(a b))
+      s = gartic(~w(a b c))
       s = submit(s, "a", %{"text" => "  " <> String.duplicate("x", 500) <> "  "})
       assert String.length(s.game_state.books[0][0].text) == 200
     end

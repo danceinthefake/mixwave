@@ -38,6 +38,11 @@ defmodule Mixchamb.MiniGame.GarticPhone do
   @impl true
   def default_config, do: %{step_seconds: 60}
 
+  # Needs 3+ so the chain actually drifts (write → draw → describe);
+  # with 2 it'd just be write → draw.
+  @impl true
+  def min_players, do: 3
+
   @impl true
   def sanitize_config(current, partial) when is_map(current) and is_map(partial) do
     case partial["step_seconds"] |> coerce() do
@@ -198,7 +203,8 @@ defmodule Mixchamb.MiniGame.GarticPhone do
     do: %{
       game: "gartic_phone",
       phase: Atom.to_string(state.phase),
-      config: %{step_seconds: state.config[:step_seconds]}
+      config: %{step_seconds: state.config[:step_seconds]},
+      min_players: min_players()
     }
 
   ## --- internals -------------------------------------------------

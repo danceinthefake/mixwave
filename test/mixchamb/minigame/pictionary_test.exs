@@ -68,8 +68,8 @@ defmodule Mixchamb.MiniGame.PictionaryTest do
 
   describe "State.start/2" do
     test "needs at least two players" do
-      assert {:error, :need_two_players} = State.start(State.new(), ["solo"])
-      assert {:error, :need_two_players} = State.start(State.new(), [])
+      assert {:error, :need_more_players} = State.start(State.new(), ["solo"])
+      assert {:error, :need_more_players} = State.start(State.new(), [])
     end
 
     test "seeds rotation, scores, and the first turn" do

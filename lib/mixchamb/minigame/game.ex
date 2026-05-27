@@ -52,6 +52,9 @@ defmodule Mixchamb.MiniGame.Game do
   @doc "Default per-game config map shown in the lobby (pack/timer/rounds…)."
   @callback default_config() :: map()
 
+  @doc "Fewest players the game needs to start (Pictionary 2, Gartic 3)."
+  @callback min_players() :: pos_integer()
+
   @doc """
   Merge a client-supplied (string-keyed) partial config onto the
   current config, dropping unknown keys and clamping values to the

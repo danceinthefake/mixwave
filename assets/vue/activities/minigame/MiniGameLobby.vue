@@ -13,6 +13,7 @@ const props = defineProps<{
   // Gartic: step_seconds), so keep it loose at the lobby.
   config: Record<string, any>
   player_count: number
+  min_players: number
   is_host: boolean
 }>()
 
@@ -191,8 +192,11 @@ function saveCustom() {
     <HowToPlay :game="game" />
 
     <!-- Start gate / waiting hint -->
-    <p v-if="player_count < 2" class="text-xs text-muted-foreground italic text-center pt-1">
-      Need at least 2 players to start. Share the chamber link to invite more.
+    <p
+      v-if="player_count < min_players"
+      class="text-xs text-muted-foreground italic text-center pt-1"
+    >
+      Need at least {{ min_players }} players to start. Share the chamber link to invite more.
     </p>
     <p v-else-if="!is_host" class="text-xs text-muted-foreground italic text-center pt-1">
       Waiting for the host to start the game.
