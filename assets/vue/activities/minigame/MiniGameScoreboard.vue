@@ -5,6 +5,7 @@
 // highlights the current drawer and marks who's guessed this turn.
 
 import { computed } from "vue"
+import PlayerIdenticon from "./PlayerIdenticon.vue"
 
 const props = defineProps<{
   scores: Record<string, number>
@@ -42,11 +43,12 @@ const leaderId = computed(() => (rows.value.length ? rows.value[0].id : null))
     <li
       v-for="r in rows"
       :key="r.id"
-      class="flex items-center gap-1.5 rounded-full border pl-2.5 pr-1 py-1 text-sm transition-colors"
+      class="flex items-center gap-1.5 rounded-full border pl-1 pr-1 py-1 text-sm transition-colors"
       :class="
         r.isDrawer ? 'border-accent-minigame/50 bg-accent-minigame/10' : 'border-border bg-card/60'
       "
     >
+      <PlayerIdenticon :seed="r.id" />
       <span v-if="final && r.id === leaderId" aria-hidden="true" title="Winner">👑</span>
       <span
         v-else-if="r.isDrawer"

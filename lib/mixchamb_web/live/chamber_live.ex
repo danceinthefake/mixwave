@@ -20,6 +20,8 @@ defmodule MixchambWeb.ChamberLive do
   """
   use MixchambWeb, :live_view
 
+  import Bitwise
+
   alias MixchambWeb.Presence
   alias Mixchamb.Chambers
 
@@ -1519,6 +1521,59 @@ defmodule MixchambWeb.ChamberLive do
   defp presence_dot_color("music", meta), do: accent_var(meta.instrument)
   defp presence_dot_color(_, _), do: "var(--muted-foreground)"
 
+  # Deterministic geometric identicon (GitHub-style, left-right
+  # symmetric 5x5 grid) for a player, seeded by user_id. Permanent per
+  # user — same id always yields the same pattern + color. The Vue
+  # side (assets/vue/lib/identicon.ts) mirrors this exact algorithm so
+  # a player looks identical in the presence panel and the mini-game
+  # scoreboard. FNV-1a/32 over the id's bytes; UUIDs are ASCII so the
+  # Elixir (bytes) and JS (char codes) hashes agree.
+  attr :seed, :string, required: true
+  attr :class, :string, default: "size-5"
+
+  def player_identicon(assigns) do
+    {hue, cells} = identicon_data(assigns.seed)
+    assigns = assign(assigns, hue: hue, cells: cells)
+
+    ~H"""
+    <svg viewBox="0 0 5 5" class={["rounded shrink-0", @class]} aria-hidden="true">
+      <rect width="5" height="5" fill={"oklch(0.93 0.03 #{@hue})"} />
+      <rect
+        :for={{x, y} <- @cells}
+        x={x}
+        y={y}
+        width="1.02"
+        height="1.02"
+        fill={"oklch(0.58 0.19 #{@hue})"}
+      />
+    </svg>
+    """
+  end
+
+  defp identicon_data(seed) do
+    h = fnv1a(seed)
+    hue = rem(h, 360)
+
+    cells =
+      for y <- 0..4, x <- 0..2, bit_set?(h, y * 3 + x), reduce: [] do
+        acc ->
+          mirrored = if x < 2, do: [{4 - x, y}], else: []
+          [{x, y} | mirrored] ++ acc
+      end
+
+    {hue, cells}
+  end
+
+  defp bit_set?(h, i), do: band(bsr(h, i), 1) == 1
+
+  defp fnv1a(seed) do
+    seed
+    |> :binary.bin_to_list()
+    |> Enum.reduce(2_166_136_261, fn byte, acc ->
+      band(bxor(acc, byte) * 16_777_619, 0xFFFFFFFF)
+    end)
+  end
+
   # Shape the PokerSession into the JSON-safe map that Chamber.vue
   # (and PokerBoard.vue) consume. Filters vote values during `:voting`
   # so only the current user's own card is sent to the client; the
@@ -2319,12 +2374,18 @@ defmodule MixchambWeb.ChamberLive do
           user_id == @current_user.id && "bg-primary/5"
         ]}
       >
+        <%!-- Instrument dot — music only (the colour encodes the
+             player's instrument). Hidden for non-music activities. --%>
         <span
+          :if={@chamber.activity == "music"}
           aria-hidden="true"
           class="size-2 rounded-full shrink-0 mt-2"
           style={"background-color: " <> presence_dot_color(@chamber.activity, meta)}
         >
         </span>
+        <%!-- Geometric identicon with a permanent per-user colour —
+             the player's stable visual identity across activities. --%>
+        <.player_identicon seed={user_id} class="size-5 mt-0.5" />
         <div class="flex-1 min-w-0">
           <%!-- Primary line: the alias if set, else the
                auto-generated noun-adj-NN name. Host badge sits
