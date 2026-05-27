@@ -13,6 +13,7 @@ import { computed, onUnmounted, ref, watch } from "vue"
 import { useLiveVue } from "live_vue"
 import type { GarticView, GarticEntry } from "../MiniGameBoard.vue"
 import DrawingCanvas from "../pictionary/DrawingCanvas.vue"
+import HowToPlay from "../HowToPlay.vue"
 
 const props = defineProps<{
   state: GarticView
@@ -273,4 +274,7 @@ const promptDrawing = computed(() =>
       Waiting for the host to play again or end.
     </p>
   </div>
+
+  <!-- Rules reference, available to everyone while the game runs. -->
+  <HowToPlay game="gartic_phone" />
 </template>

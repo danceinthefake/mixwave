@@ -11,6 +11,7 @@ import { playGuessCorrect, playTimeUp } from "../../../lib/audio"
 import type { MiniGameView } from "../MiniGameBoard.vue"
 import DrawingCanvas from "./DrawingCanvas.vue"
 import GuessFeed from "./GuessFeed.vue"
+import HowToPlay from "../HowToPlay.vue"
 
 const props = defineProps<{
   state: MiniGameView
@@ -162,5 +163,7 @@ function chooseWord(word: string) {
       :current_user_id="current_user_id"
       :name-of="nameOf"
     />
+
+    <HowToPlay game="pictionary" />
   </div>
 </template>
