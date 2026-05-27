@@ -116,7 +116,12 @@ defmodule Mixchamb.Retro.EphemeralState do
 
     if MapSet.member?(current, card_id) do
       updated = MapSet.delete(current, card_id)
-      new_votes = if MapSet.size(updated) == 0, do: Map.delete(s.votes, user_id), else: Map.put(s.votes, user_id, updated)
+
+      new_votes =
+        if MapSet.size(updated) == 0,
+          do: Map.delete(s.votes, user_id),
+          else: Map.put(s.votes, user_id, updated)
+
       {:ok, %{s | votes: new_votes}}
     else
       {:noop, s}

@@ -2253,7 +2253,9 @@ defmodule MixchambWeb.ChamberLive do
     >
       <summary class="cursor-pointer px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-display flex items-center justify-between hover:text-foreground">
         <span>Past retros ({length(@past_retros)})</span>
-        <span class="text-[10px] group-open:rotate-90 transition-transform" aria-hidden="true">›</span>
+        <span class="text-[10px] group-open:rotate-90 transition-transform" aria-hidden="true">
+          ›
+        </span>
       </summary>
       <ul class="px-2 pb-2 space-y-1">
         <li

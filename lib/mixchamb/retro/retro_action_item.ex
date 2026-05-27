@@ -66,7 +66,10 @@ defmodule Mixchamb.Retro.RetroActionItem do
   def update_changeset(action, attrs) do
     action
     |> cast(attrs, [:body, :assignee_alias, :due_date, :completed])
-    |> update_change(:body, fn nil -> nil; b -> String.trim(b) end)
+    |> update_change(:body, fn
+      nil -> nil
+      b -> String.trim(b)
+    end)
     |> validate_length(:body, min: 1, max: @max_body)
     |> validate_length(:assignee_alias, max: @max_assignee)
   end

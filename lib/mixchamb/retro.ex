@@ -339,7 +339,9 @@ defmodule Mixchamb.Retro do
         from(c in RetroCard,
           where: c.id == ^card_id and c.retro_session_id == ^session_id
         )
-        |> Repo.update_all(set: [vote_count: count, updated_at: DateTime.utc_now() |> DateTime.truncate(:second)])
+        |> Repo.update_all(
+          set: [vote_count: count, updated_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        )
       end)
     end)
   end
@@ -364,9 +366,7 @@ defmodule Mixchamb.Retro do
   """
   def add_action_item(%RetroSession{status: "discuss", id: session_id}, attrs) do
     %RetroActionItem{}
-    |> RetroActionItem.creation_changeset(
-      Map.put(attrs, :retro_session_id, session_id)
-    )
+    |> RetroActionItem.creation_changeset(Map.put(attrs, :retro_session_id, session_id))
     |> Repo.insert()
   end
 
@@ -430,8 +430,7 @@ defmodule Mixchamb.Retro do
       true ->
         query =
           from r in RetroCardReaction,
-            where:
-              r.retro_card_id == ^card.id and r.user_id == ^user_id and r.emoji == ^emoji
+            where: r.retro_card_id == ^card.id and r.user_id == ^user_id and r.emoji == ^emoji
 
         case Repo.one(query) do
           nil ->

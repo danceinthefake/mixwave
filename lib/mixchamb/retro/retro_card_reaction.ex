@@ -22,8 +22,7 @@ defmodule Mixchamb.Retro.RetroCardReaction do
   # CLDR / Unicode 16 without leaving room for non-emoji junk.
   @max_emoji_bytes 32
 
-  @derive {LiveVue.Encoder,
-           only: [:id, :retro_card_id, :user_id, :emoji, :inserted_at]}
+  @derive {LiveVue.Encoder, only: [:id, :retro_card_id, :user_id, :emoji, :inserted_at]}
 
   schema "retro_card_reactions" do
     field :emoji, :string

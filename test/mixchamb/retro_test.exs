@@ -289,7 +289,10 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.start_session(chamber.id)
       {:ok, s} = Retro.advance_phase(s)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
       s = advance_to(s, "discuss", user)
 
       assert {:ok, freeform} =
@@ -384,7 +387,10 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.start_session(chamber.id)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
       s = advance_to(s, "reveal", user)
       %{session: s, card: card}
     end
@@ -394,7 +400,11 @@ defmodule Mixchamb.RetroTest do
       assert {:removed, _} = Retro.toggle_reaction(card, user.id, "👍", s)
     end
 
-    test "toggle_reaction stacks multiple emojis from same user", %{session: s, card: card, user: user} do
+    test "toggle_reaction stacks multiple emojis from same user", %{
+      session: s,
+      card: card,
+      user: user
+    } do
       assert {:added, _} = Retro.toggle_reaction(card, user.id, "👍", s)
       assert {:added, _} = Retro.toggle_reaction(card, user.id, "❤️", s)
     end
@@ -410,6 +420,7 @@ defmodule Mixchamb.RetroTest do
     test "toggle_reaction rejects empty or oversized emoji",
          %{session: s, card: card, user: user} do
       assert {:error, :invalid_emoji} = Retro.toggle_reaction(card, user.id, "", s)
+
       assert {:error, :invalid_emoji} =
                Retro.toggle_reaction(card, user.id, String.duplicate("a", 64), s)
     end
@@ -419,7 +430,10 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.start_session(fresh_chamber.id)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
       assert {:error, :phase_locked} = Retro.toggle_reaction(card, user.id, "👍", s)
     end
 
@@ -429,7 +443,10 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.set_brainstorm_visible(s, true)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
       assert {:added, _} = Retro.toggle_reaction(card, user.id, "👍", s)
     end
   end
@@ -439,18 +456,26 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.start_session(chamber.id)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
       s = advance_to(s, "reveal", user)
       %{session: s, card: card}
     end
 
     test "add_comment during :reveal", %{session: s, card: card, user: user} do
       assert {:ok, comment} =
-               Retro.add_comment(card, %{
-                 body: "Good point",
-                 author_user_id: user.id,
-                 author_alias: "alex"
-               }, s)
+               Retro.add_comment(
+                 card,
+                 %{
+                   body: "Good point",
+                   author_user_id: user.id,
+                   author_alias: "alex"
+                 },
+                 s
+               )
+
       assert comment.body == "Good point"
       assert comment.author_alias == "alex"
     end
@@ -460,10 +485,16 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.start_session(fresh_chamber.id)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
 
       assert {:error, :phase_locked} =
-               Retro.add_comment(card, %{body: "no", author_user_id: user.id, author_alias: "a"}, s)
+               Retro.add_comment(
+                 card,
+                 %{body: "no", author_user_id: user.id, author_alias: "a"},
+                 s
+               )
     end
 
     test "add_comment allowed during :brainstorm when brainstorm_visible", %{user: user} do
@@ -472,10 +503,16 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.set_brainstorm_visible(s, true)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
 
       assert {:ok, comment} =
-               Retro.add_comment(card, %{body: "early thought", author_user_id: user.id, author_alias: "a"}, s)
+               Retro.add_comment(
+                 card,
+                 %{body: "early thought", author_user_id: user.id, author_alias: "a"},
+                 s
+               )
 
       assert comment.body == "early thought"
     end
@@ -506,7 +543,10 @@ defmodule Mixchamb.RetroTest do
       {:ok, s} = Retro.start_session(fresh_chamber.id)
       s = advance_to(s, "brainstorm", user)
       [col | _] = s.columns
-      {:ok, card} = Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
+      {:ok, card} =
+        Retro.add_card(s, col, %{body: "x", author_user_id: user.id, author_alias: "a"})
+
       s = advance_to(s, "reveal", user)
 
       {:ok, comment} =
@@ -516,8 +556,13 @@ defmodule Mixchamb.RetroTest do
 
       assert {:error, :phase_locked} = Retro.update_comment(comment, "edit", user.id, s)
       assert {:error, :phase_locked} = Retro.delete_comment(comment, user.id, s)
+
       assert {:error, :phase_locked} =
-               Retro.add_comment(card, %{body: "late", author_user_id: user.id, author_alias: "a"}, s)
+               Retro.add_comment(
+                 card,
+                 %{body: "late", author_user_id: user.id, author_alias: "a"},
+                 s
+               )
     end
   end
 

@@ -99,9 +99,9 @@ defmodule MixchambWeb.RetroLive do
             :if={@retro_session.chamber_slug_snapshot || @retro_session.chamber_title_snapshot}
             class="text-xs text-muted-foreground"
           >
-            From: {@retro_session.chamber_title_snapshot || @retro_session.chamber_slug_snapshot}<span
-              :if={@retro_session.archived_at}
-            >
+            From: {@retro_session.chamber_title_snapshot || @retro_session.chamber_slug_snapshot}<span :if={
+              @retro_session.archived_at
+            }>
               · archived {Calendar.strftime(@retro_session.archived_at, "%Y-%m-%d %H:%M UTC")}</span>
           </p>
         </header>
