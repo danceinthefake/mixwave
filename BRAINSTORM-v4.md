@@ -34,7 +34,8 @@ distributed engineering teams:
 - **Mini-game** ✅ _built 2026-05-27_ — small synchronous games
   (Pictionary-style, trivia, Gartic Phone-ish; absorbs the icebreaker
   prompts / polls / would-you-rather idea). Shipped: a game-registry
-  framework + Pictionary (live draw-and-guess) as the v1 game. See
+  framework + two games — Pictionary (live draw-and-guess) and Gartic
+  Phone (write→draw→describe chain + album). See
   `features/mini-game.md`.
 - **Music** ✅ — the existing chamber experience (carried over from
   v1–v3)
@@ -433,9 +434,10 @@ the spec explicitly defers polish.
    Each one extends the same `chamber.activity` switch pattern.
    Mini-game (which absorbs the icebreaker idea) ✅ **shipped
    2026-05-27** — `features/mini-game.md`: a game-registry framework
-   with Pictionary (live draw-and-guess) as its v1 game. The next
-   registry game (Gartic Phone, trivia, lightweight polls) is now
-   just a module + Vue stage + registry entry.
+   with **Pictionary** (live draw-and-guess) and **Gartic Phone**
+   (write→draw→describe chain + album) as its first two games. A
+   third (trivia, lightweight polls) is just a module + Vue stage +
+   registry entry — no framework change.
 
 **Dropped from the roadmap (2026-05-27):**
 

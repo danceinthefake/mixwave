@@ -40,11 +40,16 @@ shared across all of them; the activity decides what happens
   Archived retros live permanently at `/archives/retros/:id`,
   decoupled from the (ephemeral) chamber that hosted them.
 - **Mini-game** — a registry of small synchronous games behind one
-  lobby / roster / scoreboard shell. v1 ships **Pictionary**: one
-  drawer streams strokes on a shared canvas (normalized coords,
-  ~50ms batching over the chamber's PubSub), everyone else races a
-  timer to guess; time-scaled scoring, drawer rotation, fully
-  ephemeral. A second game is a module + Vue stage + registry entry.
+  lobby / host-control shell. Two games ship:
+  - **Pictionary** — one drawer streams strokes on a shared canvas
+    (normalized coords, ~50ms batching over the chamber's PubSub),
+    everyone else races a timer to guess; time-scaled scoring,
+    progressive letter reveal, drawer rotation + reconnect-grace.
+  - **Gartic Phone** — a write→draw→describe telephone chain on
+    private surfaces, then a synchronized album reveal.
+
+  Both are fully ephemeral. A third game is just a module + Vue stage
+  + registry entry — no framework changes.
 
 ### Music chambers + audio character
 

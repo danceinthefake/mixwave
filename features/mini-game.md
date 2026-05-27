@@ -363,11 +363,13 @@ AudioContext so correct-guess / time-up cues (§9) can play.
 Sized and considered, explicitly deferred so they don't get
 re-debated each pass.
 
-- **Gartic Phone as the second registry game.** Telephone chains of
-  write→draw→describe→draw…, then a synchronized album reveal.
-  Reuses `DrawingCanvas.vue`; needs per-player private surfaces +
-  chain bookkeeping + album playback. The framework's headline
-  next game.
+- ✅ **Gartic Phone as the second registry game** _(shipped
+  2026-05-27)_. Telephone chains of write→draw→describe→draw…, then a
+  synchronized album reveal. Reuses `DrawingCanvas.vue` in a new
+  `local` (private, submit-as-blob) mode; books rotate one seat per
+  step, missing submissions get a placeholder. `Mixchamb.MiniGame.GarticPhone`
+  + `gartic_phone/GarticStage.vue` + a registry entry — no framework
+  re-plumb, exactly as the registry promised.
 - **Lightweight games (the absorbed icebreaker).** Poll /
   would-you-rather / "two truths and a lie": host poses a prompt +
   2–6 choices, everyone answers, reveal the distribution. These are
