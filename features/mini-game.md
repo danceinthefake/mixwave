@@ -380,9 +380,10 @@ re-debated each pass.
   game-over fanfare in `assets/vue/lib/audio.ts` (`playGuessCorrect` /
   `playTimeUp` / `playGameOver`), wired in PictionaryStage +
   MiniGameBoard.
-- ⬜ **Progressive letter reveal.** Reveal one blank letter every X
-  seconds as the timer drains (§4). _Deferred — needs the server to
-  stream partial-word state on a sub-turn timer._
+- ✅ **Progressive letter reveal** _(shipped)_. Letter positions are
+  shuffled at choose-time; a server timer drips one every
+  `turn_seconds/(cap+1)` up to ~half (words ≤3 letters reveal none).
+  The view sends a `masked` string; guessers never get the full word.
 - ✅ **Close-guess "so close!"** _(shipped)_. `Pictionary.near?/2`
   (plural / Levenshtein ≤1); near-miss emits a "close" feed with the
   text withheld from the room.
@@ -395,9 +396,10 @@ re-debated each pass.
 - ✅ **Keyboard shortcuts** _(shipped)_: `1`–`8` brush color, `[` / `]`
   brush size, `E` eraser, `Z` undo (DrawingCanvas); `Enter` submits a
   guess (GuessFeed form).
-- ⬜ **Reconnect grace for the drawer.** Hold the turn ~5s before
-  ending it if the drawer drops. _Deferred — host Skip already
-  recovers a stuck turn; `State.sync_presence` ends it immediately._
+- ✅ **Reconnect grace for the drawer** _(shipped)_. A non-host drawer
+  dropping mid-turn starts a 5s hold (the host's presence sync drives
+  it); they resume if they return, else the turn ends + they leave the
+  rotation. Shown as "X disconnected — holding the turn…".
 
 ## Ready-to-build checklist — _Built_
 
