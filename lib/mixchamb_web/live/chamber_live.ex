@@ -1253,7 +1253,7 @@ defmodule MixchambWeb.ChamberLive do
      push_event(socket, "minigame_relay", %{kind: Atom.to_string(kind), payload: payload})}
   end
 
-  def handle_info({:activity_changed, _activity}, socket) do
+  def handle_info({:activity_changed, activity}, socket) do
     chamber = Chambers.find_by_slug(socket.assigns.chamber_slug)
 
     {:noreply,
@@ -1262,7 +1262,11 @@ defmodule MixchambWeb.ChamberLive do
      |> assign(:poker_session, load_poker_session(chamber))
      |> assign(:retro_session, load_retro_session(chamber))
      |> assign(:minigame_state, load_minigame_state(chamber))
-     |> assign(:past_retros, load_past_retros(chamber))}
+     |> assign(:past_retros, load_past_retros(chamber))
+     # Tell the room the host flipped the activity — the board swaps
+     # underneath everyone, so a flash explains why. Fires for every
+     # connected client (the host's own confirms their click).
+     |> put_flash(:info, "Host switched the chamber to #{activity_label(activity)}.")}
   end
 
   # Broadcast by the LV that wrote the title change. Everyone else
