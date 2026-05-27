@@ -90,8 +90,8 @@ function saveCustom() {
       </button>
     </div>
 
-    <!-- Per-game config (Pictionary) -->
-    <div v-if="game === 'pictionary'" class="rounded-xl border bg-card/60 p-4 space-y-3">
+    <!-- Per-game config (Pictionary) — host only -->
+    <div v-if="game === 'pictionary' && is_host" class="rounded-xl border bg-card/60 p-4 space-y-3">
       <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Setup</p>
 
       <label class="flex items-center justify-between gap-3 text-sm">
@@ -157,8 +157,11 @@ function saveCustom() {
       </label>
     </div>
 
-    <!-- Per-game config (Gartic Phone) -->
-    <div v-if="game === 'gartic_phone'" class="rounded-xl border bg-card/60 p-4 space-y-3">
+    <!-- Per-game config (Gartic Phone) — host only -->
+    <div
+      v-if="game === 'gartic_phone' && is_host"
+      class="rounded-xl border bg-card/60 p-4 space-y-3"
+    >
       <p class="text-xs uppercase tracking-wider text-muted-foreground font-display">Setup</p>
       <label class="flex items-center justify-between gap-3 text-sm">
         <span class="text-muted-foreground">Time per step</span>
