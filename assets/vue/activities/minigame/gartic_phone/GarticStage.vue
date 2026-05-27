@@ -275,6 +275,6 @@ const promptDrawing = computed(() =>
     </p>
   </div>
 
-  <!-- Rules reference, available to everyone while the game runs. -->
-  <HowToPlay game="gartic_phone" />
+  <!-- Rules reference while the game runs (not at the final wrap-up). -->
+  <HowToPlay v-if="state.phase !== 'gameover'" game="gartic_phone" />
 </template>

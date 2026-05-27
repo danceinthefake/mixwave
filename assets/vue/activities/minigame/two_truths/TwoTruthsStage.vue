@@ -288,6 +288,6 @@ const spotters = computed(
       </p>
     </div>
 
-    <HowToPlay game="two_truths" />
+    <HowToPlay v-if="state.phase !== 'gameover'" game="two_truths" />
   </div>
 </template>
