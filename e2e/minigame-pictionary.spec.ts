@@ -13,7 +13,14 @@ const canvasHasInk = (p: Page) =>
   })
 
 async function drawLine(p: Page) {
-  const box = (await p.locator("canvas").boundingBox())!
+  const c = p.locator("canvas")
+  await c.waitFor({ state: "visible" })
+  let box = await c.boundingBox()
+  for (let t = 0; t < 10 && !box; t++) {
+    await p.waitForTimeout(100)
+    box = await c.boundingBox()
+  }
+  if (!box) throw new Error("pictionary: canvas never laid out")
   const y = box.y + box.height / 2
   await p.mouse.move(box.x + box.width * 0.2, y)
   await p.mouse.down()

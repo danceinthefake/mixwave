@@ -6,6 +6,13 @@ import { openRoom, bodyText } from "./helpers"
 // the input canvas — the last canvas; an earlier one may be the
 // read-only prompt drawing).
 async function submitStep(p: Page, tag: string) {
+  // Wait for this step's input surface to actually be up — after a
+  // phase advance the page briefly shows the previous "locked in"
+  // state, and on slower CI the canvas isn't laid out yet. Submit is
+  // only present once a real surface (text or draw) is rendered.
+  const submit = p.getByRole("button", { name: "Submit" })
+  await submit.waitFor({ state: "visible", timeout: 15_000 })
+
   const phrase = p.locator(
     'input[placeholder="Your phrase…"], input[placeholder="Describe the drawing…"]',
   )
@@ -18,7 +25,13 @@ async function submitStep(p: Page, tag: string) {
     await phrase.first().fill(tag)
   } else {
     const c = p.locator("canvas").last()
-    const box = (await c.boundingBox())!
+    await c.waitFor({ state: "visible" })
+    let box = await c.boundingBox()
+    for (let t = 0; t < 10 && !box; t++) {
+      await p.waitForTimeout(100)
+      box = await c.boundingBox()
+    }
+    if (!box) throw new Error("gartic: drawing canvas never laid out")
     const y = box.y + box.height / 2
     await p.mouse.move(box.x + box.width * 0.25, y)
     await p.mouse.down()
@@ -26,7 +39,7 @@ async function submitStep(p: Page, tag: string) {
       await p.mouse.move(box.x + box.width * (0.25 + 0.08 * i), y + Math.sin(i) * 20)
     await p.mouse.up()
   }
-  await p.getByRole("button", { name: "Submit" }).click()
+  await submit.click()
   await p.waitForTimeout(150)
 }
 
