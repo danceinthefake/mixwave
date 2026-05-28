@@ -32,6 +32,15 @@ defmodule MixchambWeb.Router do
     plug MixchambWeb.Plugs.AdminAuth
   end
 
+  # Lightweight, unauthenticated readiness probe for load balancers /
+  # uptime monitors (Cloudflare healthy-origin routing, UptimeRobot,
+  # healthchecks.io). Plain HTTP — no session, LiveView, or heavy
+  # landing query — it just confirms the DB is reachable. The richer
+  # admin health view stays at /admin/health.
+  scope "/", MixchambWeb do
+    get "/up", HealthController, :show
+  end
+
   scope "/", MixchambWeb do
     pipe_through :browser
 

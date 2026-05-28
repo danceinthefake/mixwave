@@ -65,7 +65,7 @@ COPY --from=build --chown=mixchamb:mixchamb /app/_build/prod/rel/mixchamb ./
 
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS http://localhost:4000/ || exit 1
+  CMD curl -fsS http://localhost:4000/up || exit 1
 
 # Run migrations on container start, then exec the server.
 CMD ["sh", "-c", "/app/bin/mixchamb eval 'Mixchamb.Release.migrate' && exec /app/bin/server"]

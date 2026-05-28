@@ -29,6 +29,10 @@ process tree** and **how the deploy step works.**
   destination across systemd `OnFailure=`, UptimeRobot,
   healthchecks.io, and Sentry. Per-method monitoring details are
   in each subdir's README; the conceptual layering is identical.
+  Point HTTP probes (container `HEALTHCHECK`, fly `[[checks]]`,
+  UptimeRobot) at **`GET /up`** — a lightweight public endpoint that
+  pings the DB and returns `200 {"status":"ok"}` / `503` (no
+  session/LiveView). The richer human view is `/admin/health`.
 - **Secrets.** Never commit. Use the `.env.example` /
   `env.example` files as templates — copy, fill, never `git add`.
 
